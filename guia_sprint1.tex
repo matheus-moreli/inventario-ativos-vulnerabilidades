@@ -1,0 +1,528 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{parskip}
+\usepackage{needspace}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue!55!black,
+  pdftitle={Guia de estudo - Sprint 1},
+  pdfauthor={Matheus Moreli}
+}
+
+\setlist{itemsep=3pt, topsep=5pt}
+\setlength{\emergencystretch}{3em}
+\lstset{
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{black!4},
+  frame=single,
+  rulecolor=\color{black!20},
+  breaklines=true,
+  columns=fullflexible,
+  showstringspaces=false,
+  xleftmargin=4pt,
+  xrightmargin=4pt
+}
+
+\newcommand{\projeto}{\paragraph{Aplicação no projeto.}}
+\newcommand{\comoaplicar}{\paragraph{Como aplicar.}}
+\newcommand{\referencia}[2]{\paragraph{Card e referência.}\href{#1}{#2}}
+\newcommand{\cardsection}[1]{\Needspace{12\baselineskip}\subsection{#1}}
+
+\begin{document}
+
+\begin{titlepage}
+\thispagestyle{empty}
+\centering
+\vspace*{3.2cm}
+
+{\Large\textbf{SPRINT 1}}\\[0.5cm]
+{\LARGE Inventário de Ativos e Vulnerabilidades}\\[1.2cm]
+
+{\large Material de apoio para apresentação e estudo}\\[3.2cm]
+
+\begin{flushleft}
+\large
+\textbf{Aluno:} Matheus Moreli Durão Silva\\[0.35cm]
+\textbf{Matrícula:} 12621CBS217\\[0.35cm]
+\textbf{E-mail:} \href{mailto:matheus.moreli@ufu.br}{matheus.moreli@ufu.br}\\[0.35cm]
+\textbf{Curso:} Cibersegurança - Bacharelado - Noturno
+\end{flushleft}
+
+\vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Como usar este guia}
+
+Este documento explica a Sprint 1 do projeto de inventário de ativos e vulnerabilidades. A meta não é decorar palavras de Python ou Git. A meta é conseguir responder, em cada parte do trabalho:
+
+\begin{enumerate}
+  \item O que é este conceito?
+  \item Como ele funciona, passo a passo?
+  \item Quando ele é útil?
+  \item Onde ele aparece no \texttt{app.py} ou no histórico do Git?
+  \item Como eu demonstro que ele funciona?
+\end{enumerate}
+
+O arquivo principal do programa é \texttt{app.py}. Os dados persistentes ficam em \texttt{dados/inventario.json}. Este guia é um material local de estudo; ele não faz parte do repositório no GitHub.
+
+\section{Visão geral do sistema}
+
+O sistema registra ativos de TI, como notebooks, servidores, roteadores, aplicações e bancos de dados. Para cada ativo, podem ser adicionadas vulnerabilidades, isto é, problemas ou riscos de segurança encontrados naquele item.
+
+Um ativo possui os campos ID, nome, responsável, localização, tipo e uma lista de vulnerabilidades. O ID é um número inteiro único. Ele identifica o ativo sem ambiguidade, mesmo que duas pessoas usem nomes parecidos.
+
+\begin{lstlisting}[language=Python,caption={Formato dos dados na memória}]
+ativos = {
+    10: {
+        "id": 10,
+        "nome": "SRV-ARQUIVOS",
+        "responsavel": "TI",
+        "localizacao": "Sala 02",
+        "tipo": 2,
+        "vulnerabilidades": [
+            {
+                "descricao": "Sistema desatualizado",
+                "categoria": "Atualizacao",
+                "severidade": "Alta",
+                "status": "Aberta"
+            }
+        ]
+    }
+}
+\end{lstlisting}
+
+O dicionário externo usa o ID como chave. Assim, a pergunta ``já existe um ativo com este ID?'' pode ser respondida diretamente com \texttt{if identificador in ativos}. Dentro de cada ativo, outro dicionário usa nomes claros para os campos: \texttt{ativo["responsavel"]} é mais fácil de entender do que uma posição numérica em uma lista. A lista \texttt{vulnerabilidades} é usada porque um ativo pode ter nenhuma, uma ou várias vulnerabilidades.
+
+\section{Fluxo do programa}
+
+Quando \texttt{executar\_programa()} começa, ela chama \texttt{carregar\_ativos()} para recuperar o JSON salvo. Em seguida, o programa permanece em um laço até a opção de saída ser escolhida.
+
+\begin{enumerate}
+  \item \textbf{Carregar:} o programa tenta ler o arquivo JSON. Caso ele não exista, começa com um dicionário vazio, \texttt{\{\}}.
+  \item \textbf{Mostrar:} \texttt{mostrar\_menu()} exibe as opções no terminal.
+  \item \textbf{Ler:} funções de entrada recebem a opção e os dados digitados.
+  \item \textbf{Validar:} o programa verifica campos vazios, números inválidos, IDs repetidos e escolhas inexistentes.
+  \item \textbf{Executar:} uma condição \texttt{if/elif/else} chama a funcionalidade escolhida.
+  \item \textbf{Salvar:} depois de cadastrar, alterar ou remover, o JSON é regravado.
+  \item \textbf{Sair:} a opção 0 encerra o laço com \texttt{break}.
+\end{enumerate}
+
+\section{Fundamentos de Python}
+
+\cardsection{S1\_04 -- Saída com \texttt{print()}}
+
+\texttt{print()} é uma função que mostra um valor no terminal. O texto entre aspas é chamado de \emph{string}. Python executa o que estiver dentro dos parênteses e envia o resultado para a tela.
+
+\begin{lstlisting}[language=Python,caption={Formas básicas de usar print}]
+# Texto simples
+print("Ola, mundo!")
+
+# Quebra de linha: \n significa nova linha
+print("Inventario de ativos\n----------------------")
+
+# Varios valores: print separa por espaco
+nome = "SRV-ARQUIVOS"
+identificador = 10
+print("Ativo:", nome, "| ID:", identificador)
+
+# f-string: coloca valores dentro de um texto
+print(f"Ativo {nome} cadastrado com ID {identificador}.")
+
+# Expressao dentro das chaves da f-string
+print(f"Quantidade de exemplos: {2 + 3}")
+\end{lstlisting}
+
+O caractere \texttt{\textbackslash n} é uma sequência especial que cria uma nova linha. Ele ajuda a separar título e conteúdo sem precisar fazer dois \texttt{print()} diferentes. O \texttt{f} antes das aspas em uma f-string significa \emph{formatted string}: o conteúdo entre chaves é calculado e substituído pelo seu valor.
+
+\begin{lstlisting}[language=Python,caption={Diferença entre string comum e f-string}]
+nome = "Ana"
+print("Ativo {nome}")   # mostra literalmente: Ativo {nome}
+print(f"Ativo {nome}")  # mostra: Ativo Ana
+\end{lstlisting}
+
+\projeto
+\texttt{mostrar\_menu()} utiliza \texttt{print()} para mostrar as opções. As mensagens de sucesso, de erro e de confirmação também usam essa função. Uma mensagem como ``Ativo cadastrado com sucesso'' informa o resultado da ação; sem essa saída, a pessoa não saberia se o programa executou o que foi pedido.
+
+\referencia{https://trello.com/c/YeugQuYt}{S1\_04 no Trello}
+
+\cardsection{S1\_05 -- Variáveis e tipos de dados}
+
+Uma variável é um nome usado para guardar um valor durante a execução do programa. Em \texttt{identificador = 10}, o nome \texttt{identificador} passa a se referir ao número 10. O tipo do valor determina quais operações fazem sentido.
+
+\begin{itemize}
+  \item \texttt{str}: texto, como \texttt{"Sala 02"}.
+  \item \texttt{int}: inteiro, como \texttt{10}.
+  \item \texttt{float}: número decimal, como \texttt{3.5}.
+  \item \texttt{bool}: verdadeiro ou falso, representado por \texttt{True} e \texttt{False}.
+\end{itemize}
+
+\begin{lstlisting}[language=Python,caption={Tipos de dados no contexto do projeto}]
+identificador = 10          # int: ID numerico
+nome = "SRV-ARQUIVOS"       # str: texto
+ativo_critico = True        # bool: uma decisao sim/nao
+nota = 8.5                  # float: exemplo de decimal
+\end{lstlisting}
+
+O ID foi escolhido como \texttt{int} porque o programa precisa comparar e procurar esse número. Nome, responsável e localização são \texttt{str}, pois armazenam palavras. Uma confirmação, como remover ou não remover um item, é naturalmente uma decisão booleana.
+
+\projeto
+\texttt{ler\_sim\_ou\_nao()} devolve \texttt{True} ou \texttt{False}. O valor \texttt{identificador} é um inteiro. Essa escolha deixa as condições mais claras e evita comparar textos quando o dado tem significado numérico.
+
+\referencia{https://trello.com/c/DmvtABXt}{S1\_05 no Trello}
+
+\cardsection{S1\_06 -- Entrada com \texttt{input()} e validação}
+
+\texttt{input()} mostra uma pergunta e espera a pessoa digitar. Um detalhe importante: o resultado de \texttt{input()} é sempre texto. Mesmo que a pessoa digite 10, o Python recebe \texttt{"10"}. Para transformar esse texto no número inteiro 10, é preciso usar \texttt{int()}.
+
+\begin{lstlisting}[language=Python,caption={Entrada de texto e conversão para inteiro}]
+texto_id = input("Digite o ID: ")
+identificador = int(texto_id)
+
+nome = input("Digite o nome: ").strip()
+if nome == "":
+    print("O nome e obrigatorio.")
+else:
+    print(f"Voce digitou: {nome}")
+\end{lstlisting}
+
+\texttt{.strip()} remove espaços no início e no fim de um texto. Isso impede que alguém preencha um campo obrigatório apenas com espaços. A conversão \texttt{int(texto\_id)} pode gerar um erro se a pessoa digitar algo como ``dez''; esse caso é tratado na parte de exceções.
+
+\projeto
+\texttt{ler\_texto()} é reutilizada para impedir campos obrigatórios vazios. \texttt{ler\_inteiro()} tenta converter a entrada, verifica se o número é positivo e pede novamente em caso de erro. Centralizar a regra evita copiar o mesmo bloco de validação em vários lugares.
+
+\referencia{https://trello.com/c/fFlJ9zCj}{S1\_06 no Trello}
+
+\cardsection{S1\_07 -- Estruturas condicionais}
+
+Uma condição permite que o programa escolha entre caminhos. \texttt{if} executa um bloco quando a expressão é verdadeira. \texttt{elif} testa outra possibilidade. \texttt{else} executa quando nenhuma condição anterior foi satisfeita.
+
+\begin{lstlisting}[language=Python,caption={Condição para impedir ID duplicado}]
+if identificador in ativos:
+    print("Ja existe um ativo com esse ID.")
+else:
+    print("O ID pode ser usado.")
+\end{lstlisting}
+
+O operador \texttt{in} pergunta se algo pertence a uma coleção. Como o ID é uma chave do dicionário \texttt{ativos}, essa condição verifica diretamente se a chave já existe.
+
+\projeto
+O menu utiliza \texttt{if/elif/else} para chamar a função correspondente à opção. A busca decide entre encontrado e não encontrado. A remoção só ocorre após a confirmação ``SIM''. Cada situação é uma pergunta que produz verdadeiro ou falso.
+
+\referencia{https://trello.com/c/QvZa8m7a}{S1\_07 no Trello}
+
+\cardsection{S1\_08 -- Estruturas de repetição}
+
+Laços de repetição evitam escrever a mesma lógica várias vezes. \texttt{while} repete enquanto uma condição for verdadeira. \texttt{for} percorre cada item de uma coleção.
+
+\begin{lstlisting}[language=Python,caption={while e for}]
+# Mantem o menu aberto ate a opcao de saida
+while True:
+    opcao = input("Escolha 0 para sair: ")
+    if opcao == "0":
+        break
+
+# Mostra cada ativo guardado no dicionario
+for ativo in ativos.values():
+    print(ativo["nome"])
+\end{lstlisting}
+
+\texttt{while True} cria um laço que só termina quando o programa encontra \texttt{break}. Já \texttt{ativos.values()} entrega todos os valores do dicionário; o \texttt{for} recebe um ativo por vez na variável \texttt{ativo}.
+
+\projeto
+O laço principal mantém o menu disponível. Outros \texttt{for} mostram os tipos de ativo, percorrem a lista de vulnerabilidades e listam os ativos cadastrados.
+
+\referencia{https://trello.com/c/op3s5sKj}{S1\_08 no Trello}
+
+\cardsection{S1\_09 -- Funções}
+
+Uma função é um bloco de código com nome e tarefa definida. Ela pode receber valores, chamados parâmetros, e pode devolver um resultado com \texttt{return}. Funções servem para organizar o programa e reaproveitar uma regra sem copiar e colar.
+
+\begin{lstlisting}[language=Python,caption={Função com parâmetro e retorno}]
+def nome_maiusculo(nome):
+    texto_limpo = nome.strip()
+    return texto_limpo.upper()
+
+resultado = nome_maiusculo("srv-arquivos")
+print(resultado)  # SRV-ARQUIVOS
+\end{lstlisting}
+
+Depois de \texttt{def}, escrevemos o nome da função, os parâmetros entre parênteses e dois-pontos. O corpo precisa ficar recuado. A variável \texttt{texto\_limpo} só é usada dentro daquela execução; o valor devolvido é guardado em \texttt{resultado}.
+
+\projeto
+\texttt{cadastrar\_ativo()}, \texttt{buscar\_ativo()}, \texttt{salvar\_ativos()} e \texttt{carregar\_ativos()} separam responsabilidades. \texttt{executar\_programa()} coordena o fluxo, sem precisar conter todos os detalhes de cadastro e arquivo.
+
+\referencia{https://trello.com/c/XWD40Pgo}{S1\_09 no Trello}
+
+\cardsection{S1\_10, S1\_11 e S1\_12 -- Listas, tuplas, sets e dicionários}
+
+Coleções guardam vários valores. A estrutura deve ser escolhida pelo problema, não porque ela existe na linguagem.
+
+\begin{lstlisting}[language=Python,caption={Comparação entre coleções}]
+severidades = ["Baixa", "Media", "Alta"]
+coordenadas = (10, 20)
+ids_usados = {10, 20, 20}
+ativo = {"id": 10, "nome": "SRV-ARQUIVOS"}
+
+severidades.append("Critica")
+print(ativo["nome"])
+\end{lstlisting}
+
+\begin{itemize}
+  \item \textbf{Lista}: mantém ordem e pode mudar. \texttt{append()} adiciona ao final.
+  \item \textbf{Tupla}: mantém ordem, mas não pode ser alterada depois de criada.
+  \item \textbf{Set}: não guarda duplicados e não promete uma ordem fixa. No exemplo, \texttt{\{10, 20, 20\}} se torna \texttt{\{10, 20\}}.
+  \item \textbf{Dicionário}: guarda pares chave--valor. \texttt{ativo["nome"]} recupera o valor usando uma chave legível.
+\end{itemize}
+
+\projeto
+O inventário usa um dicionário principal com ID como chave. Cada ativo é outro dicionário com campos nomeados. O campo \texttt{vulnerabilidades} é uma lista porque novas vulnerabilidades podem ser adicionadas. Tuplas e sets não foram forçados no código porque não resolvem uma necessidade melhor que as estruturas escolhidas; saber justificar isso também demonstra entendimento.
+
+\referencia{https://trello.com/c/EurwtLl9}{S1\_10 no Trello}; \href{https://trello.com/c/qEvT77g5}{S1\_11 no Trello}; \href{https://trello.com/c/N1J9NE4k}{S1\_12 no Trello}.
+
+\cardsection{S1\_13 -- Enumerações}
+
+Uma enumeração reúne opções permitidas usando nomes claros. \texttt{IntEnum} é adequada quando cada opção tem um código numérico. Isso evita usar números sem significado espalhados pelo programa.
+
+\begin{lstlisting}[language=Python,caption={Exemplo de IntEnum}]
+from enum import IntEnum
+
+class TipoAtivo(IntEnum):
+    NOTEBOOK = 1
+    SERVIDOR = 2
+
+tipo = TipoAtivo(2)
+print(tipo.name)   # SERVIDOR
+print(tipo.value)  # 2
+\end{lstlisting}
+
+\texttt{TipoAtivo(2)} cria o membro cujo valor é 2. \texttt{.name} mostra o nome do membro; \texttt{.value} mostra o código. Se alguém tentar \texttt{TipoAtivo(9)} e esse código não existir, Python gera \texttt{ValueError}. Esse erro é tratado para pedir uma escolha válida.
+
+\projeto
+\texttt{TipoAtivo} possui seis categorias. \texttt{escolher\_tipo\_ativo()} mostra os códigos para a pessoa escolher. O JSON salva o número, e \texttt{nome\_do\_tipo()} transforma esse código em nome legível ao exibir o ativo.
+
+\referencia{https://trello.com/c/nJrQKljh}{S1\_13 no Trello}; \href{https://docs.python.org/3/library/enum.html}{Documentação do módulo enum}.
+
+\cardsection{S1\_14 -- Persistência em arquivo JSON}
+
+Dados guardados apenas em variáveis desaparecem quando o programa fecha. Persistência significa salvar esses dados em um arquivo e recuperá-los depois. JSON é um formato de texto adequado neste projeto porque representa naturalmente dicionários e listas.
+
+\begin{lstlisting}[language=Python,caption={Gravar e ler JSON}]
+import json
+
+with open("dados/inventario.json", "w", encoding="utf-8") as arquivo:
+    json.dump(ativos, arquivo, ensure_ascii=False, indent=4)
+
+with open("dados/inventario.json", "r", encoding="utf-8") as arquivo:
+    ativos = json.load(arquivo)
+\end{lstlisting}
+
+\texttt{with open(...)} abre o arquivo e o fecha automaticamente ao terminar. O modo \texttt{"w"} escreve e substitui o conteúdo anterior. O modo \texttt{"r"} lê. \texttt{json.dump()} transforma o dicionário Python em JSON; \texttt{json.load()} faz o caminho inverso. \texttt{ensure\_ascii=False} mantém acentos legíveis e \texttt{indent=4} organiza o arquivo.
+
+Um detalhe importante: em JSON, as chaves de objetos são texto. Por isso, ao ler o arquivo, as chaves que representam IDs precisam ser convertidas de volta para inteiros antes de serem usadas pelo programa.
+
+\projeto
+\texttt{dados/inventario.json} é a base simples do trabalho. O programa salva após mudanças importantes e também ao sair. Ao iniciar novamente, os ativos e suas vulnerabilidades voltam a estar disponíveis.
+
+\referencia{https://trello.com/c/xdRh1TRi}{S1\_14 no Trello}; \href{https://docs.python.org/3/library/json.html}{Documentação do módulo json}.
+
+\cardsection{S1\_15 -- Tratamento de erros}
+
+Uma exceção é um erro que interromperia o fluxo normal. \texttt{try} contém a operação que pode falhar. \texttt{except} trata um erro específico. \texttt{else} executa quando não houve erro. \texttt{raise} permite criar ou disparar uma exceção quando uma regra do sistema é violada.
+
+\begin{lstlisting}[language=Python,caption={Tratamento de erro de conversão}]
+try:
+    identificador = int(input("Digite o ID: "))
+except ValueError:
+    print("Digite apenas um numero inteiro.")
+else:
+    print(f"ID valido: {identificador}")
+\end{lstlisting}
+
+Capturar um erro específico é melhor que escrever apenas \texttt{except:}. Um \texttt{except} vazio esconderia problemas diferentes e dificultaria descobrir o que aconteceu. Ao ler JSON, podem ocorrer arquivo inexistente, erro de leitura, JSON inválido ou formato inesperado. Cada situação recebe uma recuperação e uma mensagem clara.
+
+\projeto
+\texttt{carregar\_ativos()} trata \texttt{OSError}, \texttt{JSONDecodeError}, \texttt{ValueError} e \texttt{DadosInvalidosError}. A exceção personalizada \texttt{DadosInvalidosError} representa uma regra do programa: o conteúdo carregado precisa ser um dicionário de ativos. Se o arquivo estiver corrompido ou tiver formato inválido, o usuário é avisado e o programa pode iniciar uma base vazia de forma controlada.
+
+\referencia{https://trello.com/c/qSZwgosj}{S1\_15 no Trello}; \href{https://docs.python.org/3/tutorial/errors.html}{Tutorial Python: Errors and Exceptions}.
+
+\section{Requisitos e critérios de aceitação}
+
+\cardsection{S1\_01 -- Compreensão do problema}
+
+Antes de programar, é necessário entender quem usa o sistema, quais dados existem e o que precisa ser resolvido. Esse processo é chamado de compreensão de requisitos. No projeto, os elementos principais identificados foram ativo e vulnerabilidade. A pergunta principal é: como registrar os ativos de TI e acompanhar os riscos associados a cada um?
+
+\comoaplicar
+Comece listando os substantivos do problema (ativo, vulnerabilidade, responsável, localização) e depois os verbos (cadastrar, consultar, atualizar, remover). Em seguida, defina as regras que não podem ser quebradas, como manter o ID único.
+
+\projeto
+Essa análise gerou os campos guardados em cada ativo e a relação ``um ativo possui várias vulnerabilidades''. Não foi criada interface gráfica porque o objetivo da Sprint 1 é exercitar a lógica e os fundamentos de Python em um programa de terminal.
+
+\referencia{https://trello.com/c/2nV6OG9q}{S1\_01 no Trello}
+
+\cardsection{S1\_02 -- Requisitos funcionais}
+
+Requisitos funcionais descrevem o que o sistema precisa fazer. Eles podem ser observados na prática. Por exemplo, ``cadastrar ativo'' significa que uma pessoa consegue informar dados e o registro passa a existir. Requisitos não funcionais descrevem qualidades, como desempenho, segurança ou facilidade de uso.
+
+\projeto
+Os verbos do enunciado se tornaram funcionalidades do menu: cadastrar, listar, buscar por ID ou nome, atualizar, remover, adicionar vulnerabilidade, visualizar vulnerabilidades e mostrar resumo. Cada opção chama uma função com tarefa definida.
+
+\referencia{https://trello.com/c/nPnrvQad}{S1\_02 no Trello}
+
+\cardsection{S1\_03 -- Critérios de aceitação}
+
+Critério de aceitação é uma regra verificável que determina se uma funcionalidade está correta. Ele responde ``como saberemos que funciona?''. Um requisito sem critério pode ser entendido de formas diferentes.
+
+\begin{itemize}
+  \item Dado um ID já usado, o novo cadastro deve ser recusado e o ativo antigo deve continuar intacto.
+  \item Dado um campo obrigatório vazio, o programa deve pedir novamente em vez de gravar um valor vazio.
+  \item Dada uma busca sem resultado, o programa deve informar que o ativo não foi encontrado.
+  \item Dada uma remoção, o programa deve pedir confirmação antes de apagar o ativo e suas vulnerabilidades.
+\end{itemize}
+
+\projeto
+Esses critérios aparecem nas validações do terminal e podem ser demonstrados durante a apresentação.
+
+\referencia{https://trello.com/c/MRXQneEZ}{S1\_03 no Trello}
+
+\section{Git e GitHub}
+
+\cardsection{S1\_16 -- Fundamentos de Git}
+
+Git é um sistema de controle de versão. Ele registra a evolução do projeto localmente. GitHub é um serviço remoto que hospeda repositórios Git na internet. Um \emph{commit} é um registro de uma etapa do trabalho, acompanhado por uma mensagem que explica a mudança.
+
+\begin{lstlisting}[caption={Sequência básica de comandos Git}]
+git status
+git add app.py
+git commit -m "feat: cadastrar ativos"
+git push
+\end{lstlisting}
+
+\begin{itemize}
+  \item \texttt{git status}: mostra arquivos modificados e o estado atual.
+  \item \texttt{git add}: escolhe quais alterações irão para o próximo commit.
+  \item \texttt{git commit -m}: cria um registro local com uma mensagem.
+  \item \texttt{git push}: envia commits para o repositório remoto.
+  \item \texttt{git pull}: busca e integra alterações do remoto.
+  \item \texttt{git log}: mostra a linha do tempo de commits.
+\end{itemize}
+
+\projeto
+Foram criados commits separados para a aplicação, o JSON e a configuração do repositório. O repositório foi enviado ao GitHub e clonado em outro local para verificar que o remoto continha o projeto necessário.
+
+\referencia{https://trello.com/c/vUu4H8Bq}{S1\_16 no Trello}; \href{https://git-scm.com/book/pt-br/v2}{Livro Pro Git}.
+
+\cardsection{S1\_17 -- Versionamento e colaboração}
+
+Uma branch é uma linha paralela de desenvolvimento. A branch \texttt{main} representa a versão principal. Uma branch de funcionalidade permite desenvolver e testar uma mudança sem alterar a versão principal imediatamente.
+
+\begin{lstlisting}[caption={Criar e integrar uma branch}]
+git switch -c feature/resumo-inventario
+# alterar, testar e criar commits nesta branch
+git switch main
+git merge feature/resumo-inventario
+\end{lstlisting}
+
+\projeto
+A funcionalidade de resumo do inventário foi desenvolvida em \texttt{feature/resumo-inventario}. Depois de testada, ela foi integrada à \texttt{main} por um merge registrado no histórico.
+
+\referencia{https://trello.com/c/Ec5uKKhf}{S1\_17 no Trello}
+
+\cardsection{S1\_18 -- Branches, merge e conflito}
+
+\emph{Merge} é a integração do histórico de uma branch ao de outra. Um conflito acontece quando duas linhas de desenvolvimento alteram o mesmo trecho de modo que Git não consegue escolher sozinho qual versão usar. Conflito não é falha: é um ponto em que uma decisão humana é necessária.
+
+Ao ocorrer um conflito, Git coloca marcadores no arquivo:
+
+\begin{lstlisting}
+<<<<<<< HEAD
+texto da branch atual
+=======
+texto da outra branch
+>>>>>>> nome-da-branch
+\end{lstlisting}
+
+Para resolver, leia as duas versões, mantenha ou combine o conteúdo correto, remova todos os marcadores, salve o arquivo e finalize o merge com um commit. Nunca deixe os marcadores no código final.
+
+\projeto
+Duas branches alteraram a mesma linha de título. O conflito foi criado para praticar, resolvido escolhendo o texto mais claro e registrado com a mensagem \texttt{merge: resolve project title conflict}.
+
+\referencia{https://trello.com/c/kFfXpK39}{S1\_18 no Trello}
+
+\cardsection{S1\_19 -- Pull Request e revisão de código}
+
+Um Pull Request (PR) é uma proposta para integrar uma branch em outra no GitHub. Ele mostra a diferença entre versões, registra a explicação da mudança, permite comentários e deixa o momento da integração documentado. Em equipes, uma pessoa pode revisar a mudança feita por outra antes de aprová-la.
+
+\comoaplicar
+Ao abrir um PR, escreva o objetivo da mudança, informe como ela foi testada, reveja o diff e responda comentários. O PR deve ser integrado somente quando a alteração estiver compreensível e funcionando.
+
+\projeto
+A branch \texttt{feature/validacao-json} gerou o Pull Request \#1. A descrição explica a validação acrescentada, há um comentário de revisão e a alteração foi integrada à \texttt{main}.
+
+\referencia{https://trello.com/c/tsLFX3pi}{S1\_19 no Trello}; \href{https://docs.github.com/pull-requests}{Documentação do GitHub sobre Pull Requests}.
+
+\section{S1\_20 -- Revisão final e checklist}
+
+Revisar é conseguir relacionar decisão, código e resultado. Por exemplo: ``usei um dicionário porque o ID é único e quero encontrar o ativo diretamente''. Ou: ``usei JSON porque os dados precisam continuar existindo depois que o programa fecha''.
+
+\cardsection{Checklist de requisitos}
+\begin{itemize}
+  \item Explicar o problema: controlar ativos e vulnerabilidades associadas.
+  \item Apontar no menu as ações de cadastrar, listar, buscar, atualizar, remover e visualizar.
+  \item Demonstrar ID único, campos obrigatórios, confirmação de remoção e busca sem resultado.
+\end{itemize}
+
+\cardsection{Checklist de Python}
+\begin{itemize}
+  \item Executar \texttt{app.py} e navegar pelo menu.
+  \item Explicar \texttt{print()}, \texttt{input()}, conversão com \texttt{int()}, condições, laços e funções.
+  \item Mostrar dicionário de ativos, lista de vulnerabilidades, enumeração e arquivo JSON.
+  \item Digitar uma entrada inválida e explicar como o programa recupera o erro.
+\end{itemize}
+
+\cardsection{Checklist de Git}
+\begin{itemize}
+  \item Abrir o histórico e explicar o que é um commit.
+  \item Mostrar \texttt{main} e as branches de funcionalidade.
+  \item Localizar o merge e explicar o conflito resolvido.
+  \item Abrir o Pull Request \#1 e explicar o seu ciclo: branch, mudança, revisão e integração.
+\end{itemize}
+
+\cardsection{Sequência para a apresentação}
+\begin{enumerate}
+  \item Apresente o problema e os dados de um ativo.
+  \item Cadastre um ativo e uma vulnerabilidade.
+  \item Consulte o ativo e mostre a vulnerabilidade vinculada.
+  \item Mostre uma validação, como ID duplicado ou entrada não numérica.
+  \item Feche e abra o programa para provar que o JSON preserva os dados.
+  \item Abra o GitHub e mostre commits, branches, merge e Pull Request.
+\end{enumerate}
+
+\referencia{https://trello.com/c/X3LzSoi0}{S1\_20 no Trello}
+
+\section{Referências gerais}
+
+\begin{itemize}
+  \item Cards S1\_01 a S1\_20 do quadro Trello da disciplina.
+  \item Pressman e Maxim, \emph{Engenharia de Software}.
+  \item Sommerville, \emph{Engenharia de Software}.
+  \item Eric Matthes, \emph{Curso Intensivo de Python}.
+  \item \href{https://docs.python.org/3/}{Documentação oficial do Python}.
+  \item \href{https://git-scm.com/book/pt-br/v2}{Pro Git}.
+  \item \href{https://docs.github.com/}{Documentação do GitHub}.
+\end{itemize}
+
+\end{document}
