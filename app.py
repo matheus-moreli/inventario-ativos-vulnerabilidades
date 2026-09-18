@@ -181,6 +181,16 @@ def listar_ativos(ativos):
         mostrar_ativo(ativos[identificador], False)
 
 
+def mostrar_resumo(ativos):
+    total_vulnerabilidades = 0
+    for ativo in ativos.values():
+        total_vulnerabilidades += len(ativo["vulnerabilidades"])
+
+    mostrar_linha()
+    print(f"Total de ativos cadastrados: {len(ativos)}")
+    print(f"Total de vulnerabilidades cadastradas: {total_vulnerabilidades}")
+
+
 def buscar_ativo(ativos):
     print("\n1 - Buscar por ID")
     print("2 - Buscar por nome ou hostname")
@@ -275,6 +285,7 @@ def mostrar_menu():
     print("6 - Cadastrar vulnerabilidade")
     print("7 - Visualizar vulnerabilidades de um ativo")
     print("8 - Salvar dados")
+    print("9 - Mostrar resumo do inventário")
     print("0 - Sair")
 
 
@@ -306,6 +317,8 @@ def executar_programa():
             visualizar_vulnerabilidades(ativos)
         elif opcao == "8":
             salvar_ativos(ativos)
+        elif opcao == "9":
+            mostrar_resumo(ativos)
         elif opcao == "0":
             salvar_ativos(ativos)
             print("Programa encerrado.")
