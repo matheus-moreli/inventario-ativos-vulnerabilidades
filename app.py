@@ -1,4 +1,4 @@
-"""Projeto final da Sprint 1: inventário de ativos e vulnerabilidades."""
+"""Projeto final em Python da Sprint 1: inventário de ativos e vulnerabilidades."""
 
 import json
 import os
