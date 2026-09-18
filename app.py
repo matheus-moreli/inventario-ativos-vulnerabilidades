@@ -19,6 +19,10 @@ SEVERIDADES = ["Baixa", "Média", "Alta", "Crítica"]
 STATUS = ["Aberta", "Em tratamento", "Corrigida", "Aceita como risco"]
 
 
+class DadosInvalidosError(Exception):
+    """Indica que o arquivo JSON não tem o formato esperado."""
+
+
 def mostrar_linha():
     print("-" * 65)
 
@@ -91,13 +95,17 @@ def carregar_ativos():
         with open(ARQUIVO_DADOS, "r", encoding="utf-8") as arquivo:
             dados = json.load(arquivo)
 
+        if not isinstance(dados, dict):
+            raise DadosInvalidosError("A base deve conter ativos organizados por ID.")
+
+    except (OSError, json.JSONDecodeError, ValueError, DadosInvalidosError):
+        print("Não foi possível ler o arquivo de dados. Uma base vazia será usada.")
+        return {}
+    else:
         ativos = {}
         for identificador, ativo in dados.items():
             ativos[int(identificador)] = ativo
         return ativos
-    except (OSError, json.JSONDecodeError, ValueError):
-        print("Não foi possível ler o arquivo de dados. Uma base vazia será usada.")
-        return {}
 
 
 def salvar_ativos(ativos):
