@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Guia de revisão — Sprint 1</title>
+  <style>
+    :root { --azul: #163a5f; --claro: #eef4f8; --texto: #1f2933; }
+    body { font-family: Arial, sans-serif; line-height: 1.55; color: var(--texto); max-width: 960px; margin: 32px auto; padding: 0 20px 48px; }
+    h1, h2 { color: var(--azul); }
+    h1 { border-bottom: 3px solid var(--azul); padding-bottom: 10px; }
+    h2 { margin-top: 36px; }
+    h3 { margin-bottom: 6px; }
+    .aviso, article { background: var(--claro); border-left: 4px solid var(--azul); padding: 14px 16px; margin: 14px 0; }
+    .meta { color: #52616b; font-size: .94rem; }
+    code { background: #e8edf1; padding: 2px 5px; border-radius: 3px; }
+    a { color: #0b5cab; }
+    li { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Guia de revisão — Sprint 1</h1>
+  <p class="meta">Projeto: Inventário de Ativos e Vulnerabilidades · Linguagem: Python · Interface: terminal</p>
+
+  <div class="aviso">
+    <strong>Como usar este guia:</strong> ele explica as decisões tomadas no projeto e revisa todos os cartões S1_01 a S1_20. Os links “cartão” levam à fonte da disciplina; as referências finais reúnem os materiais que aparecem nos cartões.
+  </div>
+
+  <h2>1. O que o projeto resolve</h2>
+  <p>O programa registra ativos de TI — por exemplo, notebook, servidor e roteador — e suas vulnerabilidades. Tudo funciona pelo terminal e os dados ficam no arquivo <code>dados/inventario.json</code>.</p>
+  <ul>
+    <li>Um ativo possui ID, nome/hostname, responsável, localização, tipo e lista de vulnerabilidades.</li>
+    <li>Uma vulnerabilidade possui descrição, categoria, severidade e status de tratamento.</li>
+    <li>O menu permite cadastrar, listar, buscar, atualizar, remover, salvar e consultar os dados.</li>
+  </ul>
+
+  <h2>2. Decisões de código, passo a passo</h2>
+  <article>
+    <h3>Dados em dicionário</h3>
+    <p>O programa usa <code>ativos = {}</code>. A chave é o ID inteiro do ativo, por exemplo <code>ativos[10]</code>. Assim, verificar se um ID já existe, buscar e remover é direto. Cada ativo também é um dicionário e a sua lista <code>vulnerabilidades</code> guarda os registros associados.</p>
+  </article>
+  <article>
+    <h3>Enum para tipos de ativo</h3>
+    <p><code>TipoAtivo(IntEnum)</code> associa códigos inteiros a nomes como <code>NOTEBOOK = 1</code> e <code>SERVIDOR = 2</code>. O usuário digita um número simples; o programa confere se ele existe antes de salvar.</p>
+  </article>
+  <article>
+    <h3>Funções pequenas</h3>
+    <p>Cada ação do menu tem uma função: <code>cadastrar_ativo</code>, <code>buscar_ativo</code>, <code>atualizar_ativo</code> e assim por diante. Isso evita repetir código e facilita explicar a lógica: o menu decide <em>qual</em> função chamar e a função executa apenas aquela tarefa.</p>
+  </article>
+  <article>
+    <h3>Validação e erros</h3>
+    <p><code>ler_inteiro</code> usa <code>try/except</code> para não encerrar o programa quando alguém digita letras no lugar de um número. Na leitura do JSON, erros de arquivo, JSON malformado ou formato inesperado retornam uma base vazia. <code>DadosInvalidosError</code> mostra o uso de <code>raise</code> para um formato que não deveria ser aceito.</p>
+  </article>
+  <article>
+    <h3>Persistência em JSON</h3>
+    <p><code>salvar_ativos</code> transforma o dicionário em JSON com <code>json.dump</code>. Ao iniciar, <code>carregar_ativos</code> faz o caminho inverso com <code>json.load</code>. Por isso os dados continuam existindo ao fechar e abrir o programa.</p>
+  </article>
+
+  <h2>3. Como executar e testar</h2>
+  <ol>
+    <li>Abra o terminal na pasta do projeto.</li>
+    <li>Execute <code>python app.py</code>.</li>
+    <li>Cadastre um ativo pela opção 1, preenchendo ID, nome, responsável, localização e tipo.</li>
+    <li>Cadastre uma vulnerabilidade inicial ou use a opção 6 depois.</li>
+    <li>Use 2, 3, 4, 5 e 7 para conferir lista, busca, atualização, remoção e vulnerabilidades.</li>
+    <li>Feche com 0, execute novamente e use 2: o ativo salvo no JSON deve continuar disponível.</li>
+  </ol>
+
+  <h2>4. Revisão de todos os cartões</h2>
+
+  <article>
+    <h3>S1_01 — Engenharia de Requisitos: Compreensão do Problema</h3>
+    <p>O ponto de partida foi identificar o domínio: ativos de TI, vulnerabilidades, usuário do sistema e operações esperadas. Isso levou ao modelo “ativo com vulnerabilidades”.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/2nV6OG9q/1-s101-engenharia-de-requisitos-compreens%C3%A3o-do-problema">cartão S1_01</a> · Pressman &amp; Maxim, <em>Engenharia de Software</em>, 9. ed.; Sommerville, <em>Engenharia de Software</em>, 10. ed.</p>
+  </article>
+  <article>
+    <h3>S1_02 — Requisitos Funcionais</h3>
+    <p>Os requisitos viraram ações concretas do menu: cadastrar, consultar, atualizar e remover ativos; cadastrar e visualizar vulnerabilidades; salvar dados.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/nPnrvQad/3-s102-requisitos-funcionais">cartão S1_02</a> · Pressman &amp; Maxim; Sommerville; Wiegers &amp; Beatty, <em>Software Requirements</em>.</p>
+  </article>
+  <article>
+    <h3>S1_03 — Critérios de Aceitação</h3>
+    <p>Para cada ação, o critério é observável: um ID repetido é recusado; busca inexistente informa que não encontrou; remoção exige confirmação; vulnerabilidade fica ligada ao ativo correto.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/MRXQneEZ/5-s103-crit%C3%A9rios-de-aceita%C3%A7%C3%A3o">cartão S1_03</a>.</p>
+  </article>
+  <article>
+    <h3>S1_04 — Python: Alô Mundo</h3>
+    <p>O primeiro contato com a saída aparece em todos os <code>print()</code>: título, menu, mensagens de sucesso e mensagens de erro. A regra é simples: a saída explica ao usuário o que acabou de acontecer.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/YeugQuYt/7-s104-python-al%C3%B4-mundo">cartão S1_04</a>.</p>
+  </article>
+  <article>
+    <h3>S1_05 — Python: Variáveis e Tipos de Dados</h3>
+    <p>Strings guardam nome e responsável; inteiros guardam ID e tipo; booleanos aparecem em perguntas sim/não; listas guardam vulnerabilidades. Escolher o tipo certo evita conversões e comparações erradas.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/DmvtABXt/10-s105-python-vari%C3%A1veis-e-tipos-de-dados">cartão S1_05</a>.</p>
+  </article>
+  <article>
+    <h3>S1_06 — Python: Entrada e Saída de Dados</h3>
+    <p><code>input()</code> recebe as escolhas e campos. <code>.strip()</code> remove espaços desnecessários, e <code>print()</code> devolve uma resposta legível. As funções <code>ler_texto</code> e <code>ler_inteiro</code> centralizam esse diálogo.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/fFlJ9zCj/12-s106-python-entrada-e-sa%C3%ADda-de-dados">cartão S1_06</a>.</p>
+  </article>
+  <article>
+    <h3>S1_07 — Estruturas Condicionais</h3>
+    <p>O <code>if/elif/else</code> decide a opção escolhida no menu, valida campos e separa casos como “ativo encontrado” e “ativo não encontrado”.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/QvZa8m7a/13-s107-estruturas-condicionais">cartão S1_07</a>.</p>
+  </article>
+  <article>
+    <h3>S1_08 — Estruturas de Repetição</h3>
+    <p><code>while True</code> mantém o menu aberto até a opção 0. Laços <code>for</code> percorrem os ativos, tipos da enumeração e vulnerabilidades para listar ou buscar informações.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/op3s5sKj/15-s108-estruturas-de-repeti%C3%A7%C3%A3o">cartão S1_08</a>.</p>
+  </article>
+  <article>
+    <h3>S1_09 — Funções</h3>
+    <p>Funções agrupam uma responsabilidade e recebem somente o que precisam, principalmente <code>ativos</code>. Isso deixa o fluxo principal em <code>executar_programa()</code> curto e compreensível.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/XWD40Pgo/18-s109-fun%C3%A7%C3%B5es">cartão S1_09</a>.</p>
+  </article>
+  <article>
+    <h3>S1_10 — Listas</h3>
+    <p>Listas aparecem em <code>SEVERIDADES</code>, <code>STATUS</code> e na coleção de vulnerabilidades de cada ativo. A ordem é útil para mostrar opções e para listar o que foi cadastrado.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/EurwtLl9/19-s110-listas">cartão S1_10</a>.</p>
+  </article>
+  <article>
+    <h3>S1_11 — Tuplas e Sets</h3>
+    <p>O conceito revisado aqui é escolher a estrutura conforme a necessidade: tupla para dados que não mudam, set para elementos únicos e lista/dicionário para o que o projeto realmente precisa alterar e consultar.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/qEvT77g5/21-s111-tuplas-e-sets">cartão S1_11</a>.</p>
+  </article>
+  <article>
+    <h3>S1_12 — Dicionários</h3>
+    <p>É a estrutura central do projeto. Campos nomeados, como <code>ativo["responsavel"]</code>, deixam o significado do dado explícito. O dicionário geral usa o ID como chave para evitar duplicidade.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/N1J9NE4k/23-s112-dicion%C3%A1rios">cartão S1_12</a>.</p>
+  </article>
+  <article>
+    <h3>S1_13 — Enumerações</h3>
+    <p>A enumeração impede que o tipo do ativo seja salvo como um texto inconsistente. O código numérico é validado e o nome amigável é mostrado com <code>nome_do_tipo()</code>.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/nJrQKljh/25-s113-enumera%C3%A7%C3%B5es">cartão S1_13</a>.</p>
+  </article>
+  <article>
+    <h3>S1_14 — Persistência em Arquivos</h3>
+    <p>O cadastro de vulnerabilidades é persistido junto do ativo em JSON. <code>json.dump</code> grava; <code>json.load</code> recupera. Esse é o entregável do cartão e foi verificado ao reiniciar o programa.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/xdRh1TRi/27-s114-persist%C3%AAncia-em-arquivos">cartão S1_14</a> · Documentação Python: arquivos e JSON.</p>
+  </article>
+  <article>
+    <h3>S1_15 — Tratamento de Erros</h3>
+    <p>Erros previsíveis não encerram o sistema. <code>try/except</code> trata entrada inteira inválida e erros de leitura/gravação; <code>else</code> organiza o caminho que deu certo; <code>raise DadosInvalidosError</code> rejeita JSON com formato inadequado.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/qSZwgosj/30-s115-tratamento-de-erros">cartão S1_15</a> · Matthes, <em>Curso Intensivo de Python</em>, cap. 10; documentação Python, <em>Errors and Exceptions</em>.</p>
+  </article>
+  <article>
+    <h3>S1_16 — Git Fundamentos</h3>
+    <p>O repositório local recebeu commits pequenos e descritivos. Depois foi conectado ao GitHub com <code>git remote add origin</code>, enviado com <code>git push</code> e sincronizado com <code>git pull</code>. Um clone do remoto também foi conferido.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/vUu4H8Bq/31-s116-git-fundamentos">cartão S1_16</a> · <em>Pro Git</em>, cap. 2.</p>
+  </article>
+  <article>
+    <h3>S1_17 — Git Versionamento e Colaboração</h3>
+    <p>A branch <code>feature/resumo-inventario</code> recebeu uma funcionalidade real, foi enviada ao GitHub e integrada à <code>main</code> por merge. Isso separa desenvolvimento e versão estável.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/Ec5uKKhf/33-s117-git-versionamento-e-colabora%C3%A7%C3%A3o">cartão S1_17</a> · <em>Pro Git</em>, caps. 2 e 3; GitHub Docs sobre Pull Requests.</p>
+  </article>
+  <article>
+    <h3>S1_18 — Git Branches, Merge e Fluxo de Trabalho</h3>
+    <p>O conflito foi simulado em duas versões da mesma linha do título. O Git marcou o conflito, a versão desejada foi escolhida manualmente e o resultado foi salvo no commit <code>merge: resolve project title conflict</code>.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/kFfXpK39/35-s118-git-branches-merge-e-fluxo-de-trabalho">cartão S1_18</a> · <em>Pro Git</em>, cap. 3; GitHub Docs sobre branches e Pull Requests.</p>
+  </article>
+  <article>
+    <h3>S1_19 — GitHub, Pull Requests e Code Review</h3>
+    <p>A branch <code>feature/validacao-json</code> foi enviada ao GitHub, virou o Pull Request #1, recebeu uma revisão registrada e foi integrada à <code>main</code>. Em repositório individual, o GitHub não permite aprovação formal do próprio autor; a revisão ficou documentada como comentário.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/tsLFX3pi/37-s119-github-pull-requests-e-code-review">cartão S1_19</a> · <em>Pro Git</em>, caps. 3 e 6; GitHub Docs sobre Pull Requests e Code Review.</p>
+  </article>
+  <article>
+    <h3>S1_20 — Revisão Geral da Sprint 1</h3>
+    <p>Resumo do fluxo: entender requisitos → representar dados → construir menu e funções → persistir em JSON → tratar falhas → versionar com Git → trabalhar com branches, conflito e Pull Request. O projeto e o histórico confirmam a integração desses conceitos.</p>
+    <p class="meta">Referência: <a href="https://trello.com/c/X3LzSoi0/39-s120-revis%C3%A3o-geral-da-sprint-1">cartão S1_20</a>.</p>
+  </article>
+
+  <h2>5. Git: o que foi feito e por quê</h2>
+  <ol>
+    <li><strong>Iniciar:</strong> <code>git init</code> transforma a pasta em repositório e <code>git add</code> escolhe arquivos para o próximo commit.</li>
+    <li><strong>Registrar evolução:</strong> <code>git commit -m "mensagem"</code> cria pontos de retorno e explica cada etapa.</li>
+    <li><strong>Publicar:</strong> <code>git push -u origin main</code> envia a branch principal ao GitHub; <code>git pull</code> traz mudanças do remoto.</li>
+    <li><strong>Isolar mudança:</strong> <code>git switch -c nome-da-branch</code> cria uma linha de trabalho separada.</li>
+    <li><strong>Integrar:</strong> <code>git merge</code> junta o trabalho pronto à <code>main</code>. Se duas mudanças alterarem o mesmo trecho, os marcadores de conflito indicam exatamente o que decidir.</li>
+    <li><strong>Revisar no GitHub:</strong> o Pull Request compara branch de origem e destino, guarda descrição e comentários e registra a integração.</li>
+  </ol>
+
+  <h2>6. Referências gerais</h2>
+  <ul>
+    <li><a href="https://docs.python.org/3/tutorial/">Documentação oficial do Python — Tutorial</a>.</li>
+    <li><a href="https://docs.python.org/3/library/json.html">Documentação oficial do Python — json</a> e <a href="https://docs.python.org/3/tutorial/errors.html">Errors and Exceptions</a>.</li>
+    <li><a href="https://docs.python.org/3/library/enum.html">Documentação oficial do Python — enum</a>.</li>
+    <li><a href="https://git-scm.com/book/pt-br/v2">Pro Git — Scott Chacon e Ben Straub</a>, especialmente capítulos 2, 3 e 6.</li>
+    <li><a href="https://docs.github.com/pull-requests">GitHub Docs — Pull Requests</a> e <a href="https://docs.github.com/pull-requests/collaborating-with-pull-requests/working-with-pull-requests/about-pull-request-reviews">Pull Request Reviews</a>.</li>
+  </ul>
+</body>
+</html>
