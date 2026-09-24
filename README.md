@@ -28,7 +28,8 @@ Os testes não usam o JSON real do projeto e não precisam de internet nem de bi
 - `modelos.py`: classes `Ativo` e `Vulnerabilidade`, enum e listas padronizadas.
 - `persistencia.py`: leitura e gravação no JSON.
 - `test_sprint2.py`: testes automatizados das regras principais.
-- `DOCUMENTACAO_SPRINT2.md`: requisitos, critérios de aceite e roteiro de demonstração.
+- `guia_sprint1.pdf` e `guia_sprint1.tex`: guia de estudo da Sprint 1.
+- `guia_sprint2.pdf` e `guia_sprint2.tex`: guia de estudo da Sprint 2.
 
 ## O que o sistema faz
 
