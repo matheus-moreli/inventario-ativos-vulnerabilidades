@@ -31,7 +31,7 @@ Os testes não usam o JSON real do projeto e não precisam de internet nem de bi
 
 ## O que o sistema faz
 
-Cadasta, lista, busca, atualiza e exclui ativos. Também registra e consulta vulnerabilidades com CVE, CWE, CVSS, fonte, data, impacto, prioridade, tratamento, status e verificação. O ID do ativo é único e não é alterado; atualizações ficam registradas em histórico.
+Cadastra, lista, busca, atualiza e exclui ativos. Também registra e consulta vulnerabilidades com CVE, CWE, CVSS, fonte, data, impacto, prioridade, tratamento, status e verificação. O ID do ativo é único e não é alterado; atualizações ficam registradas em histórico.
 
 ## Segurança e escopo
 
