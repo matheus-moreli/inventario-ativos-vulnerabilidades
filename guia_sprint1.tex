@@ -16,7 +16,7 @@
   colorlinks=true,
   linkcolor=black,
   urlcolor=blue!55!black,
-  pdftitle={Guia de estudo - Sprint 1},
+  pdftitle={Guia de estudo - Sprints 1 e 2},
   pdfauthor={Matheus Moreli}
 }
 
@@ -46,7 +46,7 @@
 \centering
 \vspace*{3.2cm}
 
-{\Large\textbf{SPRINT 1}}\\[0.5cm]
+{\Large\textbf{SPRINTS 1 E 2}}\\[0.5cm]
 {\LARGE Inventário de Ativos e Vulnerabilidades}\\[1.2cm]
 
 {\large Material de apoio para apresentação e estudo}\\[3.2cm]
@@ -67,17 +67,17 @@
 
 \section{Como usar este guia}
 
-Este documento explica a Sprint 1 do projeto de inventário de ativos e vulnerabilidades. A meta não é decorar palavras de Python ou Git. A meta é conseguir responder, em cada parte do trabalho:
+Este documento reúne as Sprints 1 e 2 do projeto de inventário de ativos e vulnerabilidades. A primeira parte apresenta os fundamentos; a segunda mostra como esses fundamentos foram reunidos no programa final. A meta não é decorar palavras de Python ou Git. A meta é conseguir responder, em cada parte do trabalho:
 
 \begin{enumerate}
   \item O que é este conceito?
   \item Como ele funciona, passo a passo?
   \item Quando ele é útil?
-  \item Onde ele aparece no \texttt{app.py} ou no histórico do Git?
+  \item Onde ele aparece no programa ou no histórico do Git?
   \item Como eu demonstro que ele funciona?
 \end{enumerate}
 
-O arquivo principal do programa é \texttt{app.py}. Os dados persistentes ficam em \texttt{dados/inventario.json}. Este guia é um material local de estudo; ele não faz parte do repositório no GitHub.
+O arquivo principal do programa é \texttt{app.py}. Na Sprint 2, o código foi dividido também em \texttt{interface.py}, \texttt{inventario.py}, \texttt{modelos.py} e \texttt{persistencia.py}. Os dados persistentes ficam em \texttt{dados/inventario.json}. Este guia acompanha o repositório no GitHub e serve como material de estudo e apresentação.
 
 \section{Visão geral do sistema}
 
@@ -355,7 +355,7 @@ else:
 Capturar um erro específico é melhor que escrever apenas \texttt{except:}. Um \texttt{except} vazio esconderia problemas diferentes e dificultaria descobrir o que aconteceu. Ao ler JSON, podem ocorrer arquivo inexistente, erro de leitura, JSON inválido ou formato inesperado. Cada situação recebe uma recuperação e uma mensagem clara.
 
 \projeto
-\texttt{carregar\_ativos()} trata \texttt{OSError}, \texttt{JSONDecodeError}, \texttt{ValueError} e \texttt{DadosInvalidosError}. A exceção personalizada \texttt{DadosInvalidosError} representa uma regra do programa: o conteúdo carregado precisa ser um dicionário de ativos. Se o arquivo estiver corrompido ou tiver formato inválido, o usuário é avisado e o programa pode iniciar uma base vazia de forma controlada.
+\texttt{carregar\_ativos()} trata \texttt{OSError}, \texttt{JSONDecodeError}, \texttt{ValueError} e \texttt{DadosInvalidosError}. A exceção personalizada \texttt{DadosInvalidosError} representa uma regra do programa: o conteúdo carregado precisa ser um dicionário de ativos. Se o arquivo estiver corrompido ou tiver formato inválido, o usuário é avisado e o programa é encerrado antes de salvar qualquer coisa. Assim, o arquivo com problema não é sobrescrito por engano.
 
 \referencia{https://trello.com/c/qSZwgosj}{S1\_15 no Trello}; \href{https://docs.python.org/3/tutorial/errors.html}{Tutorial Python: Errors and Exceptions}.
 
@@ -513,16 +513,146 @@ Revisar é conseguir relacionar decisão, código e resultado. Por exemplo: ``us
 
 \referencia{https://trello.com/c/X3LzSoi0}{S1\_20 no Trello}
 
-\section{Referências gerais}
+\clearpage
+\section{Sprint 2 -- Construção do projeto final}
+
+Na Sprint 1, os conceitos foram praticados em exercícios pequenos: entrada, saída, condições, listas, dicionários, JSON e Git. A Sprint 2 junta essas peças em um programa único. O foco deixa de ser ``como usar um comando isolado'' e passa a ser ``como organizar uma funcionalidade completa sem tornar o código complicado''.
+
+O programa continua sendo de terminal e usa apenas recursos básicos de Python: funções, classes simples, \texttt{Enum}, dicionários, listas, arquivo JSON e \texttt{try/except}. Não há banco de dados, interface gráfica, framework ou consulta automática à internet. Essa escolha é intencional: o problema é pequeno e precisa ser fácil de explicar.
+
+\cardsection{Organização simples do código}
+
+O projeto foi separado por responsabilidade. Separar não significa criar muitas camadas: significa evitar que um mesmo arquivo faça tudo ao mesmo tempo.
 
 \begin{itemize}
-  \item Cards S1\_01 a S1\_20 do quadro Trello da disciplina.
+  \item \texttt{app.py}: inicia o programa e informa o caminho do JSON.
+  \item \texttt{interface.py}: contém \texttt{input()}, \texttt{print()} e o menu.
+  \item \texttt{inventario.py}: contém regras de cadastro, consulta, atualização e exclusão.
+  \item \texttt{modelos.py}: define \texttt{Ativo}, \texttt{Vulnerabilidade} e \texttt{TipoAtivo}.
+  \item \texttt{persistencia.py}: lê e grava o arquivo JSON.
+\end{itemize}
+
+\begin{lstlisting}[language=Python,caption={Fluxo principal simplificado}]
+ativos = carregar_ativos("dados/inventario.json")
+executar_programa(ativos, "dados/inventario.json")
+\end{lstlisting}
+
+O menu não precisa conhecer os detalhes de JSON, e a função que salva JSON não precisa fazer perguntas ao usuário. Quando cada parte tem uma tarefa principal, fica mais fácil localizar erros e explicar o código.
+
+\cardsection{S2\_01 e S2\_02 -- Boas práticas, classes e Enum}
+
+Uma classe é um molde para representar dados relacionados. Neste trabalho, \texttt{Ativo} reúne ID, nome, responsável, localização, tipo, criticidade, vulnerabilidades e histórico. \texttt{Vulnerabilidade} reúne CVE, CWE, CVSS, descrição, fonte, data, impacto, prioridade, tratamento, status e verificação.
+
+\begin{lstlisting}[language=Python,caption={Ideia de uma classe simples}]
+class Ativo:
+    def __init__(self, identificador, nome):
+        self.id = identificador
+        self.nome = nome
+        self.vulnerabilidades = []
+\end{lstlisting}
+
+\texttt{self} representa o objeto que está sendo criado ou alterado. Assim, dois ativos podem existir ao mesmo tempo, cada um com seus próprios dados. Uma função como \texttt{cadastrar\_ativo()} recebe os dados, verifica regras e cria um objeto. Ela não usa \texttt{input()} nem \texttt{print()}; isso fica na interface.
+
+\texttt{TipoAtivo} é um \texttt{IntEnum}. Ele associa nomes claros a códigos inteiros, como \texttt{SERVIDOR = 2}. Isso atende ao requisito de possuir categorias padronizadas sem espalhar números sem significado pelo código.
+
+\referencia{https://trello.com/c/ALQSY6p9}{S2\_01 no Trello}; \href{https://trello.com/c/hu3YSI6L}{S2\_02 no Trello}.
+
+\cardsection{S2\_03, S2\_08 a S2\_11 -- CRUD de ativos}
+
+CRUD é uma sigla para quatro operações sobre dados: \emph{Create} (criar), \emph{Read} (consultar), \emph{Update} (atualizar) e \emph{Delete} (excluir). O dicionário \texttt{ativos} usa o ID como chave. Isso permite localizar um ativo diretamente.
+
+\begin{lstlisting}[language=Python,caption={Busca direta pela chave do dicionário}]
+def consultar_por_id(ativos, identificador):
+    return ativos.get(identificador)
+\end{lstlisting}
+
+\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e criticidade podem mudar, mas a identidade do ativo é preservada. Na exclusão, a tela mostra o alvo e exige a palavra \texttt{SIM}; ao remover o ativo, sua lista de vulnerabilidades também desaparece junto.
+
+\referencia{https://trello.com/c/NdgkJaYg}{S2\_03 no Trello}.
+
+\cardsection{S2\_12 a S2\_14 -- Vulnerabilidades}
+
+Uma vulnerabilidade é uma fragilidade; ameaça é algo que pode explorar uma fragilidade; risco combina a possibilidade do problema com seu impacto. Por isso, o programa não usa apenas uma nota CVSS: ele também registra impacto no ativo, prioridade, tratamento, status e como a correção será verificada.
+
+Cada vulnerabilidade pertence a um ativo. O par ``ID do ativo + CVE'' a identifica de forma simples: o mesmo CVE pode afetar ativos diferentes, mas não pode aparecer duas vezes no mesmo ativo. As quatro operações também existem para vulnerabilidades: cadastrar, consultar, atualizar e remover.
+
+\begin{lstlisting}[language=Python,caption={Validação simples do CVSS}]
+nota = float(cvss)
+if not 0.0 <= nota <= 10.0:
+    raise DadosInvalidosError("CVSS deve estar entre 0.0 e 10.0.")
+\end{lstlisting}
+
+O \texttt{raise} interrompe apenas a operação inválida e a interface mostra uma mensagem compreensível. O menu continua aberto. O sistema também exige uma verificação antes de mudar o status para ``Corrigida'', pois dizer que algo foi corrigido sem evidência não é suficiente.
+
+Como referência de consulta externa, o registro \href{https://nvd.nist.gov/vuln/detail/CVE-2021-44228}{CVE-2021-44228 no NVD} descreve uma vulnerabilidade do Apache Log4j com CVSS 10.0. O programa não consulta o NVD automaticamente: o usuário registra manualmente fonte e data, mantendo a aplicação simples e funcionando sem internet.
+
+\referencia{https://trello.com/c/zzyFLROU}{S2\_12 no Trello}; \href{https://trello.com/c/xMcbgbvn}{S2\_13 no Trello}; \href{https://trello.com/c/XFF3yzHz}{S2\_14 no Trello}.
+
+\cardsection{S2\_04 a S2\_07 -- Requisitos e validações}
+
+Um requisito diz o que o sistema deve fazer. Um critério de aceite diz como comprovar que ele fez corretamente. Por exemplo, ``cadastrar ativo'' é o requisito; ``o ID precisa ser inteiro, positivo e único, e o ativo deve aparecer na busca'' é o critério verificável.
+
+\begin{itemize}
+  \item Campo obrigatório vazio: o programa pede novamente, sem fechar.
+  \item ID repetido: o ativo antigo não é alterado e o novo não é cadastrado.
+  \item Busca inexistente: aparece ``Ativo não encontrado'', sem erro técnico.
+  \item Exclusão cancelada: nada é removido.
+  \item JSON inválido: o programa não sobrescreve o arquivo corrompido com uma base vazia.
+\end{itemize}
+
+Essas regras aparecem em funções de validação, como \texttt{validar\_texto()}, \texttt{validar\_cve()}, \texttt{validar\_cwe()} e \texttt{validar\_cvss()}. Quando uma regra falha, elas usam \texttt{DadosInvalidosError}; a interface captura essa exceção e apresenta uma mensagem curta.
+
+\referencia{https://trello.com/c/NcSDMJuv}{S2\_04 no Trello}; \href{https://trello.com/c/YSC57Mjy}{S2\_05 no Trello}; \href{https://trello.com/c/5beR1TIT}{S2\_06 no Trello}; \href{https://trello.com/c/Vs045ALu}{S2\_07 no Trello}.
+
+\cardsection{S2\_15 -- Dicionários como índice}
+
+O dicionário é a estrutura central do inventário:
+
+\begin{lstlisting}[language=Python,caption={Estrutura principal na memória}]
+ativos = {
+    10: ativo_servidor,
+    20: ativo_notebook
+}
+\end{lstlisting}
+
+Em vez de percorrer todos os itens para achar o ID 10, o código usa \texttt{ativos.get(10)}. A chave é única, o formato dos objetos é uniforme e as alterações preservam a mesma chave. Ao salvar, os objetos viram dicionários simples; ao carregar, voltam a ser objetos \texttt{Ativo} e \texttt{Vulnerabilidade}.
+
+\cardsection{S2\_18 -- Conferência manual e correções}
+
+O programa pode ser conferido sem arquivo de teste separado, percorrendo o fluxo principal no terminal. Execute \texttt{python app.py}, cadastre um ativo, tente repetir seu ID, vincule uma vulnerabilidade, consulte, atualize e remova esse registro. Feche e abra o programa para confirmar que o JSON preservou os dados. Por fim, informe um CVSS fora de 0 a 10 e verifique que o menu continua aberto com uma mensagem clara.
+
+Essa conferência não substitui o raciocínio sobre cada regra: ela torna visível que validações, CRUD e persistência se conectam no uso real. Antes de apresentar, é recomendável usar dados de exemplo e confirmar se o arquivo JSON está legível.
+
+\cardsection{S2\_16, S2\_17 e S2\_19 -- GitHub e apresentação}
+
+O código está no GitHub, na branch \texttt{main}. O histórico possui branches de funcionalidade, commits com mensagens explicativas e merges por Pull Request. A tag \texttt{trabalho-1-entrega} identifica uma versão preparada para apresentação.
+
+Para demonstrar em cinco minutos:
+\begin{enumerate}
+  \item Execute \texttt{python app.py}.
+  \item Cadastre um ativo e uma vulnerabilidade associada.
+  \item Consulte o ativo e mostre que a vulnerabilidade está vinculada a ele.
+  \item Atualize o responsável ou o status da vulnerabilidade.
+  \item Tente repetir um ID ou informar CVSS inválido para mostrar a validação.
+  \item Remova uma vulnerabilidade, primeiro cancelando e depois confirmando.
+  \item Abra o GitHub, mostre \texttt{main}, as Pull Requests e a tag final.
+\end{enumerate}
+
+Ao explicar, prefira frases concretas: ``usei um dicionário porque o ID é único e a busca fica direta''; ``usei JSON porque os dados continuam depois que o programa fecha''; ``separei interface e regras para não misturar perguntas com validação''.
+
+\referencia{https://trello.com/c/UvtQ6Mc6}{S2\_16 no Trello}; \href{https://trello.com/c/FBSYXNJP}{S2\_17 no Trello}; \href{https://trello.com/c/ADSVtVQ4}{S2\_19 no Trello}.
+
+\section{Referências gerais das Sprints 1 e 2}
+
+\begin{itemize}
+  \item Cards S1\_01 a S1\_20 e S2\_01 a S2\_19 do quadro Trello da disciplina.
   \item Pressman e Maxim, \emph{Engenharia de Software}.
   \item Sommerville, \emph{Engenharia de Software}.
   \item Eric Matthes, \emph{Curso Intensivo de Python}.
   \item \href{https://docs.python.org/3/}{Documentação oficial do Python}.
   \item \href{https://git-scm.com/book/pt-br/v2}{Pro Git}.
   \item \href{https://docs.github.com/}{Documentação do GitHub}.
+  \item \href{https://nvd.nist.gov/vuln/detail/CVE-2021-44228}{NVD -- CVE-2021-44228}.
 \end{itemize}
 
 \end{document}
