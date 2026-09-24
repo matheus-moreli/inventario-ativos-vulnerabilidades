@@ -28,10 +28,11 @@ Os testes não usam o JSON real do projeto e não precisam de internet nem de bi
 - `modelos.py`: classes `Ativo` e `Vulnerabilidade`, enum e listas padronizadas.
 - `persistencia.py`: leitura e gravação no JSON.
 - `test_sprint2.py`: testes automatizados das regras principais.
+- `DOCUMENTACAO_SPRINT2.md`: requisitos, critérios de aceite e roteiro de demonstração.
 
 ## O que o sistema faz
 
-Cadastra, lista, busca, atualiza e exclui ativos. Também registra e consulta vulnerabilidades com CVE, CWE, CVSS, fonte, data, impacto, prioridade, tratamento, status e verificação. O ID do ativo é único e não é alterado; atualizações ficam registradas em histórico.
+Cadastra, lista, busca, atualiza e exclui ativos. Também cadastra, consulta, atualiza e remove vulnerabilidades com CVE, CWE, CVSS, fonte, data, impacto, prioridade, tratamento, status e verificação. O ID do ativo e o CVE de uma vulnerabilidade não mudam; atualizações ficam registradas em histórico.
 
 ## Segurança e escopo
 

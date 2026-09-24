@@ -1,8 +1,9 @@
 """Entradas e saídas do terminal. As regras estão em inventario.py."""
 
-from inventario import (DadosInvalidosError, cadastrar_ativo, cadastrar_vulnerabilidade,
-                        consultar_por_id, consultar_vulnerabilidades, excluir_ativo,
-                        filtrar_ativos, atualizar_ativo)
+from inventario import (DadosInvalidosError, atualizar_ativo, atualizar_vulnerabilidade,
+                        cadastrar_ativo, cadastrar_vulnerabilidade, consultar_por_id,
+                        consultar_vulnerabilidades, excluir_ativo, excluir_vulnerabilidade,
+                        filtrar_ativos)
 from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
 from persistencia import salvar_ativos
 
@@ -226,6 +227,43 @@ def consultar_vulnerabilidades_tela(ativos):
         print(f"Status: {vulnerabilidade.status} | Verificação: {vulnerabilidade.verificacao}")
 
 
+def atualizar_vulnerabilidade_tela(ativos):
+    print("\nAtualização de vulnerabilidade")
+    identificador = ler_inteiro("ID do ativo afetado: ")
+    cve = ler_texto("CVE da vulnerabilidade: ")
+    print("Deixe em branco para manter o valor atual.")
+    descricao = ler_texto("Nova descrição: ", False)
+    prioridade = escolher_item("Nova prioridade: ", SEVERIDADES, True)
+    tratamento = ler_texto("Novo tratamento: ", False)
+    status = escolher_item("Novo status: ", STATUS, True)
+    verificacao = ler_texto("Nova verificação: ", False)
+    try:
+        atualizar_vulnerabilidade(ativos, identificador, cve, descricao, prioridade,
+                                  tratamento, status, verificacao)
+        print("Vulnerabilidade atualizada com sucesso.")
+        return True
+    except DadosInvalidosError as erro:
+        print(erro)
+        return False
+
+
+def remover_vulnerabilidade_tela(ativos):
+    print("\nRemoção de vulnerabilidade")
+    identificador = ler_inteiro("ID do ativo afetado: ")
+    cve = ler_texto("CVE da vulnerabilidade: ")
+    try:
+        if excluir_vulnerabilidade(
+                ativos, identificador, cve,
+                ler_texto("Digite SIM para confirmar: ").upper() == "SIM"):
+            print("Vulnerabilidade removida com sucesso.")
+            return True
+        print("Remoção cancelada.")
+        return False
+    except DadosInvalidosError as erro:
+        print(erro)
+        return False
+
+
 def mostrar_resumo(ativos):
     total = sum(len(ativo.vulnerabilidades) for ativo in ativos.values())
     mostrar_linha()
@@ -238,7 +276,8 @@ def mostrar_menu():
     print("INVENTÁRIO DE ATIVOS E VULNERABILIDADES")
     print("1 - Cadastrar ativo\n2 - Listar ativos\n3 - Buscar ativo\n4 - Atualizar ativo")
     print("5 - Remover ativo\n6 - Cadastrar vulnerabilidade\n7 - Consultar vulnerabilidades")
-    print("8 - Salvar dados\n9 - Mostrar resumo do inventário\n0 - Sair")
+    print("8 - Salvar dados\n9 - Mostrar resumo do inventário")
+    print("10 - Atualizar vulnerabilidade\n11 - Remover vulnerabilidade\n0 - Sair")
 
 
 def executar_programa(ativos, caminho_dados):
@@ -265,6 +304,10 @@ def executar_programa(ativos, caminho_dados):
             salvar_ativos(ativos, caminho_dados)
         elif opcao == "9":
             mostrar_resumo(ativos)
+        elif opcao == "10":
+            alterou = atualizar_vulnerabilidade_tela(ativos)
+        elif opcao == "11":
+            alterou = remover_vulnerabilidade_tela(ativos)
         elif opcao == "0":
             salvar_ativos(ativos, caminho_dados)
             print("Programa encerrado.")

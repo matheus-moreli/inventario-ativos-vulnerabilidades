@@ -11,6 +11,10 @@ ARQUIVO_DADOS = "dados/inventario.json"
 def iniciar():
     """Carrega a base uma vez e inicia a interface do terminal."""
     ativos = carregar_ativos(ARQUIVO_DADOS)
+    # None indica que havia um arquivo inválido. Encerrar evita apagar dados por acidente.
+    if ativos is None:
+        print("Corrija ou recupere o arquivo JSON antes de iniciar o programa.")
+        return
     executar_programa(ativos, ARQUIVO_DADOS)
 
 

@@ -4,10 +4,11 @@ import os
 import tempfile
 import unittest
 
-from inventario import (DadosInvalidosError, cadastrar_ativo,
+from inventario import (DadosInvalidosError, atualizar_ativo,
+                        atualizar_vulnerabilidade, cadastrar_ativo,
                         cadastrar_vulnerabilidade, consultar_por_id,
                         consultar_vulnerabilidades, excluir_ativo,
-                        filtrar_ativos, atualizar_ativo)
+                        excluir_vulnerabilidade, filtrar_ativos)
 from persistencia import carregar_ativos, salvar_ativos
 
 
@@ -69,6 +70,50 @@ class TesteInventario(unittest.TestCase):
         with self.assertRaises(DadosInvalidosError):
             cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 11,
                 "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+        with self.assertRaises(DadosInvalidosError):
+            cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", "nan",
+                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+
+    def testar_cve_duplicado_no_mesmo_ativo_e_rejeitado(self):
+        cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
+            "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+        with self.assertRaises(DadosInvalidosError):
+            cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
+                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+
+    def testar_atualizacao_de_vulnerabilidade_registra_historico(self):
+        cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
+            "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+        atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234",
+                                  status="Em tratamento", verificacao="Revisar versão")
+        vulnerabilidade = self.ativos[10].vulnerabilidades[0]
+        self.assertEqual(vulnerabilidade.status, "Em tratamento")
+        self.assertEqual(vulnerabilidade.verificacao, "Revisar versão")
+        self.assertIn("atualizada", self.ativos[10].historico[-1])
+
+    def testar_remocao_de_vulnerabilidade_exige_confirmacao(self):
+        cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
+            "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+        self.assertFalse(excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", False))
+        self.assertEqual(len(self.ativos[10].vulnerabilidades), 1)
+        self.assertTrue(excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", True))
+        self.assertEqual(len(self.ativos[10].vulnerabilidades), 0)
+
+    def testar_correcao_exige_verificacao(self):
+        cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
+            "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+        with self.assertRaises(DadosInvalidosError):
+            atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", status="Corrigida")
+
+    def testar_json_invalido_nao_e_substituido(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            conteudo_invalido = "{arquivo quebrado"
+            with open(caminho, "w", encoding="utf-8") as arquivo:
+                arquivo.write(conteudo_invalido)
+            self.assertIsNone(carregar_ativos(caminho))
+            with open(caminho, "r", encoding="utf-8") as arquivo:
+                self.assertEqual(arquivo.read(), conteudo_invalido)
 
     def testar_json_preserva_dados(self):
         with tempfile.TemporaryDirectory() as pasta:

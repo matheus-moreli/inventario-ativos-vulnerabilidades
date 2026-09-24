@@ -21,9 +21,10 @@ def carregar_ativos(caminho):
             ativo = Ativo.de_dicionario(dados_ativo)
             ativos[int(identificador)] = ativo
         return ativos
-    except (OSError, json.JSONDecodeError, ValueError, KeyError, DadosInvalidosError):
-        print("Não foi possível ler o arquivo de dados. Uma base vazia será usada.")
-        return {}
+    except (OSError, json.JSONDecodeError, ValueError, KeyError, TypeError,
+            AttributeError, DadosInvalidosError):
+        print("Não foi possível ler o arquivo de dados. Ele não será sobrescrito.")
+        return None
 
 
 def salvar_ativos(ativos, caminho):

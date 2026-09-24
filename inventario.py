@@ -39,9 +39,19 @@ def validar_cvss(cvss):
         nota = float(cvss)
     except (TypeError, ValueError):
         raise DadosInvalidosError("CVSS deve ser um número entre 0.0 e 10.0.")
-    if nota < 0.0 or nota > 10.0:
+    # Esta forma também rejeita "nan", que não é uma nota válida.
+    if not 0.0 <= nota <= 10.0:
         raise DadosInvalidosError("CVSS deve estar entre 0.0 e 10.0.")
     return nota
+
+
+def validar_cwe(cwe):
+    """Aceita a identificação simples de uma categoria de fraqueza."""
+    texto = validar_texto(cwe, "CWE").upper()
+    partes = texto.split("-")
+    if len(partes) != 2 or partes[0] != "CWE" or not partes[1].isdigit():
+        raise DadosInvalidosError("CWE inválido. Use o formato CWE-NÚMERO.")
+    return texto
 
 
 def validar_tipo_ativo(tipo):
@@ -138,9 +148,12 @@ def cadastrar_vulnerabilidade(ativos, identificador, cve, cwe, cvss,
     ativo = consultar_por_id(ativos, identificador)
     if ativo is None:
         raise DadosInvalidosError("Ativo não encontrado.")
+    cve = validar_cve(cve)
+    if buscar_vulnerabilidade(ativo, cve) is not None:
+        raise DadosInvalidosError("Esta vulnerabilidade já foi cadastrada para o ativo.")
     vulnerabilidade = Vulnerabilidade(
-        validar_cve(cve),
-        validar_texto(cwe, "CWE"),
+        cve,
+        validar_cwe(cwe),
         validar_cvss(cvss),
         validar_texto(descricao, "Descrição"),
         validar_texto(fonte, "Fonte"),
@@ -154,6 +167,67 @@ def cadastrar_vulnerabilidade(ativos, identificador, cve, cwe, cvss,
     ativo.vulnerabilidades.append(vulnerabilidade)
     ativo.registrar_historico(f"Vulnerabilidade {vulnerabilidade.cve} cadastrada.")
     return vulnerabilidade
+
+
+def buscar_vulnerabilidade(ativo, cve):
+    """Procura uma vulnerabilidade pelo CVE dentro de um ativo."""
+    for vulnerabilidade in ativo.vulnerabilidades:
+        if vulnerabilidade.cve == cve:
+            return vulnerabilidade
+    return None
+
+
+def atualizar_vulnerabilidade(ativos, identificador, cve, descricao=None,
+                              prioridade=None, tratamento=None, status=None,
+                              verificacao=None):
+    """Altera os dados de uma vulnerabilidade sem trocar seu CVE."""
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        raise DadosInvalidosError("Ativo não encontrado.")
+    cve = validar_cve(cve)
+    vulnerabilidade = buscar_vulnerabilidade(ativo, cve)
+    if vulnerabilidade is None:
+        raise DadosInvalidosError("Vulnerabilidade não encontrada para este ativo.")
+
+    alteracoes = []
+    if descricao:
+        vulnerabilidade.descricao = validar_texto(descricao, "Descrição")
+        alteracoes.append("descrição")
+    if prioridade:
+        vulnerabilidade.prioridade = validar_opcao(prioridade, SEVERIDADES, "Prioridade")
+        alteracoes.append("prioridade")
+    if tratamento:
+        vulnerabilidade.tratamento = validar_texto(tratamento, "Tratamento")
+        alteracoes.append("tratamento")
+    if verificacao:
+        vulnerabilidade.verificacao = validar_texto(verificacao, "Verificação")
+        alteracoes.append("verificação")
+    if status:
+        novo_status = validar_opcao(status, STATUS, "Status")
+        if novo_status == "Corrigida" and vulnerabilidade.verificacao == "Pendente":
+            raise DadosInvalidosError("Informe como a correção foi verificada antes de concluir.")
+        vulnerabilidade.status = novo_status
+        alteracoes.append("status")
+    if alteracoes:
+        ativo.registrar_historico(
+            f"Vulnerabilidade {cve} atualizada: " + ", ".join(alteracoes) + ".")
+    return vulnerabilidade
+
+
+def excluir_vulnerabilidade(ativos, identificador, cve, confirmou):
+    """Remove uma vulnerabilidade somente após confirmação explícita."""
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        raise DadosInvalidosError("Ativo não encontrado.")
+    cve = validar_cve(cve)
+    vulnerabilidade = buscar_vulnerabilidade(ativo, cve)
+    if vulnerabilidade is None:
+        raise DadosInvalidosError("Vulnerabilidade não encontrada para este ativo.")
+    if not confirmou:
+        return False
+    ativo.vulnerabilidades.remove(vulnerabilidade)
+    ativo.registrar_historico(f"Vulnerabilidade {cve} removida.")
+    return True
 
 
 def consultar_vulnerabilidades(ativos, cve="", prioridade=None, status=None):
