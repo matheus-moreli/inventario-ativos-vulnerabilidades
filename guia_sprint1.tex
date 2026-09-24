@@ -617,11 +617,17 @@ ativos = {
 
 Em vez de percorrer todos os itens para achar o ID 10, o código usa \texttt{ativos.get(10)}. A chave é única, o formato dos objetos é uniforme e as alterações preservam a mesma chave. Ao salvar, os objetos viram dicionários simples; ao carregar, voltam a ser objetos \texttt{Ativo} e \texttt{Vulnerabilidade}.
 
-\cardsection{S2\_18 -- Conferência manual e correções}
+\cardsection{S2\_18 -- Testes e correções}
 
-O programa pode ser conferido sem arquivo de teste separado, percorrendo o fluxo principal no terminal. Execute \texttt{python app.py}, cadastre um ativo, tente repetir seu ID, vincule uma vulnerabilidade, consulte, atualize e remova esse registro. Feche e abra o programa para confirmar que o JSON preservou os dados. Por fim, informe um CVSS fora de 0 a 10 e verifique que o menu continua aberto com uma mensagem clara.
+\texttt{test\_sprint2.py} não é um segundo programa para o usuário usar. É uma coleção de verificações automáticas feita com o módulo padrão \texttt{unittest}, que já vem com Python. Cada teste cria uma base pequena na memória, chama uma função do inventário e compara o resultado esperado com o resultado obtido.
 
-Essa conferência não substitui o raciocínio sobre cada regra: ela torna visível que validações, CRUD e persistência se conectam no uso real. Antes de apresentar, é recomendável usar dados de exemplo e confirmar se o arquivo JSON está legível.
+\begin{lstlisting}[caption={Como executar os testes}]
+python -m unittest -v test_sprint2.py
+\end{lstlisting}
+
+Os 14 testes verificam cadastro, busca, ID duplicado, tipo inválido, filtros, atualização e confirmação de exclusão de ativos. Também verificam CVE duplicado, CVE e CVSS inválidos, atualização e remoção de vulnerabilidades, exigência de verificação para correção e proteção do JSON corrompido. Os testes usam arquivos temporários e não alteram \texttt{dados/inventario.json}.
+
+Além dos testes automáticos, vale demonstrar o fluxo real no terminal: cadastrar um ativo, vincular uma vulnerabilidade, consultar, atualizar e remover. Assim, a avaliação observa tanto as regras isoladas quanto o programa em uso.
 
 \cardsection{S2\_16, S2\_17 e S2\_19 -- GitHub e apresentação}
 
@@ -650,6 +656,7 @@ Ao explicar, prefira frases concretas: ``usei um dicionário porque o ID é úni
   \item Sommerville, \emph{Engenharia de Software}.
   \item Eric Matthes, \emph{Curso Intensivo de Python}.
   \item \href{https://docs.python.org/3/}{Documentação oficial do Python}.
+  \item \href{https://docs.python.org/3/library/unittest.html}{Documentação do módulo unittest}.
   \item \href{https://git-scm.com/book/pt-br/v2}{Pro Git}.
   \item \href{https://docs.github.com/}{Documentação do GitHub}.
   \item \href{https://nvd.nist.gov/vuln/detail/CVE-2021-44228}{NVD -- CVE-2021-44228}.

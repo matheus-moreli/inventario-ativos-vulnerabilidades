@@ -12,6 +12,14 @@ python app.py
 
 O arquivo `dados/inventario.json` será criado quando houver dados para salvar.
 
+## Como testar
+
+```powershell
+python -m unittest -v test_sprint2.py
+```
+
+Os 14 testes usam dados temporários, não alteram `dados/inventario.json` e não exigem internet nem bibliotecas externas.
+
 ## Organização
 
 - `app.py`: inicia o programa.
@@ -19,6 +27,7 @@ O arquivo `dados/inventario.json` será criado quando houver dados para salvar.
 - `inventario.py`: regras, validações e operações CRUD.
 - `modelos.py`: classes `Ativo` e `Vulnerabilidade`, enum e listas padronizadas.
 - `persistencia.py`: leitura e gravação no JSON.
+- `test_sprint2.py`: testes automatizados das regras principais.
 - `guia_sprint1.pdf` e `guia_sprint1.tex`: guia único de estudo das Sprints 1 e 2.
 
 ## O que o sistema faz
