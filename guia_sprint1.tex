@@ -542,7 +542,7 @@ O menu não precisa conhecer os detalhes de JSON, e a função que salva JSON n�
 
 \cardsection{S2\_01 e S2\_02 -- Boas práticas, classes e Enum}
 
-Uma classe é um molde para representar dados relacionados. Neste trabalho, \texttt{Ativo} reúne ID, nome, responsável, localização, tipo, criticidade, vulnerabilidades e histórico. \texttt{Vulnerabilidade} reúne CVE, CWE, CVSS, descrição, fonte, data, impacto, prioridade, tratamento, status e verificação.
+Uma classe é um molde para representar dados relacionados. Neste trabalho, \texttt{Ativo} reúne ID, nome, responsável, localização, tipo, importância para a segurança (também chamada de criticidade do ativo), vulnerabilidades e histórico. Essa importância informa quanto a indisponibilidade ou o comprometimento daquele ativo afeta a organização; não é a severidade de uma vulnerabilidade. \texttt{Vulnerabilidade} reúne CVE, CWE, CVSS, descrição, fonte, data, impacto, prioridade, tratamento, status e verificação.
 
 \begin{lstlisting}[language=Python,caption={Ideia de uma classe simples}]
 class Ativo:
@@ -567,7 +567,7 @@ def consultar_por_id(ativos, identificador):
     return ativos.get(identificador)
 \end{lstlisting}
 
-\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado logo após sua digitação. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e criticidade podem mudar, mas a identidade do ativo é preservada. Antes de alterar o objeto, todos os valores novos são validados; portanto, uma entrada inválida não deixa o ativo parcialmente modificado. Na exclusão, a tela mostra o alvo e exige a palavra \texttt{SIM}; ao remover o ativo, sua lista de vulnerabilidades também desaparece junto.
+\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado logo após sua digitação. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e importância do ativo para a segurança podem mudar, mas a identidade do ativo é preservada. O termo \emph{criticidade} é usado internamente porque o checklist pede valores padronizados, mas a tela explica que ele representa a importância do ativo, e não a severidade de uma falha. Antes de alterar o objeto, todos os valores novos são validados; portanto, uma entrada inválida não deixa o ativo parcialmente modificado. Na exclusão, a tela mostra o alvo e exige a palavra \texttt{SIM}; ao remover o ativo, sua lista de vulnerabilidades também desaparece junto.
 
 \referencia{https://trello.com/c/NdgkJaYg}{S2\_03 no Trello}.
 

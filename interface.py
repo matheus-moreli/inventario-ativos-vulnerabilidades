@@ -138,7 +138,9 @@ def mostrar_ativo(ativo, mostrar_detalhes=True):
     print(f"Responsável: {ativo.responsavel}")
     print(f"Setor ou localização: {ativo.localizacao}")
     print(f"Tipo: {nome_do_tipo(ativo.tipo)} ({ativo.tipo})")
-    print(f"Criticidade: {ativo.criticidade}")
+    # Este dado é do ativo: mostra o impacto de ele ser comprometido ou parar.
+    # A severidade da vulnerabilidade é exibida separadamente, quando houver uma.
+    print(f"Importância do ativo para a segurança: {ativo.criticidade}")
     if mostrar_detalhes:
         mostrar_vulnerabilidades(ativo)
         print("Histórico:")
@@ -156,7 +158,8 @@ def cadastrar_ativo_tela(ativos):
         ativo = cadastrar_ativo(ativos, identificador,
             ler_texto("Nome ou hostname: "), ler_texto("Responsável: "),
             ler_texto("Setor ou localização: "), escolher_tipo_ativo(),
-            escolher_item("Criticidade: ", CRITICIDADES))
+            escolher_item("Importância do ativo para a segurança (criticidade): ",
+                          CRITICIDADES))
         print(f"Ativo {ativo.id} cadastrado com sucesso.")
         return True
     except DadosInvalidosError as erro:
@@ -174,7 +177,7 @@ def listar_ativos_tela(ativos):
 
 def buscar_ativo_tela(ativos):
     print("\n1 - Buscar por ID")
-    print("2 - Filtrar por nome, tipo ou criticidade")
+    print("2 - Filtrar por nome, tipo ou importância do ativo")
     escolha = ler_texto("Escolha: ")
     if escolha == "1":
         ativo = consultar_por_id(ativos, ler_inteiro("ID do ativo: "))
@@ -185,7 +188,9 @@ def buscar_ativo_tela(ativos):
     elif escolha == "2":
         termo = ler_texto("Nome ou hostname (vazio = todos): ", False)
         tipo = escolher_tipo_ativo() if ler_sim_ou_nao("Filtrar por tipo? (s/n): ") else None
-        criticidade = escolher_item("Criticidade: ", CRITICIDADES) if ler_sim_ou_nao("Filtrar por criticidade? (s/n): ") else None
+        criticidade = escolher_item(
+            "Importância do ativo para a segurança (criticidade): ", CRITICIDADES
+        ) if ler_sim_ou_nao("Filtrar por importância do ativo? (s/n): ") else None
         resultado = filtrar_ativos(ativos, termo, tipo, criticidade)
         if not resultado:
             print("Nenhum ativo encontrado.")
@@ -206,7 +211,9 @@ def atualizar_ativo_tela(ativos):
     responsavel = ler_texto(f"Responsável [{ativo.responsavel}]: ", False)
     localizacao = ler_texto(f"Setor ou localização [{ativo.localizacao}]: ", False)
     tipo = escolher_tipo_ativo(True)
-    criticidade = escolher_item("Criticidade: ", CRITICIDADES, True)
+    criticidade = escolher_item(
+        "Importância do ativo para a segurança (criticidade): ", CRITICIDADES, True
+    )
     if not any([nome, responsavel, localizacao, tipo is not None, criticidade is not None]):
         print("Nenhum campo foi alterado.")
         return False
