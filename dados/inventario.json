@@ -1,54 +1,150 @@
 {
   "1": {
     "id": 1,
-    "nome": "Notebook",
-    "responsavel": "12",
-    "localizacao": "1E30",
-    "tipo": 3,
-    "criticidade": "Crítica",
-    "vulnerabilidades": [],
-    "historico": [
-      "25/09/2026 16:43 - Ativo cadastrado."
-    ]
-  },
-  "12": {
-    "id": 12,
-    "nome": "12",
-    "responsavel": "12",
-    "localizacao": "12",
-    "tipo": 2,
-    "criticidade": "Baixa",
-    "vulnerabilidades": [],
-    "historico": [
-      "25/09/2026 16:47 - Ativo cadastrado."
-    ]
-  },
-  "13": {
-    "id": 13,
-    "nome": "Notebook",
-    "responsavel": "Matheus",
-    "localizacao": "1E30",
-    "tipo": 2,
+    "nome": "NB-LAB-01",
+    "responsavel": "Coordenação de Laboratório",
+    "localizacao": "Laboratório 2",
+    "tipo": 1,
     "criticidade": "Média",
     "vulnerabilidades": [
       {
-        "cve": "CVE-2024-1234",
-        "cwe": "CWE-49",
-        "cvss": 7.2,
-        "descricao": "Legal",
-        "fonte": "URL",
+        "cve": "CVE-2019-0708",
+        "cwe": "CWE-416",
+        "cvss": 9.8,
+        "descricao": "Risco de execução remota em serviço de acesso remoto do sistema operacional.",
+        "fonte": "NVD - registro público",
         "data_fonte": "25/09/2026",
-        "impacto": "Grande",
-        "prioridade": "Crítica",
-        "tratamento": "Infiltração",
-        "status": "Aberta",
-        "verificacao": "Assim"
+        "impacto": "Comprometimento do notebook usado em aulas.",
+        "prioridade": "Alta",
+        "tratamento": "Aplicar atualizações de segurança e restringir o acesso remoto.",
+        "status": "Corrigida",
+        "verificacao": "Atualização conferida no Windows Update e teste de conexão remota bloqueada."
       }
     ],
     "historico": [
-      "25/09/2026 17:09 - Ativo cadastrado.",
-      "25/09/2026 17:17 - Vulnerabilidade CVE-2024-1234 cadastrada.",
-      "25/09/2026 17:28 - Campos alterados: tipo, criticidade."
+      "25/09/2026 18:00 - Ativo incluído como exemplo de demonstração.",
+      "25/09/2026 18:05 - Vulnerabilidade CVE-2019-0708 cadastrada."
+    ]
+  },
+  "2": {
+    "id": 2,
+    "nome": "SRV-WEB-01",
+    "responsavel": "Equipe de Infraestrutura",
+    "localizacao": "Datacenter interno",
+    "tipo": 2,
+    "criticidade": "Crítica",
+    "vulnerabilidades": [
+      {
+        "cve": "CVE-2021-44228",
+        "cwe": "CWE-502",
+        "cvss": 10.0,
+        "descricao": "Biblioteca de registro vulnerável identificada em serviço web interno.",
+        "fonte": "NVD - registro público",
+        "data_fonte": "25/09/2026",
+        "impacto": "Possível execução remota de código no servidor.",
+        "prioridade": "Crítica",
+        "tratamento": "Atualizar a biblioteca afetada e revisar os serviços dependentes.",
+        "status": "Em tratamento",
+        "verificacao": "Pendente"
+      }
+    ],
+    "historico": [
+      "25/09/2026 18:10 - Ativo incluído como exemplo de demonstração.",
+      "25/09/2026 18:15 - Vulnerabilidade CVE-2021-44228 cadastrada."
+    ]
+  },
+  "3": {
+    "id": 3,
+    "nome": "RT-FILIAL-01",
+    "responsavel": "Equipe de Redes",
+    "localizacao": "Filial Centro",
+    "tipo": 3,
+    "criticidade": "Alta",
+    "vulnerabilidades": [
+      {
+        "cve": "CVE-2018-13379",
+        "cwe": "CWE-22",
+        "cvss": 9.8,
+        "descricao": "Exposição indevida de arquivos por caminho não validado em equipamento de borda.",
+        "fonte": "NVD - registro público",
+        "data_fonte": "25/09/2026",
+        "impacto": "Exposição de credenciais de acesso remoto da filial.",
+        "prioridade": "Crítica",
+        "tratamento": "Atualizar o firmware e invalidar credenciais potencialmente expostas.",
+        "status": "Aberta",
+        "verificacao": "Pendente"
+      }
+    ],
+    "historico": [
+      "25/09/2026 18:20 - Ativo incluído como exemplo de demonstração.",
+      "25/09/2026 18:25 - Vulnerabilidade CVE-2018-13379 cadastrada."
+    ]
+  },
+  "4": {
+    "id": 4,
+    "nome": "APP-PORTAL-01",
+    "responsavel": "Time de Desenvolvimento",
+    "localizacao": "Servidor de aplicações",
+    "tipo": 4,
+    "criticidade": "Alta",
+    "vulnerabilidades": [
+      {
+        "cve": "CVE-2022-22965",
+        "cwe": "CWE-94",
+        "cvss": 9.8,
+        "descricao": "Falha de execução remota associada ao framework da aplicação.",
+        "fonte": "NVD - registro público",
+        "data_fonte": "25/09/2026",
+        "impacto": "Alteração não autorizada do portal e de dados de atendimento.",
+        "prioridade": "Alta",
+        "tratamento": "Atualizar o framework e executar testes de regressão.",
+        "status": "Corrigida",
+        "verificacao": "Versão atualizada conferida e testes de regressão aprovados."
+      }
+    ],
+    "historico": [
+      "25/09/2026 18:30 - Ativo incluído como exemplo de demonstração.",
+      "25/09/2026 18:35 - Vulnerabilidade CVE-2022-22965 cadastrada."
+    ]
+  },
+  "5": {
+    "id": 5,
+    "nome": "DB-ESTOQUE-01",
+    "responsavel": "Equipe de Banco de Dados",
+    "localizacao": "Datacenter interno",
+    "tipo": 5,
+    "criticidade": "Crítica",
+    "vulnerabilidades": [],
+    "historico": [
+      "25/09/2026 18:40 - Ativo incluído como exemplo de demonstração.",
+      "25/09/2026 18:45 - Nenhuma vulnerabilidade pendente registrada."
+    ]
+  },
+  "6": {
+    "id": 6,
+    "nome": "SW-OFFICE-01",
+    "responsavel": "Gestão de Ativos",
+    "localizacao": "Estações administrativas",
+    "tipo": 6,
+    "criticidade": "Baixa",
+    "vulnerabilidades": [
+      {
+        "cve": "CVE-2017-11882",
+        "cwe": "CWE-119",
+        "cvss": 7.8,
+        "descricao": "Falha conhecida em componente de editor de fórmulas.",
+        "fonte": "NVD - registro público",
+        "data_fonte": "25/09/2026",
+        "impacto": "Risco limitado às estações que ainda usam a versão antiga.",
+        "prioridade": "Baixa",
+        "tratamento": "Manter estações isoladas e programar substituição do software.",
+        "status": "Aceita como risco",
+        "verificacao": "Aprovação registrada para uso temporário até a substituição."
+      }
+    ],
+    "historico": [
+      "25/09/2026 18:50 - Ativo incluído como exemplo de demonstração.",
+      "25/09/2026 18:55 - Vulnerabilidade CVE-2017-11882 cadastrada."
     ]
   }
 }

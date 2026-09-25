@@ -18,7 +18,7 @@ Abra o PowerShell na pasta do projeto e execute:
 python app.py
 ```
 
-Na primeira execução, a base começa vazia. Os dados são salvos em `dados/inventario.json` depois de cada cadastro, atualização ou remoção.
+Na primeira execução, a base já traz seis ativos e cinco vulnerabilidades demonstrativas. Os dados são salvos em `dados/inventario.json` depois de cada cadastro, atualização ou remoção. Os exemplos podem ser consultados, alterados ou removidos pelo próprio programa.
 
 ## Como usar o terminal
 
