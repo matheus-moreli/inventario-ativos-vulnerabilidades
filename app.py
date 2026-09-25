@@ -1,11 +1,14 @@
 """Ponto de entrada do Inventário de Ativos e Vulnerabilidades."""
 
+import os
+
 from interface import executar_programa
 from persistencia import carregar_ativos
 
 
-# O caminho é configuração de execução, não uma regra de negócio do inventário.
-ARQUIVO_DADOS = "dados/inventario.json"
+# O caminho parte desta pasta, mesmo se o comando for executado de outro local.
+PASTA_DO_PROJETO = os.path.dirname(os.path.abspath(__file__))
+ARQUIVO_DADOS = os.path.join(PASTA_DO_PROJETO, "dados", "inventario.json")
 
 
 def iniciar():

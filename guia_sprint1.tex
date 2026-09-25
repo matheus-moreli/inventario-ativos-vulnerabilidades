@@ -533,8 +533,9 @@ O projeto foi separado por responsabilidade. Separar não significa criar muitas
 \end{itemize}
 
 \begin{lstlisting}[language=Python,caption={Fluxo principal simplificado}]
-ativos = carregar_ativos("dados/inventario.json")
-executar_programa(ativos, "dados/inventario.json")
+arquivo_dados = os.path.join(pasta_do_projeto, "dados", "inventario.json")
+ativos = carregar_ativos(arquivo_dados)
+executar_programa(ativos, arquivo_dados)
 \end{lstlisting}
 
 O menu não precisa conhecer os detalhes de JSON, e a função que salva JSON não precisa fazer perguntas ao usuário. Quando cada parte tem uma tarefa principal, fica mais fácil localizar erros e explicar o código.
@@ -566,7 +567,7 @@ def consultar_por_id(ativos, identificador):
     return ativos.get(identificador)
 \end{lstlisting}
 
-\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e criticidade podem mudar, mas a identidade do ativo é preservada. Na exclusão, a tela mostra o alvo e exige a palavra \texttt{SIM}; ao remover o ativo, sua lista de vulnerabilidades também desaparece junto.
+\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado logo após sua digitação. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e criticidade podem mudar, mas a identidade do ativo é preservada. Antes de alterar o objeto, todos os valores novos são validados; portanto, uma entrada inválida não deixa o ativo parcialmente modificado. Na exclusão, a tela mostra o alvo e exige a palavra \texttt{SIM}; ao remover o ativo, sua lista de vulnerabilidades também desaparece junto.
 
 \referencia{https://trello.com/c/NdgkJaYg}{S2\_03 no Trello}.
 
@@ -582,7 +583,7 @@ if not 0.0 <= nota <= 10.0:
     raise DadosInvalidosError("CVSS deve estar entre 0.0 e 10.0.")
 \end{lstlisting}
 
-O \texttt{raise} interrompe apenas a operação inválida e a interface mostra uma mensagem compreensível. O menu continua aberto. O sistema também exige uma verificação antes de mudar o status para ``Corrigida'', pois dizer que algo foi corrigido sem evidência não é suficiente.
+O \texttt{raise} interrompe apenas a operação inválida e a interface mostra uma mensagem compreensível. O menu continua aberto. CVE, CWE, CVSS e a data da fonte são conferidos assim que são digitados, evitando que a pessoa responda todas as perguntas para descobrir um erro inicial. O sistema também exige uma verificação antes de cadastrar ou mudar o status para ``Corrigida'', pois dizer que algo foi corrigido sem evidência não é suficiente. Como na atualização de ativos, os novos dados são todos validados antes de modificar a vulnerabilidade.
 
 Como referência de consulta externa, o registro \href{https://nvd.nist.gov/vuln/detail/CVE-2021-44228}{CVE-2021-44228 no NVD} descreve uma vulnerabilidade do Apache Log4j com CVSS 10.0. O programa não consulta o NVD automaticamente: o usuário registra manualmente fonte e data, mantendo a aplicação simples e funcionando sem internet.
 
@@ -600,7 +601,7 @@ Um requisito diz o que o sistema deve fazer. Um critério de aceite diz como com
   \item JSON inválido: o programa não sobrescreve o arquivo corrompido com uma base vazia.
 \end{itemize}
 
-Essas regras aparecem em funções de validação, como \texttt{validar\_texto()}, \texttt{validar\_cve()}, \texttt{validar\_cwe()} e \texttt{validar\_cvss()}. Quando uma regra falha, elas usam \texttt{DadosInvalidosError}; a interface captura essa exceção e apresenta uma mensagem curta.
+Essas regras aparecem em funções de validação, como \texttt{validar\_texto()}, \texttt{validar\_cve()}, \texttt{validar\_cwe()}, \texttt{validar\_cvss()} e \texttt{validar\_data\_fonte()}. Quando uma regra falha, elas usam \texttt{DadosInvalidosError}; a interface captura essa exceção e apresenta uma mensagem curta. Ao abrir o JSON, as mesmas regras conferem os dados salvos e também confirmam que a chave do dicionário é igual ao ID interno do ativo. Se houver incoerência, o arquivo não é sobrescrito.
 
 \referencia{https://trello.com/c/NcSDMJuv}{S2\_04 no Trello}; \href{https://trello.com/c/YSC57Mjy}{S2\_05 no Trello}; \href{https://trello.com/c/5beR1TIT}{S2\_06 no Trello}; \href{https://trello.com/c/Vs045ALu}{S2\_07 no Trello}.
 
@@ -617,6 +618,7 @@ ativos = {
 
 Em vez de percorrer todos os itens para achar o ID 10, o código usa \texttt{ativos.get(10)}. A chave é única, o formato dos objetos é uniforme e as alterações preservam a mesma chave. Ao salvar, os objetos viram dicionários simples; ao carregar, voltam a ser objetos \texttt{Ativo} e \texttt{Vulnerabilidade}.
 
+\Needspace{28\baselineskip}
 \cardsection{S2\_18 -- Testes e correções}
 
 \texttt{test\_sprint2.py} não é um segundo programa para o usuário usar. É uma coleção de verificações automáticas feita com o módulo padrão \texttt{unittest}, que já vem com Python. Cada teste cria uma base pequena na memória, chama uma função do inventário e compara o resultado esperado com o resultado obtido.
@@ -625,7 +627,7 @@ Em vez de percorrer todos os itens para achar o ID 10, o código usa \texttt{ati
 python -m unittest -v test_sprint2.py
 \end{lstlisting}
 
-Os 14 testes verificam cadastro, busca, ID duplicado, tipo inválido, filtros, atualização e confirmação de exclusão de ativos. Também verificam CVE duplicado, CVE e CVSS inválidos, atualização e remoção de vulnerabilidades, exigência de verificação para correção e proteção do JSON corrompido. Os testes usam arquivos temporários e não alteram \texttt{dados/inventario.json}.
+Os 20 testes verificam cadastro, busca, ID duplicado, tipo inválido, filtros, atualização e confirmação de exclusão de ativos. Também verificam CVE, CVSS e data inválidos, CVE duplicado, atualização e remoção de vulnerabilidades, exigência de verificação para correção e proteção do JSON corrompido. Há testes específicos para provar que uma atualização inválida não altera somente uma parte do registro e que um JSON com ID incoerente ou tipo inválido é recusado. Os testes usam arquivos temporários e não alteram \texttt{dados/inventario.json}.
 
 Além dos testes automáticos, vale demonstrar o fluxo real no terminal: cadastrar um ativo, vincular uma vulnerabilidade, consultar, atualizar e remover. Assim, a avaliação observa tanto as regras isoladas quanto o programa em uso.
 
@@ -648,6 +650,7 @@ Ao explicar, prefira frases concretas: ``usei um dicionário porque o ID é úni
 
 \referencia{https://trello.com/c/UvtQ6Mc6}{S2\_16 no Trello}; \href{https://trello.com/c/FBSYXNJP}{S2\_17 no Trello}; \href{https://trello.com/c/ADSVtVQ4}{S2\_19 no Trello}.
 
+\Needspace{18\baselineskip}
 \section{Referências gerais das Sprints 1 e 2}
 
 \begin{itemize}

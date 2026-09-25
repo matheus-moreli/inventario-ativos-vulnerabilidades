@@ -1,9 +1,11 @@
 """Entradas e saídas do terminal. As regras estão em inventario.py."""
 
 from inventario import (DadosInvalidosError, atualizar_ativo, atualizar_vulnerabilidade,
-                        cadastrar_ativo, cadastrar_vulnerabilidade, consultar_por_id,
-                        consultar_vulnerabilidades, excluir_ativo, excluir_vulnerabilidade,
-                        filtrar_ativos)
+                        buscar_vulnerabilidade, cadastrar_ativo,
+                        cadastrar_vulnerabilidade, consultar_por_id,
+                        consultar_vulnerabilidades, excluir_ativo,
+                        excluir_vulnerabilidade, filtrar_ativos, validar_cve,
+                        validar_cwe, validar_cvss, validar_data_fonte)
 from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
 from persistencia import salvar_ativos
 
@@ -42,6 +44,42 @@ def ler_sim_ou_nao(mensagem):
         if resposta in ["n", "nao", "não"]:
             return False
         print("Resposta inválida. Digite s para sim ou n para não.")
+
+
+def ler_cve(mensagem):
+    """Valida o CVE logo após a digitação, sem perder as outras respostas."""
+    while True:
+        try:
+            return validar_cve(ler_texto(mensagem))
+        except DadosInvalidosError as erro:
+            print(erro)
+
+
+def ler_cwe(mensagem):
+    """Valida o CWE logo após a digitação."""
+    while True:
+        try:
+            return validar_cwe(ler_texto(mensagem))
+        except DadosInvalidosError as erro:
+            print(erro)
+
+
+def ler_cvss(mensagem):
+    """Lê uma nota CVSS válida no intervalo de 0.0 a 10.0."""
+    while True:
+        try:
+            return validar_cvss(ler_texto(mensagem))
+        except DadosInvalidosError as erro:
+            print(erro)
+
+
+def ler_data_fonte(mensagem):
+    """Mantém a data da fonte no formato dd/mm/aaaa anunciado pelo menu."""
+    while True:
+        try:
+            return validar_data_fonte(ler_texto(mensagem))
+        except DadosInvalidosError as erro:
+            print(erro)
 
 
 def escolher_item(mensagem, opcoes, permitir_vazio=False):
@@ -110,8 +148,12 @@ def mostrar_ativo(ativo, mostrar_detalhes=True):
 
 def cadastrar_ativo_tela(ativos):
     print("\nCadastro de ativo")
+    identificador = ler_inteiro("ID único do ativo: ")
+    if consultar_por_id(ativos, identificador) is not None:
+        print("Já existe um ativo com esse ID.")
+        return False
     try:
-        ativo = cadastrar_ativo(ativos, ler_inteiro("ID único do ativo: "),
+        ativo = cadastrar_ativo(ativos, identificador,
             ler_texto("Nome ou hostname: "), ler_texto("Responsável: "),
             ler_texto("Setor ou localização: "), escolher_tipo_ativo(),
             escolher_item("Criticidade: ", CRITICIDADES))
@@ -163,8 +205,11 @@ def atualizar_ativo_tela(ativos):
     nome = ler_texto(f"Nome ou hostname [{ativo.nome}]: ", False)
     responsavel = ler_texto(f"Responsável [{ativo.responsavel}]: ", False)
     localizacao = ler_texto(f"Setor ou localização [{ativo.localizacao}]: ", False)
-    tipo = escolher_tipo_ativo(True) if ler_sim_ou_nao("Alterar o tipo? (s/n): ") else None
-    criticidade = escolher_item("Criticidade: ", CRITICIDADES, True) if ler_sim_ou_nao("Alterar a criticidade? (s/n): ") else None
+    tipo = escolher_tipo_ativo(True)
+    criticidade = escolher_item("Criticidade: ", CRITICIDADES, True)
+    if not any([nome, responsavel, localizacao, tipo is not None, criticidade is not None]):
+        print("Nenhum campo foi alterado.")
+        return False
     try:
         atualizar_ativo(ativos, identificador, nome, responsavel, localizacao, tipo, criticidade)
         print("Ativo atualizado com sucesso. A alteração está no histórico.")
@@ -195,11 +240,20 @@ def remover_ativo_tela(ativos):
 
 def cadastrar_vulnerabilidade_tela(ativos):
     print("\nCadastro de vulnerabilidade")
+    identificador = ler_inteiro("ID do ativo afetado: ")
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        print("Ativo não encontrado.")
+        return False
+    cve = ler_cve("CVE (ex.: CVE-2024-1234): ")
+    if buscar_vulnerabilidade(ativo, cve) is not None:
+        print("Esta vulnerabilidade já foi cadastrada para o ativo.")
+        return False
     try:
-        vulnerabilidade = cadastrar_vulnerabilidade(ativos, ler_inteiro("ID do ativo afetado: "),
-            ler_texto("CVE (ex.: CVE-2024-1234): "), ler_texto("CWE (ex.: CWE-79): "),
-            ler_texto("Nota CVSS (0.0 a 10.0): "), ler_texto("Descrição: "),
-            ler_texto("Fonte verificável (URL ou órgão): "), ler_texto("Data da fonte (dd/mm/aaaa): "),
+        vulnerabilidade = cadastrar_vulnerabilidade(ativos, identificador, cve,
+            ler_cwe("CWE (ex.: CWE-79): "), ler_cvss("Nota CVSS (0.0 a 10.0): "),
+            ler_texto("Descrição: "), ler_texto("Fonte verificável (URL ou órgão): "),
+            ler_data_fonte("Data da fonte (dd/mm/aaaa): "),
             ler_texto("Impacto no ativo: "), escolher_item("Prioridade: ", SEVERIDADES),
             ler_texto("Tratamento planejado: "), escolher_item("Status: ", STATUS),
             ler_texto("Como será verificado o tratamento: "))
@@ -230,13 +284,23 @@ def consultar_vulnerabilidades_tela(ativos):
 def atualizar_vulnerabilidade_tela(ativos):
     print("\nAtualização de vulnerabilidade")
     identificador = ler_inteiro("ID do ativo afetado: ")
-    cve = ler_texto("CVE da vulnerabilidade: ")
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        print("Ativo não encontrado.")
+        return False
+    cve = ler_cve("CVE da vulnerabilidade: ")
+    if buscar_vulnerabilidade(ativo, cve) is None:
+        print("Vulnerabilidade não encontrada para este ativo.")
+        return False
     print("Deixe em branco para manter o valor atual.")
     descricao = ler_texto("Nova descrição: ", False)
     prioridade = escolher_item("Nova prioridade: ", SEVERIDADES, True)
     tratamento = ler_texto("Novo tratamento: ", False)
     status = escolher_item("Novo status: ", STATUS, True)
     verificacao = ler_texto("Nova verificação: ", False)
+    if not any([descricao, prioridade, tratamento, status, verificacao]):
+        print("Nenhum campo foi alterado.")
+        return False
     try:
         atualizar_vulnerabilidade(ativos, identificador, cve, descricao, prioridade,
                                   tratamento, status, verificacao)
@@ -250,7 +314,16 @@ def atualizar_vulnerabilidade_tela(ativos):
 def remover_vulnerabilidade_tela(ativos):
     print("\nRemoção de vulnerabilidade")
     identificador = ler_inteiro("ID do ativo afetado: ")
-    cve = ler_texto("CVE da vulnerabilidade: ")
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        print("Ativo não encontrado.")
+        return False
+    cve = ler_cve("CVE da vulnerabilidade: ")
+    vulnerabilidade = buscar_vulnerabilidade(ativo, cve)
+    if vulnerabilidade is None:
+        print("Vulnerabilidade não encontrada para este ativo.")
+        return False
+    print(f"Confirme o alvo: {vulnerabilidade.cve} - {vulnerabilidade.descricao}.")
     try:
         if excluir_vulnerabilidade(
                 ativos, identificador, cve,
@@ -276,8 +349,8 @@ def mostrar_menu():
     print("INVENTÁRIO DE ATIVOS E VULNERABILIDADES")
     print("1 - Cadastrar ativo\n2 - Listar ativos\n3 - Buscar ativo\n4 - Atualizar ativo")
     print("5 - Remover ativo\n6 - Cadastrar vulnerabilidade\n7 - Consultar vulnerabilidades")
-    print("8 - Salvar dados\n9 - Mostrar resumo do inventário")
-    print("10 - Atualizar vulnerabilidade\n11 - Remover vulnerabilidade\n0 - Sair")
+    print("8 - Atualizar vulnerabilidade\n9 - Remover vulnerabilidade")
+    print("10 - Mostrar resumo do inventário\n0 - Sair")
 
 
 def executar_programa(ativos, caminho_dados):
@@ -301,13 +374,11 @@ def executar_programa(ativos, caminho_dados):
         elif opcao == "7":
             consultar_vulnerabilidades_tela(ativos)
         elif opcao == "8":
-            salvar_ativos(ativos, caminho_dados)
-        elif opcao == "9":
-            mostrar_resumo(ativos)
-        elif opcao == "10":
             alterou = atualizar_vulnerabilidade_tela(ativos)
-        elif opcao == "11":
+        elif opcao == "9":
             alterou = remover_vulnerabilidade_tela(ativos)
+        elif opcao == "10":
+            mostrar_resumo(ativos)
         elif opcao == "0":
             salvar_ativos(ativos, caminho_dados)
             print("Programa encerrado.")

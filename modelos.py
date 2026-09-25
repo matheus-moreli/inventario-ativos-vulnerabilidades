@@ -61,19 +61,19 @@ class Vulnerabilidade:
 
     @classmethod
     def de_dicionario(cls, dados):
-        """Reconstrói o objeto ao ler um JSON, inclusive um registro da Sprint 1."""
+        """Reconstrói uma vulnerabilidade a partir dos dados completos do JSON."""
         return cls(
-            dados.get("cve", "Não informado"),
-            dados.get("cwe", "Não informado"),
-            dados.get("cvss", 0.0),
-            dados.get("descricao", "Sem descrição"),
-            dados.get("fonte", "Não informada"),
-            dados.get("data_fonte", "Não informada"),
-            dados.get("impacto", "Não informado"),
-            dados.get("prioridade", dados.get("severidade", "Baixa")),
-            dados.get("tratamento", "Não informado"),
-            dados.get("status", "Aberta"),
-            dados.get("verificacao", "Pendente"),
+            dados["cve"],
+            dados["cwe"],
+            dados["cvss"],
+            dados["descricao"],
+            dados["fonte"],
+            dados["data_fonte"],
+            dados["impacto"],
+            dados["prioridade"],
+            dados["tratamento"],
+            dados["status"],
+            dados["verificacao"],
         )
 
 
@@ -113,9 +113,9 @@ class Ativo:
 
     @classmethod
     def de_dicionario(cls, dados):
-        """Reconstrói um ativo salvo e mantém compatibilidade com a Sprint 1."""
+        """Reconstrói um ativo salvo a partir dos dados completos do JSON."""
         vulnerabilidades = []
-        for vulnerabilidade in dados.get("vulnerabilidades", []):
+        for vulnerabilidade in dados["vulnerabilidades"]:
             vulnerabilidades.append(Vulnerabilidade.de_dicionario(vulnerabilidade))
         return cls(
             dados["id"],
@@ -123,7 +123,7 @@ class Ativo:
             dados["responsavel"],
             dados["localizacao"],
             dados["tipo"],
-            dados.get("criticidade", "Média"),
+            dados["criticidade"],
             vulnerabilidades,
-            dados.get("historico", []),
+            dados["historico"],
         )

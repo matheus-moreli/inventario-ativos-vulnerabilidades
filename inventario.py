@@ -1,5 +1,7 @@
 """Regras de negócio do CRUD. Este arquivo não usa input nem print."""
 
+from datetime import datetime
+
 from modelos import (Ativo, CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo,
                      Vulnerabilidade)
 
@@ -54,12 +56,63 @@ def validar_cwe(cwe):
     return texto
 
 
+def validar_data_fonte(data_fonte):
+    """Exige a data no formato dd/mm/aaaa informado pela própria tela."""
+    texto = validar_texto(data_fonte, "Data da fonte")
+    try:
+        datetime.strptime(texto, "%d/%m/%Y")
+    except ValueError:
+        raise DadosInvalidosError("Data inválida. Use o formato dd/mm/aaaa.")
+    return texto
+
+
 def validar_tipo_ativo(tipo):
     """Confirma que o código pertence ao Enum antes de salvar o ativo."""
+    if isinstance(tipo, bool):
+        raise DadosInvalidosError("Tipo de ativo inválido.")
     try:
         return TipoAtivo(tipo).value
     except (ValueError, TypeError):
         raise DadosInvalidosError("Tipo de ativo inválido.")
+
+
+def validar_ativo_carregado(ativo):
+    """Confere o JSON carregado antes de permitir que ele seja usado no menu."""
+    if type(ativo.id) is not int or ativo.id <= 0:
+        raise DadosInvalidosError("ID inválido no arquivo de dados.")
+    ativo.nome = validar_texto(ativo.nome, "Nome ou hostname")
+    ativo.responsavel = validar_texto(ativo.responsavel, "Responsável")
+    ativo.localizacao = validar_texto(ativo.localizacao, "Setor ou localização")
+    ativo.tipo = validar_tipo_ativo(ativo.tipo)
+    ativo.criticidade = validar_opcao(ativo.criticidade, CRITICIDADES, "Criticidade")
+    if not isinstance(ativo.historico, list):
+        raise DadosInvalidosError("Histórico inválido no arquivo de dados.")
+
+    if not isinstance(ativo.vulnerabilidades, list):
+        raise DadosInvalidosError("Vulnerabilidades inválidas no arquivo de dados.")
+
+    cves_encontrados = set()
+    for vulnerabilidade in ativo.vulnerabilidades:
+        vulnerabilidade.cve = validar_cve(vulnerabilidade.cve)
+        if vulnerabilidade.cve in cves_encontrados:
+            raise DadosInvalidosError("CVE repetido no arquivo de dados.")
+        cves_encontrados.add(vulnerabilidade.cve)
+        vulnerabilidade.cwe = validar_cwe(vulnerabilidade.cwe)
+        vulnerabilidade.cvss = validar_cvss(vulnerabilidade.cvss)
+        vulnerabilidade.descricao = validar_texto(vulnerabilidade.descricao, "Descrição")
+        vulnerabilidade.fonte = validar_texto(vulnerabilidade.fonte, "Fonte")
+        vulnerabilidade.data_fonte = validar_data_fonte(vulnerabilidade.data_fonte)
+        vulnerabilidade.impacto = validar_texto(vulnerabilidade.impacto, "Impacto")
+        vulnerabilidade.prioridade = validar_opcao(
+            vulnerabilidade.prioridade, SEVERIDADES, "Prioridade")
+        vulnerabilidade.tratamento = validar_texto(vulnerabilidade.tratamento, "Tratamento")
+        vulnerabilidade.status = validar_opcao(vulnerabilidade.status, STATUS, "Status")
+        vulnerabilidade.verificacao = validar_texto(
+            vulnerabilidade.verificacao, "Verificação")
+        if (vulnerabilidade.status == "Corrigida" and
+                vulnerabilidade.verificacao.lower() == "pendente"):
+            raise DadosInvalidosError("Correção sem verificação no arquivo de dados.")
+    return ativo
 
 
 def cadastrar_ativo(ativos, identificador, nome, responsavel, localizacao,
@@ -67,7 +120,7 @@ def cadastrar_ativo(ativos, identificador, nome, responsavel, localizacao,
     """Cria um ativo completo, sem alterar a base quando os dados forem inválidos."""
     if identificador in ativos:
         raise DadosInvalidosError("Já existe um ativo com esse ID.")
-    if not isinstance(identificador, int) or identificador <= 0:
+    if type(identificador) is not int or identificador <= 0:
         raise DadosInvalidosError("ID deve ser um número inteiro maior que zero.")
     ativo = Ativo(
         identificador,
@@ -103,28 +156,43 @@ def filtrar_ativos(ativos, termo="", tipo=None, criticidade=None):
 
 def atualizar_ativo(ativos, identificador, nome=None, responsavel=None,
                     localizacao=None, tipo=None, criticidade=None):
-    """Altera apenas campos permitidos e preserva para sempre o ID do ativo."""
+    """Altera campos permitidos somente depois de validar todos os novos valores."""
     ativo = consultar_por_id(ativos, identificador)
     if ativo is None:
         raise DadosInvalidosError("Ativo não encontrado.")
 
     alteracoes = []
     if nome is not None and nome != "":
-        ativo.nome = validar_texto(nome, "Nome ou hostname")
+        novo_nome = validar_texto(nome, "Nome ou hostname")
         alteracoes.append("nome")
+    else:
+        novo_nome = ativo.nome
     if responsavel is not None and responsavel != "":
-        ativo.responsavel = validar_texto(responsavel, "Responsável")
+        novo_responsavel = validar_texto(responsavel, "Responsável")
         alteracoes.append("responsável")
+    else:
+        novo_responsavel = ativo.responsavel
     if localizacao is not None and localizacao != "":
-        ativo.localizacao = validar_texto(localizacao, "Setor ou localização")
+        nova_localizacao = validar_texto(localizacao, "Setor ou localização")
         alteracoes.append("localização")
+    else:
+        nova_localizacao = ativo.localizacao
     if tipo is not None:
-        ativo.tipo = validar_tipo_ativo(tipo)
+        novo_tipo = validar_tipo_ativo(tipo)
         alteracoes.append("tipo")
+    else:
+        novo_tipo = ativo.tipo
     if criticidade is not None:
-        ativo.criticidade = validar_opcao(criticidade, CRITICIDADES, "Criticidade")
+        nova_criticidade = validar_opcao(criticidade, CRITICIDADES, "Criticidade")
         alteracoes.append("criticidade")
+    else:
+        nova_criticidade = ativo.criticidade
     if alteracoes:
+        ativo.nome = novo_nome
+        ativo.responsavel = novo_responsavel
+        ativo.localizacao = nova_localizacao
+        ativo.tipo = novo_tipo
+        ativo.criticidade = nova_criticidade
         ativo.registrar_historico("Campos alterados: " + ", ".join(alteracoes) + ".")
     return ativo
 
@@ -151,19 +219,20 @@ def cadastrar_vulnerabilidade(ativos, identificador, cve, cwe, cvss,
     cve = validar_cve(cve)
     if buscar_vulnerabilidade(ativo, cve) is not None:
         raise DadosInvalidosError("Esta vulnerabilidade já foi cadastrada para o ativo.")
-    vulnerabilidade = Vulnerabilidade(
-        cve,
-        validar_cwe(cwe),
-        validar_cvss(cvss),
-        validar_texto(descricao, "Descrição"),
-        validar_texto(fonte, "Fonte"),
-        validar_texto(data_fonte, "Data da fonte"),
-        validar_texto(impacto, "Impacto"),
-        validar_opcao(prioridade, SEVERIDADES, "Prioridade"),
-        validar_texto(tratamento, "Tratamento"),
-        validar_opcao(status, STATUS, "Status"),
-        validar_texto(verificacao, "Verificação"),
-    )
+    cwe = validar_cwe(cwe)
+    cvss = validar_cvss(cvss)
+    descricao = validar_texto(descricao, "Descrição")
+    fonte = validar_texto(fonte, "Fonte")
+    data_fonte = validar_data_fonte(data_fonte)
+    impacto = validar_texto(impacto, "Impacto")
+    prioridade = validar_opcao(prioridade, SEVERIDADES, "Prioridade")
+    tratamento = validar_texto(tratamento, "Tratamento")
+    status = validar_opcao(status, STATUS, "Status")
+    verificacao = validar_texto(verificacao, "Verificação")
+    if status == "Corrigida" and verificacao.lower() == "pendente":
+        raise DadosInvalidosError("Informe como a correção foi verificada antes de concluir.")
+    vulnerabilidade = Vulnerabilidade(cve, cwe, cvss, descricao, fonte, data_fonte,
+                                      impacto, prioridade, tratamento, status, verificacao)
     ativo.vulnerabilidades.append(vulnerabilidade)
     ativo.registrar_historico(f"Vulnerabilidade {vulnerabilidade.cve} cadastrada.")
     return vulnerabilidade
@@ -190,25 +259,35 @@ def atualizar_vulnerabilidade(ativos, identificador, cve, descricao=None,
         raise DadosInvalidosError("Vulnerabilidade não encontrada para este ativo.")
 
     alteracoes = []
-    if descricao:
-        vulnerabilidade.descricao = validar_texto(descricao, "Descrição")
+    nova_descricao = vulnerabilidade.descricao
+    nova_prioridade = vulnerabilidade.prioridade
+    novo_tratamento = vulnerabilidade.tratamento
+    novo_status = vulnerabilidade.status
+    nova_verificacao = vulnerabilidade.verificacao
+
+    if descricao is not None and descricao != "":
+        nova_descricao = validar_texto(descricao, "Descrição")
         alteracoes.append("descrição")
-    if prioridade:
-        vulnerabilidade.prioridade = validar_opcao(prioridade, SEVERIDADES, "Prioridade")
+    if prioridade is not None and prioridade != "":
+        nova_prioridade = validar_opcao(prioridade, SEVERIDADES, "Prioridade")
         alteracoes.append("prioridade")
-    if tratamento:
-        vulnerabilidade.tratamento = validar_texto(tratamento, "Tratamento")
+    if tratamento is not None and tratamento != "":
+        novo_tratamento = validar_texto(tratamento, "Tratamento")
         alteracoes.append("tratamento")
-    if verificacao:
-        vulnerabilidade.verificacao = validar_texto(verificacao, "Verificação")
+    if verificacao is not None and verificacao != "":
+        nova_verificacao = validar_texto(verificacao, "Verificação")
         alteracoes.append("verificação")
-    if status:
+    if status is not None and status != "":
         novo_status = validar_opcao(status, STATUS, "Status")
-        if novo_status == "Corrigida" and vulnerabilidade.verificacao == "Pendente":
-            raise DadosInvalidosError("Informe como a correção foi verificada antes de concluir.")
-        vulnerabilidade.status = novo_status
         alteracoes.append("status")
+    if novo_status == "Corrigida" and nova_verificacao.lower() == "pendente":
+        raise DadosInvalidosError("Informe como a correção foi verificada antes de concluir.")
     if alteracoes:
+        vulnerabilidade.descricao = nova_descricao
+        vulnerabilidade.prioridade = nova_prioridade
+        vulnerabilidade.tratamento = novo_tratamento
+        vulnerabilidade.status = novo_status
+        vulnerabilidade.verificacao = nova_verificacao
         ativo.registrar_historico(
             f"Vulnerabilidade {cve} atualizada: " + ", ".join(alteracoes) + ".")
     return vulnerabilidade

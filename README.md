@@ -18,7 +18,7 @@ O arquivo `dados/inventario.json` será criado quando houver dados para salvar.
 python -m unittest -v test_sprint2.py
 ```
 
-Os 14 testes usam dados temporários, não alteram `dados/inventario.json` e não exigem internet nem bibliotecas externas.
+Os 20 testes usam dados temporários, não alteram `dados/inventario.json` e não exigem internet nem bibliotecas externas.
 
 ## Organização
 

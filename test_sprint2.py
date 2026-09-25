@@ -5,6 +5,7 @@ Cada teste cria dados próprios e não usa dados/inventario.json.
 """
 
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -47,6 +48,8 @@ class TesteInventario(unittest.TestCase):
     def test_tipo_invalido_e_rejeitado(self):
         with self.assertRaises(DadosInvalidosError):
             cadastrar_ativo(self.ativos, 20, "APP", "TI", "Nuvem", 99, "Média")
+        with self.assertRaises(DadosInvalidosError):
+            cadastrar_ativo(self.ativos, 20, "APP", "TI", "Nuvem", True, "Média")
 
     def test_filtro_nao_altera_a_base(self):
         resultado = filtrar_ativos(self.ativos, termo="srv", criticidade="Alta")
@@ -60,6 +63,13 @@ class TesteInventario(unittest.TestCase):
         self.assertEqual(ativo.responsavel, "Segurança")
         self.assertEqual(ativo.criticidade, "Crítica")
         self.assertGreaterEqual(len(ativo.historico), 2)
+
+    def test_atualizacao_invalida_nao_altera_o_ativo(self):
+        ativo = self.ativos[10]
+        with self.assertRaises(DadosInvalidosError):
+            atualizar_ativo(self.ativos, 10, nome="NOVO-NOME", responsavel="   ")
+        self.assertEqual(ativo.nome, "SRV-ARQUIVOS")
+        self.assertEqual(ativo.responsavel, "Equipe TI")
 
     def test_exclusao_exige_confirmacao(self):
         self.assertFalse(excluir_ativo(self.ativos, 10, False))
@@ -84,6 +94,11 @@ class TesteInventario(unittest.TestCase):
             cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", "nan",
                 "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
 
+    def test_data_da_fonte_invalida_e_rejeitada(self):
+        with self.assertRaises(DadosInvalidosError):
+            cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
+                "Teste", "Fonte", "2026-01-01", "Impacto", "Alta", "Tratar")
+
     def test_cve_duplicado_no_mesmo_ativo_e_rejeitado(self):
         self.cadastrar_vulnerabilidade_de_exemplo()
         with self.assertRaises(DadosInvalidosError):
@@ -97,6 +112,17 @@ class TesteInventario(unittest.TestCase):
         self.assertEqual(vulnerabilidade.status, "Em tratamento")
         self.assertEqual(vulnerabilidade.verificacao, "Revisar versão")
         self.assertIn("atualizada", self.ativos[10].historico[-1])
+
+    def test_atualizacao_invalida_nao_altera_a_vulnerabilidade(self):
+        cadastrar_vulnerabilidade(
+            self.ativos, 10, "CVE-2024-5678", "CWE-79", 5,
+            "Descrição original", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+        vulnerabilidade = self.ativos[10].vulnerabilidades[0]
+        with self.assertRaises(DadosInvalidosError):
+            atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-5678",
+                                      descricao="Descrição nova", status="Corrigida")
+        self.assertEqual(vulnerabilidade.descricao, "Descrição original")
+        self.assertEqual(vulnerabilidade.status, "Aberta")
 
     def test_remocao_de_vulnerabilidade_exige_confirmacao(self):
         self.cadastrar_vulnerabilidade_de_exemplo()
@@ -113,6 +139,13 @@ class TesteInventario(unittest.TestCase):
         with self.assertRaises(DadosInvalidosError):
             atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-5678", status="Corrigida")
 
+    def test_cadastro_corrigido_exige_verificacao(self):
+        with self.assertRaises(DadosInvalidosError):
+            cadastrar_vulnerabilidade(
+                self.ativos, 10, "CVE-2024-9999", "CWE-79", 5,
+                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar",
+                "Corrigida", "Pendente")
+
     def test_json_invalido_nao_e_substituido(self):
         with tempfile.TemporaryDirectory() as pasta:
             caminho = os.path.join(pasta, "inventario.json")
@@ -125,12 +158,55 @@ class TesteInventario(unittest.TestCase):
                 self.assertEqual(arquivo.read(), conteudo_invalido)
 
     def test_json_preserva_dados(self):
+        vulnerabilidade = self.cadastrar_vulnerabilidade_de_exemplo()
         with tempfile.TemporaryDirectory() as pasta:
             caminho = os.path.join(pasta, "inventario.json")
             self.assertTrue(salvar_ativos(self.ativos, caminho))
             recarregados = carregar_ativos(caminho)
         self.assertEqual(recarregados[10].nome, "SRV-ARQUIVOS")
         self.assertEqual(recarregados[10].criticidade, "Alta")
+        self.assertEqual(recarregados[10].vulnerabilidades[0].cve, vulnerabilidade.cve)
+        self.assertEqual(recarregados[10].vulnerabilidades[0].cvss, 7.5)
+
+    def test_json_com_id_inconsistente_e_rejeitado(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            dados = {
+                "10": {
+                    "id": 99,
+                    "nome": "SRV-ARQUIVOS",
+                    "responsavel": "Equipe TI",
+                    "localizacao": "Datacenter",
+                    "tipo": 2,
+                    "criticidade": "Alta",
+                    "vulnerabilidades": [],
+                    "historico": [],
+                }
+            }
+            with open(caminho, "w", encoding="utf-8") as arquivo:
+                json.dump(dados, arquivo)
+            with redirect_stdout(io.StringIO()):
+                self.assertIsNone(carregar_ativos(caminho))
+
+    def test_json_com_regra_invalida_e_rejeitado(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            dados = {
+                "10": {
+                    "id": 10,
+                    "nome": "SRV-ARQUIVOS",
+                    "responsavel": "Equipe TI",
+                    "localizacao": "Datacenter",
+                    "tipo": 99,
+                    "criticidade": "Alta",
+                    "vulnerabilidades": [],
+                    "historico": [],
+                }
+            }
+            with open(caminho, "w", encoding="utf-8") as arquivo:
+                json.dump(dados, arquivo)
+            with redirect_stdout(io.StringIO()):
+                self.assertIsNone(carregar_ativos(caminho))
 
 
 if __name__ == "__main__":

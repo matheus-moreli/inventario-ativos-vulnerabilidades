@@ -3,7 +3,7 @@
 import json
 import os
 
-from inventario import DadosInvalidosError
+from inventario import DadosInvalidosError, validar_ativo_carregado
 from modelos import Ativo
 
 
@@ -18,8 +18,13 @@ def carregar_ativos(caminho):
             raise DadosInvalidosError("A base deve conter ativos por ID.")
         ativos = {}
         for identificador, dados_ativo in dados.items():
+            if not isinstance(dados_ativo, dict):
+                raise ValueError("Ativo inválido no arquivo de dados.")
+            chave = int(identificador)
             ativo = Ativo.de_dicionario(dados_ativo)
-            ativos[int(identificador)] = ativo
+            if ativo.id != chave:
+                raise ValueError("ID do ativo não corresponde à chave do arquivo.")
+            ativos[chave] = validar_ativo_carregado(ativo)
         return ativos
     except (OSError, json.JSONDecodeError, ValueError, KeyError, TypeError,
             AttributeError, DadosInvalidosError):
