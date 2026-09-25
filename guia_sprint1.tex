@@ -83,42 +83,37 @@ O arquivo principal do programa é \texttt{app.py}. Na Sprint 2, o código foi d
 
 O sistema registra ativos de TI, como notebooks, servidores, roteadores, aplicações e bancos de dados. Para cada ativo, podem ser adicionadas vulnerabilidades, isto é, problemas ou riscos de segurança encontrados naquele item.
 
-Um ativo possui os campos ID, nome, responsável, localização, tipo e uma lista de vulnerabilidades. O ID é um número inteiro único. Ele identifica o ativo sem ambiguidade, mesmo que duas pessoas usem nomes parecidos.
+Um ativo possui os campos ID, nome, responsável, localização, tipo, importância para a segurança e uma lista de vulnerabilidades. O ID é um número inteiro único. Ele identifica o ativo sem ambiguidade, mesmo que duas pessoas usem nomes parecidos. Na versão final, os dados são organizados em objetos simples, mas o dicionário externo continua usando o ID como chave.
 
 \begin{lstlisting}[language=Python,caption={Formato dos dados na memória}]
-ativos = {
-    10: {
-        "id": 10,
-        "nome": "SRV-ARQUIVOS",
-        "responsavel": "TI",
-        "localizacao": "Sala 02",
-        "tipo": 2,
-        "vulnerabilidades": [
-            {
-                "descricao": "Sistema desatualizado",
-                "categoria": "Atualizacao",
-                "severidade": "Alta",
-                "status": "Aberta"
-            }
-        ]
-    }
-}
+ativo_servidor = Ativo(
+    10, "SRV-ARQUIVOS", "TI", "Sala 02",
+    TipoAtivo.SERVIDOR, "Alta"
+)
+vulnerabilidade = Vulnerabilidade(
+    "CVE-2021-44228", "CWE-502", 10.0,
+    "Falha conhecida", "NVD", "2026-09-25",
+    "Alto", "Critica", "Atualizar", "Aberta", ""
+)
+ativo_servidor.vulnerabilidades.append(vulnerabilidade)
+
+ativos = {10: ativo_servidor}
 \end{lstlisting}
 
-O dicionário externo usa o ID como chave. Assim, a pergunta ``já existe um ativo com este ID?'' pode ser respondida diretamente com \texttt{if identificador in ativos}. Dentro de cada ativo, outro dicionário usa nomes claros para os campos: \texttt{ativo["responsavel"]} é mais fácil de entender do que uma posição numérica em uma lista. A lista \texttt{vulnerabilidades} é usada porque um ativo pode ter nenhuma, uma ou várias vulnerabilidades.
+O dicionário externo usa o ID como chave. Assim, a pergunta ``já existe um ativo com este ID?'' pode ser respondida diretamente com \texttt{if identificador in ativos}. Cada chave aponta para um objeto \texttt{Ativo}, cujos atributos têm nomes claros, como \texttt{ativo.responsavel}. A lista \texttt{vulnerabilidades} pertence a esse objeto porque um ativo pode ter nenhuma, uma ou várias vulnerabilidades.
 
 \section{Fluxo do programa}
 
-Quando \texttt{executar\_programa()} começa, ela chama \texttt{carregar\_ativos()} para recuperar o JSON salvo. Em seguida, o programa permanece em um laço até a opção de saída ser escolhida.
+O ponto de entrada \texttt{iniciar()}, em \texttt{app.py}, chama \texttt{carregar\_ativos()} para recuperar o JSON salvo e só então inicia \texttt{executar\_programa()}. Se o arquivo estiver inválido, o programa encerra sem sobrescrevê-lo. Depois disso, o menu permanece em um laço até a saída ser escolhida.
 
 \begin{enumerate}
   \item \textbf{Carregar:} o programa tenta ler o arquivo JSON. Caso ele não exista, começa com um dicionário vazio, \texttt{\{\}}.
   \item \textbf{Mostrar:} \texttt{mostrar\_menu()} exibe as opções no terminal.
-  \item \textbf{Ler:} funções de entrada recebem a opção e os dados digitados.
+  \item \textbf{Ler:} menus e categorias usam as setas para cima e para baixo com \texttt{Enter}; campos de texto recebem o dado digitado.
   \item \textbf{Validar:} o programa verifica campos vazios, números inválidos, IDs repetidos e escolhas inexistentes.
   \item \textbf{Executar:} uma condição \texttt{if/elif/else} chama a funcionalidade escolhida.
   \item \textbf{Salvar:} depois de cadastrar, alterar ou remover, o JSON é regravado.
-  \item \textbf{Sair:} a opção 0 encerra o laço com \texttt{break}.
+  \item \textbf{Sair:} a opção 0 tenta salvar. Se houver falha, a pessoa pode tentar novamente ou sair conscientemente sem gravar as últimas alterações.
 \end{enumerate}
 
 \section{Fundamentos de Python}
@@ -220,7 +215,7 @@ else:
 O operador \texttt{in} pergunta se algo pertence a uma coleção. Como o ID é uma chave do dicionário \texttt{ativos}, essa condição verifica diretamente se a chave já existe.
 
 \projeto
-O menu utiliza \texttt{if/elif/else} para chamar a função correspondente à opção. A busca decide entre encontrado e não encontrado. A remoção só ocorre após a confirmação ``SIM''. Cada situação é uma pergunta que produz verdadeiro ou falso.
+O menu utiliza \texttt{if/elif/else} para chamar a função correspondente à opção. A busca decide entre encontrado e não encontrado. A remoção só ocorre após uma confirmação explícita: a opção inicial é \texttt{Cancelar} e a pessoa precisa selecionar \texttt{Confirmar}. Cada situação é uma pergunta que produz verdadeiro ou falso.
 
 \referencia{https://trello.com/c/QvZa8m7a}{S1\_07 no Trello}
 
@@ -263,7 +258,7 @@ print(resultado)  # SRV-ARQUIVOS
 Depois de \texttt{def}, escrevemos o nome da função, os parâmetros entre parênteses e dois-pontos. O corpo precisa ficar recuado. A variável \texttt{texto\_limpo} só é usada dentro daquela execução; o valor devolvido é guardado em \texttt{resultado}.
 
 \projeto
-\texttt{cadastrar\_ativo()}, \texttt{buscar\_ativo()}, \texttt{salvar\_ativos()} e \texttt{carregar\_ativos()} separam responsabilidades. \texttt{executar\_programa()} coordena o fluxo, sem precisar conter todos os detalhes de cadastro e arquivo.
+\texttt{cadastrar\_ativo()}, \texttt{consultar\_por\_id()}, \texttt{salvar\_ativos()} e \texttt{carregar\_ativos()} separam responsabilidades. \texttt{executar\_programa()} coordena o fluxo, sem precisar conter todos os detalhes de cadastro e arquivo.
 
 \referencia{https://trello.com/c/XWD40Pgo}{S1\_09 no Trello}
 
@@ -289,7 +284,7 @@ print(ativo["nome"])
 \end{itemize}
 
 \projeto
-O inventário usa um dicionário principal com ID como chave. Cada ativo é outro dicionário com campos nomeados. O campo \texttt{vulnerabilidades} é uma lista porque novas vulnerabilidades podem ser adicionadas. Tuplas e sets não foram forçados no código porque não resolvem uma necessidade melhor que as estruturas escolhidas; saber justificar isso também demonstra entendimento.
+O inventário usa um dicionário principal com ID como chave. Cada chave aponta para um objeto \texttt{Ativo}; os dados desse objeto ficam em atributos nomeados. O atributo \texttt{vulnerabilidades} é uma lista porque novas vulnerabilidades podem ser adicionadas. Tuplas e sets não foram forçados no código porque não resolvem uma necessidade melhor que as estruturas escolhidas; saber justificar isso também demonstra entendimento.
 
 \referencia{https://trello.com/c/EurwtLl9}{S1\_10 no Trello}; \href{https://trello.com/c/qEvT77g5}{S1\_11 no Trello}; \href{https://trello.com/c/N1J9NE4k}{S1\_12 no Trello}.
 
@@ -312,7 +307,7 @@ print(tipo.value)  # 2
 \texttt{TipoAtivo(2)} cria o membro cujo valor é 2. \texttt{.name} mostra o nome do membro; \texttt{.value} mostra o código. Se alguém tentar \texttt{TipoAtivo(9)} e esse código não existir, Python gera \texttt{ValueError}. Esse erro é tratado para pedir uma escolha válida.
 
 \projeto
-\texttt{TipoAtivo} possui seis categorias. \texttt{escolher\_tipo\_ativo()} mostra os códigos para a pessoa escolher. O JSON salva o número, e \texttt{nome\_do\_tipo()} transforma esse código em nome legível ao exibir o ativo.
+\texttt{TipoAtivo} possui seis categorias. \texttt{escolher\_tipo\_ativo()} mostra uma lista navegável: as setas para cima e para baixo mudam a opção e \texttt{Enter} confirma. O objeto usa a enumeração durante a execução; ao salvar, ela é convertida para um valor simples do JSON e, ao carregar, volta a ser uma categoria válida.
 
 \referencia{https://trello.com/c/nJrQKljh}{S1\_13 no Trello}; \href{https://docs.python.org/3/library/enum.html}{Documentação do módulo enum}.
 
@@ -324,13 +319,13 @@ Dados guardados apenas em variáveis desaparecem quando o programa fecha. Persis
 import json
 
 with open("dados/inventario.json", "w", encoding="utf-8") as arquivo:
-    json.dump(ativos, arquivo, ensure_ascii=False, indent=4)
+    json.dump(ativos, arquivo, ensure_ascii=False, indent=2)
 
 with open("dados/inventario.json", "r", encoding="utf-8") as arquivo:
     ativos = json.load(arquivo)
 \end{lstlisting}
 
-\texttt{with open(...)} abre o arquivo e o fecha automaticamente ao terminar. O modo \texttt{"w"} escreve e substitui o conteúdo anterior. O modo \texttt{"r"} lê. \texttt{json.dump()} transforma o dicionário Python em JSON; \texttt{json.load()} faz o caminho inverso. \texttt{ensure\_ascii=False} mantém acentos legíveis e \texttt{indent=4} organiza o arquivo.
+\texttt{with open(...)} abre o arquivo e o fecha automaticamente ao terminar. O modo \texttt{"w"} escreve e substitui o conteúdo anterior. O modo \texttt{"r"} lê. \texttt{json.dump()} transforma os dados Python em JSON; \texttt{json.load()} faz o caminho inverso. \texttt{ensure\_ascii=False} mantém acentos legíveis e \texttt{indent=2} organiza o arquivo.
 
 Um detalhe importante: em JSON, as chaves de objetos são texto. Por isso, ao ler o arquivo, as chaves que representam IDs precisam ser convertidas de volta para inteiros antes de serem usadas pelo programa.
 
@@ -355,7 +350,7 @@ else:
 Capturar um erro específico é melhor que escrever apenas \texttt{except:}. Um \texttt{except} vazio esconderia problemas diferentes e dificultaria descobrir o que aconteceu. Ao ler JSON, podem ocorrer arquivo inexistente, erro de leitura, JSON inválido ou formato inesperado. Cada situação recebe uma recuperação e uma mensagem clara.
 
 \projeto
-\texttt{carregar\_ativos()} trata \texttt{OSError}, \texttt{JSONDecodeError}, \texttt{ValueError} e \texttt{DadosInvalidosError}. A exceção personalizada \texttt{DadosInvalidosError} representa uma regra do programa: o conteúdo carregado precisa ser um dicionário de ativos. Se o arquivo estiver corrompido ou tiver formato inválido, o usuário é avisado e o programa é encerrado antes de salvar qualquer coisa. Assim, o arquivo com problema não é sobrescrito por engano.
+\texttt{carregar\_ativos()} trata problemas de leitura, \texttt{JSONDecodeError} e \texttt{DadosInvalidosError}. A exceção personalizada \texttt{DadosInvalidosError} representa uma regra do programa: o conteúdo carregado precisa ter a estrutura esperada de ativos e vulnerabilidades. Se o arquivo estiver corrompido ou tiver formato inválido, o usuário é avisado e o programa é encerrado antes de salvar qualquer coisa. Assim, o arquivo com problema não é sobrescrito por engano.
 
 \referencia{https://trello.com/c/qSZwgosj}{S1\_15 no Trello}; \href{https://docs.python.org/3/tutorial/errors.html}{Tutorial Python: Errors and Exceptions}.
 
@@ -556,6 +551,8 @@ class Ativo:
 
 \texttt{TipoAtivo} é um \texttt{IntEnum}. Ele associa nomes claros a códigos inteiros, como \texttt{SERVIDOR = 2}. Isso atende ao requisito de possuir categorias padronizadas sem espalhar números sem significado pelo código.
 
+No terminal do Windows, o menu principal e categorias como tipo de ativo, importância, prioridade e status são escolhidos com as setas para cima e para baixo e confirmados com \texttt{Enter}. O programa mostra o item atualmente selecionado e converte a escolha para o texto padronizado antes de salvar. Nos formulários, a seta para a esquerda retorna ao campo anterior; a seta para a direita avança apenas quando aquele campo já possui uma resposta válida. Ao voltar, o valor anterior continua no campo para ser corrigido com \texttt{Backspace} ou complementado. Assim, não é necessário digitar acentos nem lembrar a escrita exata de cada opção.
+
 \referencia{https://trello.com/c/ALQSY6p9}{S2\_01 no Trello}; \href{https://trello.com/c/hu3YSI6L}{S2\_02 no Trello}.
 
 \cardsection{S2\_03, S2\_08 a S2\_11 -- CRUD de ativos}
@@ -567,7 +564,7 @@ def consultar_por_id(ativos, identificador):
     return ativos.get(identificador)
 \end{lstlisting}
 
-\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado logo após sua digitação. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e importância do ativo para a segurança podem mudar, mas a identidade do ativo é preservada. O termo \emph{criticidade} é usado internamente porque o checklist pede valores padronizados, mas a tela explica que ele representa a importância do ativo, e não a severidade de uma falha. Antes de alterar o objeto, todos os valores novos são validados; portanto, uma entrada inválida não deixa o ativo parcialmente modificado. Na exclusão, a tela mostra o alvo e exige a palavra \texttt{SIM}; ao remover o ativo, sua lista de vulnerabilidades também desaparece junto.
+\texttt{.get()} devolve o valor encontrado ou \texttt{None} quando a chave não existe. Isso evita erro ao buscar um ID ausente. No cadastro, o programa rejeita ID duplicado logo após sua digitação. Na atualização, o ID não é modificável: nome, responsável, localização, tipo e importância do ativo para a segurança podem mudar, mas a identidade do ativo é preservada. O termo \emph{criticidade} é usado internamente porque o checklist pede valores padronizados, mas a tela explica que ele representa a importância do ativo, e não a severidade de uma falha. Antes de alterar o objeto, todos os valores novos são validados; portanto, uma entrada inválida não deixa o ativo parcialmente modificado. Na exclusão, a tela mostra o alvo e apresenta uma escolha com \texttt{Cancelar} selecionado inicialmente. Só a opção \texttt{Confirmar} remove o ativo e sua lista de vulnerabilidades.
 
 \referencia{https://trello.com/c/NdgkJaYg}{S2\_03 no Trello}.
 
@@ -578,12 +575,14 @@ Uma vulnerabilidade é uma fragilidade; ameaça é algo que pode explorar uma fr
 Cada vulnerabilidade pertence a um ativo. O par ``ID do ativo + CVE'' a identifica de forma simples: o mesmo CVE pode afetar ativos diferentes, mas não pode aparecer duas vezes no mesmo ativo. As quatro operações também existem para vulnerabilidades: cadastrar, consultar, atualizar e remover.
 
 \begin{lstlisting}[language=Python,caption={Validação simples do CVSS}]
-nota = float(cvss)
+nota = float(cvss.replace(",", "."))
 if not 0.0 <= nota <= 10.0:
     raise DadosInvalidosError("CVSS deve estar entre 0.0 e 10.0.")
 \end{lstlisting}
 
-O \texttt{raise} interrompe apenas a operação inválida e a interface mostra uma mensagem compreensível. O menu continua aberto. CVE, CWE, CVSS e a data da fonte são conferidos assim que são digitados, evitando que a pessoa responda todas as perguntas para descobrir um erro inicial. O sistema também exige uma verificação antes de cadastrar ou mudar o status para ``Corrigida'', pois dizer que algo foi corrigido sem evidência não é suficiente. Como na atualização de ativos, os novos dados são todos validados antes de modificar a vulnerabilidade.
+O \texttt{raise} interrompe apenas a operação inválida e a interface mostra uma mensagem compreensível. O menu continua aberto. No CVSS, a vírgula decimal também é aceita: \texttt{9,8} é normalizado para \texttt{9.8} antes da conversão, mas valores fora de 0.0 a 10.0 continuam rejeitados. CVE, CWE, CVSS e a data da fonte são conferidos assim que são digitados, evitando que a pessoa responda todas as perguntas para descobrir um erro inicial. O sistema também exige uma verificação antes de cadastrar ou mudar o status para corrigida, pois dizer que algo foi corrigido sem evidência não é suficiente. Como na atualização de ativos, os novos dados são todos validados antes de modificar a vulnerabilidade.
+
+Para consultar sem decorar códigos, a pessoa pode abrir a lista geral e escolher uma vulnerabilidade com as setas; também pode informar o ID de um ativo para ver apenas suas vulnerabilidades. O filtro avançado permanece disponível quando a busca precisa combinar status, prioridade ou outros critérios. O CVE não é editado depois do cadastro: isso preserva a identidade do registro e evita criar duplicidade por engano.
 
 Como referência de consulta externa, o registro \href{https://nvd.nist.gov/vuln/detail/CVE-2021-44228}{CVE-2021-44228 no NVD} descreve uma vulnerabilidade do Apache Log4j com CVSS 10.0. O programa não consulta o NVD automaticamente: o usuário registra manualmente fonte e data, mantendo a aplicação simples e funcionando sem internet.
 
@@ -627,7 +626,7 @@ Em vez de percorrer todos os itens para achar o ID 10, o código usa \texttt{ati
 python -m unittest -v test_sprint2.py
 \end{lstlisting}
 
-Os 20 testes verificam cadastro, busca, ID duplicado, tipo inválido, filtros, atualização e confirmação de exclusão de ativos. Também verificam CVE, CVSS e data inválidos, CVE duplicado, atualização e remoção de vulnerabilidades, exigência de verificação para correção e proteção do JSON corrompido. Há testes específicos para provar que uma atualização inválida não altera somente uma parte do registro e que um JSON com ID incoerente ou tipo inválido é recusado. Os testes usam arquivos temporários e não alteram \texttt{dados/inventario.json}.
+O conjunto atual possui 33 testes. Eles verificam cadastro, busca, ID duplicado, tipo inválido, filtros, atualização e confirmação de exclusão de ativos. Também verificam CVE, CVSS e data inválidos, CVE duplicado, atualização e remoção de vulnerabilidades, exigência de verificação para correção e proteção do JSON corrompido. Há testes específicos para provar que uma atualização inválida não altera somente uma parte do registro, que vírgula é aceita no CVSS, que os atalhos de voltar e cancelar funcionam e que um JSON com ID incoerente ou tipo inválido é recusado. Os testes usam arquivos temporários e não alteram \texttt{dados/inventario.json}.
 
 Além dos testes automáticos, vale demonstrar o fluxo real no terminal: cadastrar um ativo, vincular uma vulnerabilidade, consultar, atualizar e remover. Assim, a avaliação observa tanto as regras isoladas quanto o programa em uso.
 
@@ -639,10 +638,10 @@ Para demonstrar em cinco minutos:
 \begin{enumerate}
   \item Execute \texttt{python app.py}.
   \item Cadastre um ativo e uma vulnerabilidade associada.
-  \item Consulte o ativo e mostre que a vulnerabilidade está vinculada a ele.
-  \item Atualize o responsável ou o status da vulnerabilidade.
-  \item Tente repetir um ID ou informar CVSS inválido para mostrar a validação.
-  \item Remova uma vulnerabilidade, primeiro cancelando e depois confirmando.
+  \item Consulte pela lista e depois informe o ID do ativo para mostrar que a vulnerabilidade está vinculada a ele.
+  \item Atualize o responsável ou o status da vulnerabilidade; ao escolher corrigida, informe uma verificação.
+  \item Tente repetir um ID, usar um CVSS inválido e depois informe \texttt{9,8} para mostrar a validação decimal.
+  \item Remova uma vulnerabilidade, primeiro mantendo \texttt{Cancelar} e depois escolhendo \texttt{Confirmar}.
   \item Abra o GitHub, mostre \texttt{main}, as Pull Requests e a tag final.
 \end{enumerate}
 

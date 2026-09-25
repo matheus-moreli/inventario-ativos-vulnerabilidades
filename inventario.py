@@ -38,6 +38,10 @@ def validar_cve(cve):
 def validar_cvss(cvss):
     """Converte a nota CVSS e garante o intervalo oficial de 0.0 a 10.0."""
     try:
+        # No Brasil, é comum escrever 9,8. O float do Python usa ponto,
+        # então aceitamos as duas formas antes de converter para número.
+        if isinstance(cvss, str):
+            cvss = cvss.strip().replace(",", ".")
         nota = float(cvss)
     except (TypeError, ValueError):
         raise DadosInvalidosError("CVSS deve ser um número entre 0.0 e 10.0.")

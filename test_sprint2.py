@@ -10,7 +10,13 @@ import os
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest.mock import patch
 
+from interface import (VOLTAR, atualizar_ativo_tela, confirmar_remocao,
+                       consultar_vulnerabilidades_tela, executar_programa,
+                       ler_id_para_operacao, ler_texto_formulario,
+                       ler_verificacao_formulario, resumo_vulnerabilidade,
+                       salvar_com_aviso)
 from inventario import (DadosInvalidosError, atualizar_ativo,
                         atualizar_vulnerabilidade, cadastrar_ativo,
                         cadastrar_vulnerabilidade, consultar_por_id,
@@ -82,6 +88,125 @@ class TesteInventario(unittest.TestCase):
         self.assertEqual(vulnerabilidade.cvss, 7.5)
         resultado = consultar_vulnerabilidades(self.ativos, cve="CVE-2024-1234")
         self.assertEqual(len(resultado), 1)
+
+    def test_resumo_da_vulnerabilidade_identifica_registro_sem_decorar_cve(self):
+        vulnerabilidade = self.cadastrar_vulnerabilidade_de_exemplo()
+        resumo = resumo_vulnerabilidade(self.ativos[10], vulnerabilidade)
+        self.assertIn("CVE-2024-1234", resumo)
+        self.assertIn("CVSS 7.5", resumo)
+        self.assertIn("Alta", resumo)
+        self.assertIn("SRV-ARQUIVOS", resumo)
+
+    def test_consulta_por_lista_abre_vulnerabilidade_sem_digitar_filtros(self):
+        self.cadastrar_vulnerabilidade_de_exemplo()
+        tela = io.StringIO()
+        # Simula: ver todas, abrir a primeira e voltar para a lista.
+        with patch("interface.escolher_com_setas", side_effect=[0, 0, None]), \
+                patch("interface.aguardar_retorno_lista"):
+            with redirect_stdout(tela):
+                consultar_vulnerabilidades_tela(self.ativos)
+        self.assertIn("CVE-2024-1234", tela.getvalue())
+        self.assertIn("SRV-ARQUIVOS", tela.getvalue())
+
+    def test_consulta_por_id_mostra_apenas_vulnerabilidades_do_ativo(self):
+        self.cadastrar_vulnerabilidade_de_exemplo()
+        cadastrar_ativo(self.ativos, 20, "NOTEBOOK-ANA", "Ana", "Sala 2", 1, "Média")
+        cadastrar_vulnerabilidade(
+            self.ativos, 20, "CVE-2025-4321", "CWE-89", "6.0", "Outro teste",
+            "Fonte", "02/01/2026", "Impacto", "Média", "Tratar"
+        )
+        tela = io.StringIO()
+        # Simula: consultar por ID 10, abrir a vulnerabilidade e voltar.
+        with patch("interface.ler_id_para_operacao", return_value=10):
+            with patch("interface.escolher_com_setas", side_effect=[1, 0, None]), \
+                    patch("interface.aguardar_retorno_lista"):
+                with redirect_stdout(tela):
+                    consultar_vulnerabilidades_tela(self.ativos)
+        self.assertIn("CVE-2024-1234", tela.getvalue())
+        self.assertNotIn("CVE-2025-4321", tela.getvalue())
+
+    def test_letra_a_com_crase_nao_e_tratada_como_seta(self):
+        with patch("interface.msvcrt.getwch", side_effect=["à", "\r"]), \
+                patch("interface.msvcrt.kbhit", return_value=False):
+            with redirect_stdout(io.StringIO()):
+                texto = ler_texto_formulario("Localização")
+        self.assertEqual(texto, "à")
+
+    def test_letra_a_com_crase_em_texto_colado_e_preservada(self):
+        with patch("interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), \
+                patch("interface.msvcrt.kbhit", return_value=True):
+            with redirect_stdout(io.StringIO()):
+                texto = ler_texto_formulario("Localização")
+        self.assertEqual(texto, "à r")
+
+    def test_seta_esquerda_cancela_id_em_tela_simples(self):
+        with patch("interface.ler_inteiro_formulario", return_value=VOLTAR):
+            with redirect_stdout(io.StringIO()):
+                self.assertIsNone(ler_id_para_operacao("ID do ativo"))
+
+    def test_correcao_exige_verificacao_antes_de_finalizar_formulario(self):
+        valores = {"status": "Corrigida"}
+        with patch("interface.ler_texto_formulario", side_effect=["Pendente", "Teste aplicado"]):
+            with redirect_stdout(io.StringIO()):
+                verificacao = ler_verificacao_formulario(
+                    valores, "Verificação", obrigatorio=False
+                )
+        self.assertEqual(verificacao, "Teste aplicado")
+
+    def test_correcao_mantem_verificacao_atual_que_ja_e_valida(self):
+        valores = {"status": "Corrigida"}
+        with patch("interface.ler_texto_formulario", return_value=""):
+            with redirect_stdout(io.StringIO()):
+                verificacao = ler_verificacao_formulario(
+                    valores, "Verificação", obrigatorio=False,
+                    verificacao_atual="Teste da atualização aplicado"
+                )
+        self.assertEqual(verificacao, "")
+
+    def test_confirmacao_de_remocao_inicia_em_cancelar(self):
+        with patch("interface.escolher_com_setas", return_value=1) as escolha:
+            self.assertFalse(confirmar_remocao())
+        self.assertEqual(escolha.call_args.args[3], 1)
+
+    def test_falha_ao_salvar_e_informada_pela_interface(self):
+        with patch("interface.salvar_ativos", return_value=False):
+            with redirect_stdout(io.StringIO()) as tela:
+                self.assertFalse(salvar_com_aviso(self.ativos, "dados/inventario.json"))
+        self.assertIn("Não foi possível salvar", tela.getvalue())
+
+    def test_saida_pode_ser_confirmada_sem_salvar(self):
+        with patch("interface.mostrar_menu", return_value="0"), \
+                patch("interface.salvar_ativos", return_value=False), \
+                patch("interface.ler_sim_ou_nao", return_value=True):
+            with redirect_stdout(io.StringIO()) as tela:
+                executar_programa(self.ativos, "dados/inventario.json")
+        self.assertIn("sem salvar", tela.getvalue())
+
+    def test_troca_de_id_na_atualizacao_nao_reaproveita_outro_ativo(self):
+        cadastrar_ativo(self.ativos, 20, "NOTEBOOK-ANA", "Ana", "Sala 2", 1, "Média")
+        respostas_de_texto = ["Nome temporário", VOLTAR, VOLTAR, "", "", ""]
+        chamadas_de_texto = []
+
+        def texto_controlado(mensagem, obrigatorio, anterior, preenchido):
+            chamadas_de_texto.append((mensagem, anterior, preenchido))
+            return respostas_de_texto.pop(0)
+
+        with patch("interface.ler_inteiro_formulario", side_effect=[10, 20]), \
+                patch("interface.ler_texto_formulario", side_effect=texto_controlado), \
+                patch("interface.escolher_tipo_atualizacao", return_value=None), \
+                patch("interface.escolher_item_atualizacao", return_value=None):
+            with redirect_stdout(io.StringIO()):
+                atualizar_ativo_tela(self.ativos)
+
+        self.assertEqual(self.ativos[20].nome, "NOTEBOOK-ANA")
+        self.assertIn(("Nome ou hostname [NOTEBOOK-ANA]", None, False), chamadas_de_texto)
+
+    def test_cvss_com_virgula_e_aceito(self):
+        vulnerabilidade = cadastrar_vulnerabilidade(
+            self.ativos, 10, "CVE-2024-9999", "CWE-79", "9,8",
+            "Exemplo", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar"
+        )
+        self.assertEqual(vulnerabilidade.cvss, 9.8)
 
     def test_cve_e_cvss_invalidos_sao_rejeitados(self):
         with self.assertRaises(DadosInvalidosError):

@@ -1,1 +1,54 @@
-{}
+{
+  "1": {
+    "id": 1,
+    "nome": "Notebook",
+    "responsavel": "12",
+    "localizacao": "1E30",
+    "tipo": 3,
+    "criticidade": "Crítica",
+    "vulnerabilidades": [],
+    "historico": [
+      "25/09/2026 16:43 - Ativo cadastrado."
+    ]
+  },
+  "12": {
+    "id": 12,
+    "nome": "12",
+    "responsavel": "12",
+    "localizacao": "12",
+    "tipo": 2,
+    "criticidade": "Baixa",
+    "vulnerabilidades": [],
+    "historico": [
+      "25/09/2026 16:47 - Ativo cadastrado."
+    ]
+  },
+  "13": {
+    "id": 13,
+    "nome": "Notebook",
+    "responsavel": "Matheus",
+    "localizacao": "1E30",
+    "tipo": 2,
+    "criticidade": "Média",
+    "vulnerabilidades": [
+      {
+        "cve": "CVE-2024-1234",
+        "cwe": "CWE-49",
+        "cvss": 7.2,
+        "descricao": "Legal",
+        "fonte": "URL",
+        "data_fonte": "25/09/2026",
+        "impacto": "Grande",
+        "prioridade": "Crítica",
+        "tratamento": "Infiltração",
+        "status": "Aberta",
+        "verificacao": "Assim"
+      }
+    ],
+    "historico": [
+      "25/09/2026 17:09 - Ativo cadastrado.",
+      "25/09/2026 17:17 - Vulnerabilidade CVE-2024-1234 cadastrada.",
+      "25/09/2026 17:28 - Campos alterados: tipo, criticidade."
+    ]
+  }
+}
