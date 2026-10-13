@@ -225,10 +225,10 @@ Antes de testar cadastros e remoções livremente, faça uma cópia do arquivo i
 Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 
 ~~~powershell
-python -m unittest -v test_sprint2.py
+python -m unittest -v
 ~~~
 
-Atualmente, a suíte possui 33 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar e outros comportamentos importantes.
+Atualmente, a suíte possui 40 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos e cálculo de risco com dependências.
 
 Se todos passarem, o final exibirá OK.
 
@@ -243,6 +243,11 @@ Se todos passarem, o final exibirá OK.
 | persistencia.py | Leitura e gravação do arquivo JSON. |
 | dados/inventario.json | Base local com os ativos e vulnerabilidades. |
 | test_sprint2.py | Testes automatizados com unittest. |
+| risco.py | Cálculo do risco próprio e efetivo a partir das dependências cadastradas. |
+| test_risco.py | Testes do modelo de risco, das dependências e dos tipos de ativos. |
+| Dockerfile | Receita simples para executar o programa em um container. |
+| .github/workflows/verificar.yml | Automação que executa testes e verificação de estilo no GitHub. |
+| .flake8 | Regras de estilo usadas na verificação automática. |
 | guia_sprint1.tex | Fonte LaTeX do guia consolidado das Sprints 1 e 2. |
 | guia_sprint1.pdf | PDF pronto para leitura, estudo e apresentação. |
 
@@ -252,6 +257,7 @@ Além deste repositório do programa final, cada card possui seu material indivi
 
 - Sprint 1: cards S1_01 a S1_20, com PDFs, fontes LaTeX e scripts Python quando solicitados.
 - Sprint 2: cards S2_01 a S2_19, com PDFs, fontes LaTeX e imagens de verificação quando aplicáveis.
+- Sprint 3: cards S3_01 a S3_20, com PDFs, fontes LaTeX, códigos, cálculos e evidências específicas de cada card.
 - Guia consolidado: o arquivo guia_sprint1.pdf deste repositório explica a lógica de todas as Sprints em uma sequência única.
 
 Os materiais individuais estão disponíveis em:
@@ -304,6 +310,7 @@ Restaure uma cópia anterior do arquivo dados/inventario.json ou faça uma nova 
 6. Demonstre a validação com um CVSS inválido e depois com 9,8.
 7. Inicie uma remoção e cancele para demonstrar a confirmação segura.
 8. Execute os testes e mostre o resultado OK.
-9. Mostre o guia PDF e o repositório separado de entregáveis.
+9. Abra Gerenciar dependências e consultar riscos para demonstrar o risco próprio e o risco efetivo de um ativo.
+10. Mostre o workflow verde do GitHub Actions, o guia PDF e o repositório separado de entregáveis.
 
 Com esse roteiro, é possível demonstrar tanto o funcionamento do programa quanto as decisões de implementação exigidas nas Sprints.
