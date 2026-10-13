@@ -22,7 +22,7 @@ Base: Trabalho 1 e Trabalho 2 da disciplina. Escopo: inventário local de ativos
 | RF-07 | Consultar, atualizar e excluir vulnerabilidades ligadas ao ativo sem duplicar CVE no mesmo ativo. | `Inventario.consultar_vulnerabilidades` e operações relacionadas | CA-10, CA-11 |
 | RF-08 | Persistir coleção como lista JSON de objetos e reconstituir as subclasses ao carregar; arquivo inválido não é sobrescrito. | `persistencia`, `modelos` | CA-12, CA-13 |
 | RF-09 | Calcular risco próprio `Mv` e risco efetivo `r=(I-A)^-1Mv`, verificando invertibilidade antes da solução. | `risco.calcular_riscos` | CA-14, CA-15 |
-| RF-10 | Manter no Docker um modo de serviço sem entrada interativa e responder consultas de saúde e riscos. | `ServicoInventario`, `Dockerfile` | CA-16 |
+| RF-10 | Executar o menu completo no Docker por pelo menos 24 horas no servidor do docente; oferecer também consultas HTTP auxiliares. | `app.py`, `interface.py`, `Dockerfile`, `ServicoInventario` | CA-16 |
 
 ## Requisitos não funcionais
 
@@ -31,7 +31,7 @@ Base: Trabalho 1 e Trabalho 2 da disciplina. Escopo: inventário local de ativos
 | RNF-01 Segurança | Entradas inválidas são rejeitadas com mensagem de domínio, sem aceitar CVSS fora de 0–10, nomes repetidos ou correção sem verificação. | `test_sprint2.py`; matriz de validações |
 | RNF-02 Integridade | Base JSON inválida impede o início e não é substituída; exclusão exige confirmação. | Testes de carga e exclusão |
 | RNF-03 Testabilidade | Testes automatizados executam sem alterar a base demonstrativa e CI verifica testes e estilo em cada PR. | `python -m unittest -v`; Actions |
-| RNF-04 Operação | Container responde `/saude` e `/riscos` sem teclado; permanência de 24 h exige prova no servidor da disciplina. | Testes do serviço; execução Docker pendente em `evidencia-docker-24h.md` |
+| RNF-04 Operação | O menu completo deve permanecer ativo no container por 24 h com JSON persistido; o serviço HTTP é modo auxiliar. | Execução Docker pendente em `evidencia-docker-24h.md` |
 
 ## Regras de negócio
 

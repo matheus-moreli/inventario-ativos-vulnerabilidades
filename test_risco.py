@@ -13,8 +13,8 @@ from inventario import (
     cadastrar_vulnerabilidade,
 )
 from modelos import Notebook, Servidor
-from persistencia import salvar_ativos
-from risco import calcular_riscos
+from persistencia import carregar_ativos, salvar_ativos
+from risco import calcular_riscos, resolver_sistema
 
 
 class TesteRisco(unittest.TestCase):
@@ -80,6 +80,20 @@ class TesteRisco(unittest.TestCase):
         adicionar_dependencia(self.ativos, 3, 1, 0.60)
         with self.assertRaises(DadosInvalidosError):
             adicionar_dependencia(self.ativos, 3, 2, 0.40)
+
+    def test_dependencias_persistem_e_mantem_o_risco(self):
+        self.vulnerabilidade(1, "CVE-2026-0001", 4)
+        adicionar_dependencia(self.ativos, 3, 1, 0.25)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            self.assertTrue(salvar_ativos(self.ativos, caminho))
+            carregados = carregar_ativos(caminho)
+        self.assertEqual(carregados[3].dependencias, [{"ativo_id": 1, "peso": 0.25}])
+        self.assertEqual(calcular_riscos(carregados)[-1], [4.0, 0.0, 1.0])
+
+    def test_matriz_singular_e_rejeitada_antes_da_solucao(self):
+        with self.assertRaisesRegex(ValueError, "não é invertível"):
+            resolver_sistema([[1.0, 1.0], [2.0, 2.0]], [1.0, 2.0])
 
 
 if __name__ == "__main__":

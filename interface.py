@@ -447,7 +447,9 @@ def mostrar_vulnerabilidades(ativo):
         return
     for numero, vulnerabilidade in enumerate(ativo.vulnerabilidades, 1):
         print(f"  {numero}. {vulnerabilidade.cve} - {vulnerabilidade.descricao}")
-        print(f"     CWE: {vulnerabilidade.cwe} | CVSS: {vulnerabilidade.cvss:.1f}")
+        print(
+            f"     CWE: {vulnerabilidade.cwe} | Severidade (CVSS): {vulnerabilidade.cvss:.1f}"
+        )
         print(
             f"     Prioridade: {vulnerabilidade.prioridade} | Status: {vulnerabilidade.status}"
         )
@@ -872,7 +874,7 @@ def mostrar_detalhes_vulnerabilidade(ativo, vulnerabilidade):
     mostrar_titulo(f"Vulnerabilidade {vulnerabilidade.cve}")
     print(f"Ativo afetado: {ativo.id} - {ativo.nome}")
     print(f"Descrição: {vulnerabilidade.descricao}")
-    print(f"CWE: {vulnerabilidade.cwe} | CVSS: {vulnerabilidade.cvss:.1f}")
+    print(f"CWE: {vulnerabilidade.cwe} | Severidade (CVSS): {vulnerabilidade.cvss:.1f}")
     print(
         f"Prioridade: {vulnerabilidade.prioridade} | Status: {vulnerabilidade.status}"
     )

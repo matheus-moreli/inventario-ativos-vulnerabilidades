@@ -19,6 +19,6 @@ Cada resultado é observável no inventário em memória e, após salvar/recarre
 | CA-13 | RF-08 | arquivo JSON inválido | carregar | resultado `None`, arquivo original preservado |
 | CA-14 | RF-09 | matriz de dependências válida | calcular riscos | `Mv` e solução de `(I-A)r=Mv` retornam na ordem dos IDs |
 | CA-15 | RF-09 | `I-A` singular | calcular riscos | erro explícito impede resultado enganoso |
-| CA-16 | RF-10 | container iniciado sem terminal | consultar `/saude` e `/riscos` | HTTP 200 e JSON com estado e riscos; container continua ativo |
+| CA-16 | RF-10 | container iniciado com `-dit` e volume persistente no servidor docente | usar menu, consultar/cadastrar ativo e verificar o mesmo container após 24 h | CRUD e riscos funcionam, JSON persiste, container segue ativo sem reinício; evidência ainda pendente |
 
 Os cenários CA-01 a CA-09 cobrem ao menos dois casos de cada operação do CRUD: cadastro, consulta, atualização e exclusão. CA-10 a CA-16 cobrem vínculos, persistência, matemática e Docker.

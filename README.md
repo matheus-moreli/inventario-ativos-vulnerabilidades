@@ -102,13 +102,13 @@ docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos python app.py
 
 O mesmo programa é aberto dentro do container. O volume `dados` mantém o JSON salvo na pasta do computador.
 
-Para manter a aplicação ativa, com consultas HTTP somente leitura, use:
+Para comprovar **o programa completo** em execução contínua no servidor da disciplina, mantenha o menu interativo dentro de um container com terminal persistente:
 
 ~~~powershell
-docker run -d --name inventario-ativos-24h --restart unless-stopped -p 127.0.0.1:8080:8080 -v "${PWD}/dados:/app/dados" inventario-ativos
+docker run -dit --no-healthcheck --name inventario-ativos-24h --restart unless-stopped -v inventario-dados:/app/dados inventario-ativos python app.py
 ~~~
 
-Neste modo, `GET /saude` informa início, tempo ativo e número de ativos; `GET /riscos` mostra matrizes e riscos. Consulte `http://localhost:8080/saude` e `http://localhost:8080/riscos`. O processo não depende de teclado.
+O volume nomeado guarda os dados e evita conflito de permissões do diretório do servidor. Use `docker attach inventario-ativos-24h` para demonstrar cadastros, consultas, vulnerabilidades e riscos; desprenda-se sem encerrar o programa com `Ctrl+P`, `Ctrl+Q`. Não escolha Sair durante a prova de 24 horas. O modo de serviço HTTP somente leitura continua disponível ao iniciar a imagem sem substituir o comando padrão, mas não é usado como prova de que o CRUD permaneceu ativo.
 
 O workflow do GitHub verifica testes e estilo. O build do Docker e **a prova de 24 horas no servidor da disciplina estão pendentes de execução**. O procedimento e os critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md). Uma execução local curta não substitui a prova de 24 horas.
 
@@ -230,7 +230,7 @@ Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 python -m unittest -v
 ~~~
 
-Atualmente, a suíte possui 45 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, cálculo de risco e as respostas do serviço.
+Atualmente, a suíte possui 47 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, dependências salvas no JSON, matriz singular, cálculo de risco e as respostas do serviço.
 
 Se todos passarem, o final exibirá OK.
 
@@ -269,9 +269,9 @@ Os materiais individuais estão disponíveis em:
 
 ## Branches e histórico
 
-A branch principal é a main. Ela contém a versão completa do programa pronta para execução e apresentação.
+A branch principal é a main. Nesta revisão, a melhoria do Trabalho 2 está na branch `melhoria-trabalho-2-completo` e na [Pull Request #3](https://github.com/matheus-moreli/inventario-ativos-vulnerabilidades/pull/3); ainda não foi integrada à `main`. Para conferir os recursos descritos nesta revisão antes do merge, execute essa branch.
 
-As branches de funcionalidade preservam o histórico de aprendizagem e dos Pull Requests realizados durante o desenvolvimento. O código final integrado deve ser executado sempre a partir da main.
+As branches de funcionalidade preservam o histórico de aprendizagem e dos Pull Requests realizados durante o desenvolvimento. Depois de aprovada e integrada a PR, a versão final estará na `main`.
 
 ## Problemas comuns
 
