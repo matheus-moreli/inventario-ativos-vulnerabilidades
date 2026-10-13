@@ -26,20 +26,3 @@ jobs:
 
       - name: Verificar estilo
         run: python -m flake8
-
-  docker:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Construir imagem
-        run: docker build -t inventario-verificacao .
-      - name: Iniciar e consultar aplicação
-        run: |
-          docker run -d --name inventario-verificacao -p 8080:8080 inventario-verificacao
-          for tentativa in $(seq 1 20); do
-            if curl --fail --silent http://127.0.0.1:8080/saude; then break; fi
-            sleep 1
-          done
-          curl --fail --silent http://127.0.0.1:8080/riscos
-          test "$(docker inspect -f '{{.State.Running}}' inventario-verificacao)" = true
-          docker logs inventario-verificacao

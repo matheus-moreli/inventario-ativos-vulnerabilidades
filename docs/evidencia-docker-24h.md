@@ -1,8 +1,8 @@
 # Evidência do container por 24 horas
 
-## O que já pode ser verificado
+## Estado atual
 
-O workflow `verificar.yml` constrói a imagem, inicia o container, consulta `/saude` e `/riscos` e confirma que o processo continua em execução. Essa verificação dura minutos e **não comprova 24 horas**.
+O workflow `verificar.yml` executa testes Python e flake8. O build do Docker e a execução do container ainda não têm resultado publicado. Os comandos abaixo permitem verificar ambos no servidor; somente o intervalo real de 24 horas comprova o requisito.
 
 ## Execução no servidor da disciplina
 

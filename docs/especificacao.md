@@ -20,7 +20,7 @@ No cálculo, `M` é a incidência ativo × vulnerabilidade, `v` contém severida
 
 ## Rastreabilidade e aceitação
 
-Cada RF da tabela de requisitos aponta para código e um CA. [criterios_aceitacao.md](criterios_aceitacao.md) contém casos de sucesso, erro e borda do CRUD e casos do Trabalho 2. `test_sprint2.py`, `test_risco.py` e `test_servico.py` verificam os caminhos principais. O CI executa testes, estilo e um ensaio curto do container; 24 horas no servidor da disciplina exigem a prova separada em [evidencia-docker-24h.md](evidencia-docker-24h.md).
+Cada RF da tabela de requisitos aponta para código e um CA. [criterios_aceitacao.md](criterios_aceitacao.md) contém casos de sucesso, erro e borda do CRUD e casos do Trabalho 2. `test_sprint2.py`, `test_risco.py` e `test_servico.py` verificam os caminhos principais. O CI executa testes e estilo. O build Docker e as 24 horas no servidor da disciplina exigem a prova separada em [evidencia-docker-24h.md](evidencia-docker-24h.md).
 
 ## Histórico da versão
 

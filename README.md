@@ -110,7 +110,7 @@ docker run -d --name inventario-ativos-24h --restart unless-stopped -p 127.0.0.1
 
 Neste modo, `GET /saude` informa início, tempo ativo e número de ativos; `GET /riscos` mostra matrizes e riscos. Consulte `http://localhost:8080/saude` e `http://localhost:8080/riscos`. O processo não depende de teclado.
 
-O workflow do GitHub verifica o build e uma execução curta do container. **A prova de 24 horas no servidor da disciplina está pendente**. O procedimento e os critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md). Uma execução local ou em CI não substitui essa prova.
+O workflow do GitHub verifica testes e estilo. O build do Docker e **a prova de 24 horas no servidor da disciplina estão pendentes de execução**. O procedimento e os critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md). Uma execução local curta não substitui a prova de 24 horas.
 
 ## Navegação no terminal
 

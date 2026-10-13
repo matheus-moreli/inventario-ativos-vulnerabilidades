@@ -31,7 +31,7 @@ Base: Trabalho 1 e Trabalho 2 da disciplina. Escopo: inventário local de ativos
 | RNF-01 Segurança | Entradas inválidas são rejeitadas com mensagem de domínio, sem aceitar CVSS fora de 0–10, nomes repetidos ou correção sem verificação. | `test_sprint2.py`; matriz de validações |
 | RNF-02 Integridade | Base JSON inválida impede o início e não é substituída; exclusão exige confirmação. | Testes de carga e exclusão |
 | RNF-03 Testabilidade | Testes automatizados executam sem alterar a base demonstrativa e CI verifica testes e estilo em cada PR. | `python -m unittest -v`; Actions |
-| RNF-04 Operação | Container responde `/saude` e `/riscos` sem teclado; permanência de 24 h exige prova no servidor da disciplina. | Workflow Docker; `evidencia-docker-24h.md` |
+| RNF-04 Operação | Container responde `/saude` e `/riscos` sem teclado; permanência de 24 h exige prova no servidor da disciplina. | Testes do serviço; execução Docker pendente em `evidencia-docker-24h.md` |
 
 ## Regras de negócio
 
