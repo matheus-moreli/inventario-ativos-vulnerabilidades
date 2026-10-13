@@ -2,8 +2,8 @@
 
 from datetime import datetime
 
-from modelos import (Ativo, CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo,
-                     Vulnerabilidade)
+from modelos import (CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo,
+                     Vulnerabilidade, criar_ativo)
 
 
 class DadosInvalidosError(Exception):
@@ -80,6 +80,40 @@ def validar_tipo_ativo(tipo):
         raise DadosInvalidosError("Tipo de ativo inválido.")
 
 
+def validar_nome_unico(ativos, nome, identificador_ignorado=None):
+    """Impede que dois ativos usem o mesmo nome ou hostname.
+
+    Espaços nas pontas e letras maiúsculas/minúsculas não diferenciam nomes:
+    "SRV-WEB-01", "srv-web-01" e " SRV-WEB-01 " representam o mesmo ativo.
+    """
+    nome_normalizado = nome.strip().lower()
+    for ativo in ativos.values():
+        if (ativo.id != identificador_ignorado and
+                ativo.nome.strip().lower() == nome_normalizado):
+            raise DadosInvalidosError("Já existe um ativo com esse nome ou hostname.")
+
+
+def validar_dependencias(dependencias):
+    """Confere a estrutura simples usada para guardar risco herdado."""
+    if not isinstance(dependencias, list):
+        raise DadosInvalidosError("Dependências inválidas no arquivo de dados.")
+    ids_encontrados = set()
+    soma_pesos = 0
+    for dependencia in dependencias:
+        if not isinstance(dependencia, dict):
+            raise DadosInvalidosError("Dependência inválida no arquivo de dados.")
+        ativo_id = dependencia.get("ativo_id")
+        peso = dependencia.get("peso")
+        if type(ativo_id) is not int or ativo_id <= 0 or ativo_id in ids_encontrados:
+            raise DadosInvalidosError("Dependência inválida no arquivo de dados.")
+        if type(peso) not in (int, float) or not 0 <= peso < 1:
+            raise DadosInvalidosError("Peso de dependência deve estar entre 0 e 1.")
+        ids_encontrados.add(ativo_id)
+        soma_pesos += peso
+    if soma_pesos >= 1:
+        raise DadosInvalidosError("A soma dos pesos de dependência deve ser menor que 1.")
+
+
 def validar_ativo_carregado(ativo):
     """Confere o JSON carregado antes de permitir que ele seja usado no menu."""
     if type(ativo.id) is not int or ativo.id <= 0:
@@ -89,6 +123,9 @@ def validar_ativo_carregado(ativo):
     ativo.localizacao = validar_texto(ativo.localizacao, "Setor ou localização")
     ativo.tipo = validar_tipo_ativo(ativo.tipo)
     ativo.criticidade = validar_opcao(ativo.criticidade, CRITICIDADES, "Criticidade")
+    validar_dependencias(ativo.dependencias)
+    if ativo.id in [dependencia["ativo_id"] for dependencia in ativo.dependencias]:
+        raise DadosInvalidosError("Um ativo não pode depender de si mesmo.")
     if not isinstance(ativo.historico, list):
         raise DadosInvalidosError("Histórico inválido no arquivo de dados.")
 
@@ -126,9 +163,11 @@ def cadastrar_ativo(ativos, identificador, nome, responsavel, localizacao,
         raise DadosInvalidosError("Já existe um ativo com esse ID.")
     if type(identificador) is not int or identificador <= 0:
         raise DadosInvalidosError("ID deve ser um número inteiro maior que zero.")
-    ativo = Ativo(
+    nome = validar_texto(nome, "Nome ou hostname")
+    validar_nome_unico(ativos, nome)
+    ativo = criar_ativo(
         identificador,
-        validar_texto(nome, "Nome ou hostname"),
+        nome,
         validar_texto(responsavel, "Responsável"),
         validar_texto(localizacao, "Setor ou localização"),
         validar_tipo_ativo(tipo),
@@ -168,6 +207,7 @@ def atualizar_ativo(ativos, identificador, nome=None, responsavel=None,
     alteracoes = []
     if nome is not None and nome != "":
         novo_nome = validar_texto(nome, "Nome ou hostname")
+        validar_nome_unico(ativos, novo_nome, identificador)
         alteracoes.append("nome")
     else:
         novo_nome = ativo.nome
@@ -192,12 +232,15 @@ def atualizar_ativo(ativos, identificador, nome=None, responsavel=None,
     else:
         nova_criticidade = ativo.criticidade
     if alteracoes:
-        ativo.nome = novo_nome
-        ativo.responsavel = novo_responsavel
-        ativo.localizacao = nova_localizacao
-        ativo.tipo = novo_tipo
-        ativo.criticidade = nova_criticidade
-        ativo.registrar_historico("Campos alterados: " + ", ".join(alteracoes) + ".")
+        ativo_atualizado = criar_ativo(
+            ativo.id, novo_nome, novo_responsavel, nova_localizacao, novo_tipo,
+            nova_criticidade, ativo.vulnerabilidades, ativo.historico,
+            ativo.dependencias
+        )
+        ativos[identificador] = ativo_atualizado
+        ativo_atualizado.registrar_historico(
+            "Campos alterados: " + ", ".join(alteracoes) + ".")
+        return ativo_atualizado
     return ativo
 
 
@@ -209,7 +252,44 @@ def excluir_ativo(ativos, identificador, confirmou):
     if not confirmou:
         return False
     del ativos[identificador]
+    for outro_ativo in ativos.values():
+        outro_ativo.dependencias = [
+            dependencia for dependencia in outro_ativo.dependencias
+            if dependencia["ativo_id"] != identificador
+        ]
     return True
+
+
+def adicionar_dependencia(ativos, identificador, ativo_dependente, peso):
+    """Registra a fração do risco de outro ativo herdada pelo ativo informado."""
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None or consultar_por_id(ativos, ativo_dependente) is None:
+        raise DadosInvalidosError("Ativo não encontrado.")
+    if identificador == ativo_dependente:
+        raise DadosInvalidosError("Um ativo não pode depender de si mesmo.")
+    if any(item["ativo_id"] == ativo_dependente for item in ativo.dependencias):
+        raise DadosInvalidosError("Esta dependência já foi cadastrada.")
+    try:
+        peso = float(str(peso).replace(",", "."))
+    except ValueError:
+        raise DadosInvalidosError("Peso deve ser um número entre 0 e 1.")
+    novas_dependencias = ativo.dependencias + [{"ativo_id": ativo_dependente, "peso": peso}]
+    validar_dependencias(novas_dependencias)
+    ativo.dependencias = novas_dependencias
+    ativo.registrar_historico(f"Dependência do ativo {ativo_dependente} cadastrada.")
+
+
+def remover_dependencia(ativos, identificador, ativo_dependente):
+    """Remove uma dependência existente sem alterar os demais dados do ativo."""
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        raise DadosInvalidosError("Ativo não encontrado.")
+    novas_dependencias = [item for item in ativo.dependencias
+                           if item["ativo_id"] != ativo_dependente]
+    if len(novas_dependencias) == len(ativo.dependencias):
+        raise DadosInvalidosError("Dependência não encontrada.")
+    ativo.dependencias = novas_dependencias
+    ativo.registrar_historico(f"Dependência do ativo {ativo_dependente} removida.")
 
 
 def cadastrar_vulnerabilidade(ativos, identificador, cve, cwe, cvss,
