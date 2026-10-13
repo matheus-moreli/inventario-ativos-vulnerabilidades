@@ -97,18 +97,20 @@ Com o Docker Desktop instalado e aberto, execute na pasta do projeto:
 
 ~~~powershell
 docker build -t inventario-ativos .
-docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos
+docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos python app.py
 ~~~
 
 O mesmo programa é aberto dentro do container. O volume `dados` mantém o JSON salvo na pasta do computador.
 
-Para manter o container em execução contínua, inclusive após reiniciar o Docker, use:
+Para manter a aplicação ativa, com consultas HTTP somente leitura, use:
 
 ~~~powershell
-docker run -dit --name inventario-ativos-24h --restart unless-stopped -v "${PWD}/dados:/app/dados" inventario-ativos
+docker run -d --name inventario-ativos-24h --restart unless-stopped -p 127.0.0.1:8080:8080 -v "${PWD}/dados:/app/dados" inventario-ativos
 ~~~
 
-Para abrir o menu desse container depois, execute `docker attach inventario-ativos-24h`.
+Neste modo, `GET /saude` informa início, tempo ativo e número de ativos; `GET /riscos` mostra matrizes e riscos. Consulte `http://localhost:8080/saude` e `http://localhost:8080/riscos`. O processo não depende de teclado.
+
+O workflow do GitHub verifica o build e uma execução curta do container. **A prova de 24 horas no servidor da disciplina está pendente**. O procedimento e os critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md). Uma execução local ou em CI não substitui essa prova.
 
 ## Navegação no terminal
 
@@ -228,7 +230,7 @@ Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 python -m unittest -v
 ~~~
 
-Atualmente, a suíte possui 40 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos e cálculo de risco com dependências.
+Atualmente, a suíte possui 45 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, cálculo de risco e as respostas do serviço.
 
 Se todos passarem, o final exibirá OK.
 
@@ -237,6 +239,7 @@ Se todos passarem, o final exibirá OK.
 | Arquivo ou pasta | Responsabilidade |
 |---|---|
 | app.py | Ponto de entrada. Define o caminho do JSON e inicia o programa. |
+| servico.py | Consultas HTTP somente leitura para execução contínua em Docker. |
 | interface.py | Menus, leitura do teclado, mensagens e formulários do terminal. |
 | inventario.py | Regras de negócio, validações e operações de cadastro, consulta, atualização e remoção. |
 | modelos.py | Classes Ativo e Vulnerabilidade, enumeração dos tipos e listas de opções padronizadas. |

@@ -28,9 +28,20 @@ def data_hora_atual():
 class Vulnerabilidade:
     """Representa uma vulnerabilidade ligada a exatamente um ativo."""
 
-    def __init__(self, cve, cwe, cvss, descricao, fonte, data_fonte,
-                 impacto, prioridade, tratamento, status="Aberta",
-                 verificacao="Pendente"):
+    def __init__(
+        self,
+        cve,
+        cwe,
+        cvss,
+        descricao,
+        fonte,
+        data_fonte,
+        impacto,
+        prioridade,
+        tratamento,
+        status="Aberta",
+        verificacao="Pendente",
+    ):
         self.cve = cve
         self.cwe = cwe
         self.cvss = cvss
@@ -80,9 +91,18 @@ class Vulnerabilidade:
 class Ativo:
     """Classe base dos equipamentos cadastrados no inventário."""
 
-    def __init__(self, identificador, nome, responsavel, localizacao, tipo,
-                 criticidade, vulnerabilidades=None, historico=None,
-                 dependencias=None):
+    def __init__(
+        self,
+        identificador,
+        nome,
+        responsavel,
+        localizacao,
+        tipo,
+        criticidade,
+        vulnerabilidades=None,
+        historico=None,
+        dependencias=None,
+    ):
         self.id = identificador
         self.nome = nome
         self.responsavel = responsavel
@@ -177,10 +197,27 @@ CLASSES_DE_ATIVO = {
 }
 
 
-def criar_ativo(identificador, nome, responsavel, localizacao, tipo,
-                criticidade, vulnerabilidades=None, historico=None,
-                dependencias=None):
+def criar_ativo(
+    identificador,
+    nome,
+    responsavel,
+    localizacao,
+    tipo,
+    criticidade,
+    vulnerabilidades=None,
+    historico=None,
+    dependencias=None,
+):
     """Cria o objeto concreto correspondente ao tipo escolhido."""
     classe = CLASSES_DE_ATIVO[tipo]
-    return classe(identificador, nome, responsavel, localizacao, tipo,
-                  criticidade, vulnerabilidades, historico, dependencias)
+    return classe(
+        identificador,
+        nome,
+        responsavel,
+        localizacao,
+        tipo,
+        criticidade,
+        vulnerabilidades,
+        historico,
+        dependencias,
+    )

@@ -5,9 +5,13 @@ import os
 import tempfile
 import unittest
 
-from inventario import (DadosInvalidosError, adicionar_dependencia,
-                        atualizar_ativo, cadastrar_ativo,
-                        cadastrar_vulnerabilidade)
+from inventario import (
+    DadosInvalidosError,
+    adicionar_dependencia,
+    atualizar_ativo,
+    cadastrar_ativo,
+    cadastrar_vulnerabilidade,
+)
 from modelos import Notebook, Servidor
 from persistencia import salvar_ativos
 from risco import calcular_riscos
@@ -22,8 +26,17 @@ class TesteRisco(unittest.TestCase):
 
     def vulnerabilidade(self, identificador, cve, cvss):
         cadastrar_vulnerabilidade(
-            self.ativos, identificador, cve, "CWE-79", cvss, "Teste", "Fonte",
-            "01/01/2026", "Impacto", "Alta", "Tratar"
+            self.ativos,
+            identificador,
+            cve,
+            "CWE-79",
+            cvss,
+            "Teste",
+            "Fonte",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Tratar",
         )
 
     def test_cada_tipo_gera_o_objeto_correspondente(self):
@@ -52,7 +65,9 @@ class TesteRisco(unittest.TestCase):
         adicionar_dependencia(self.ativos, 3, 1, "0,25")
         adicionar_dependencia(self.ativos, 3, 2, "0.50")
 
-        ativos, matriz, vetor, proprio, dependencias, efetivo = calcular_riscos(self.ativos)
+        ativos, matriz, vetor, proprio, dependencias, efetivo = calcular_riscos(
+            self.ativos
+        )
 
         self.assertEqual([ativo.id for ativo in ativos], [1, 2, 3])
         self.assertEqual(matriz, [[1, 0], [0, 1], [0, 0]])

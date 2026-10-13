@@ -49,8 +49,13 @@ def montar_matriz_dependencias(lista_ativos):
 def identidade_menos(matriz):
     """Monta I - A, sistema usado para calcular o risco efetivo."""
     tamanho = len(matriz)
-    return [[(1.0 if linha == coluna else 0.0) - matriz[linha][coluna]
-             for coluna in range(tamanho)] for linha in range(tamanho)]
+    return [
+        [
+            (1.0 if linha == coluna else 0.0) - matriz[linha][coluna]
+            for coluna in range(tamanho)
+        ]
+        for linha in range(tamanho)
+    ]
 
 
 def sistema_e_invertivel(matriz):
@@ -76,7 +81,9 @@ def resolver_sistema(matriz, vetor):
     tamanho = len(matriz)
     aumentado = [matriz[linha][:] + [vetor[linha]] for linha in range(tamanho)]
     for coluna in range(tamanho):
-        pivo = max(range(coluna, tamanho), key=lambda linha: abs(aumentado[linha][coluna]))
+        pivo = max(
+            range(coluna, tamanho), key=lambda linha: abs(aumentado[linha][coluna])
+        )
         aumentado[coluna], aumentado[pivo] = aumentado[pivo], aumentado[coluna]
         for linha in range(coluna + 1, tamanho):
             fator = aumentado[linha][coluna] / aumentado[coluna][coluna]
@@ -85,18 +92,31 @@ def resolver_sistema(matriz, vetor):
 
     resultado = [0.0] * tamanho
     for linha in range(tamanho - 1, -1, -1):
-        soma = sum(aumentado[linha][coluna] * resultado[coluna]
-                   for coluna in range(linha + 1, tamanho))
+        soma = sum(
+            aumentado[linha][coluna] * resultado[coluna]
+            for coluna in range(linha + 1, tamanho)
+        )
         resultado[linha] = (aumentado[linha][-1] - soma) / aumentado[linha][linha]
     return resultado
 
 
+class AnalisadorRisco:
+    """Calcula o risco dos objetos Ativo recebidos do inventário."""
+
+    def __init__(self, ativos):
+        self.ativos = ativos
+
+    def calcular(self):
+        """Devolve M, v, A e riscos próprios e efetivos na ordem dos IDs."""
+        lista, vulnerabilidades, matriz = montar_matriz_incidencia(self.ativos)
+        vetor = [vulnerabilidade.cvss for _, vulnerabilidade in vulnerabilidades]
+        proprio = produto_matriz_vetor(matriz, vetor)
+        dependencias = montar_matriz_dependencias(lista)
+        sistema = identidade_menos(dependencias)
+        efetivo = resolver_sistema(sistema, proprio)
+        return lista, matriz, vetor, proprio, dependencias, efetivo
+
+
 def calcular_riscos(ativos):
-    """Monta M, v e A a partir do inventário e devolve riscos próprio e efetivo."""
-    lista_ativos, vulnerabilidades, matriz_incidencia = montar_matriz_incidencia(ativos)
-    vetor_severidade = [vulnerabilidade.cvss for _, vulnerabilidade in vulnerabilidades]
-    risco_proprio = produto_matriz_vetor(matriz_incidencia, vetor_severidade)
-    matriz_dependencias = montar_matriz_dependencias(lista_ativos)
-    sistema = identidade_menos(matriz_dependencias)
-    risco_efetivo = resolver_sistema(sistema, risco_proprio)
-    return lista_ativos, matriz_incidencia, vetor_severidade, risco_proprio, matriz_dependencias, risco_efetivo
+    """Compatibilidade com as chamadas das Sprints anteriores."""
+    return AnalisadorRisco(ativos).calcular()
