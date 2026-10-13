@@ -1,18 +1,26 @@
 """Entradas e saídas do terminal. As regras estão em inventario.py."""
 
 import ctypes
-import msvcrt
 import os
 import sys
+
+try:
+    import msvcrt
+except ImportError:
+    # O Windows usa msvcrt para as setas. No container Linux o programa
+    # continua utilizável com escolhas digitadas.
+    msvcrt = None
 
 from inventario import (DadosInvalidosError, atualizar_ativo, atualizar_vulnerabilidade,
                         buscar_vulnerabilidade, cadastrar_ativo,
                         cadastrar_vulnerabilidade, consultar_por_id,
                         consultar_vulnerabilidades, excluir_ativo,
-                        excluir_vulnerabilidade, filtrar_ativos, validar_cve,
+                        excluir_vulnerabilidade, filtrar_ativos,
+                        adicionar_dependencia, remover_dependencia, validar_cve,
                         validar_cwe, validar_cvss, validar_data_fonte)
 from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
 from persistencia import salvar_ativos
+from risco import calcular_riscos
 
 # Valor especial usado apenas pela interface para voltar uma etapa do formulário.
 VOLTAR = object()
@@ -132,6 +140,13 @@ def ler_data_fonte(mensagem):
 
 def ler_texto_formulario(mensagem, obrigatorio=True, valor_anterior=None, preenchido=False):
     """Lê texto com seta para esquerda/direita sem perder o valor atual."""
+    if msvcrt is None:
+        # Docker usa Linux, onde msvcrt não existe. A lógica de cadastro é a mesma.
+        texto = input(f"{mensagem}: ").strip()
+        if texto or not obrigatorio:
+            return texto
+        mostrar_aviso("Este campo não pode ficar vazio.")
+        return ler_texto_formulario(mensagem, obrigatorio, valor_anterior, preenchido)
     # Nesta leitura, as setas não movem o cursor do texto: elas navegam pelo formulário.
     texto = list(str(valor_anterior) if preenchido and valor_anterior is not None else "")
     print(f"{mensagem}: {''.join(texto)}", end="", flush=True)
@@ -241,6 +256,18 @@ def confirmar_remocao():
 def escolher_com_setas(titulo, opcoes, permitir_cancelar=False, indice_inicial=0,
                         permitir_avancar=False):
     """Devolve o índice escolhido com as setas do teclado e Enter."""
+    if msvcrt is None:
+        print("\n" + titulo)
+        for indice, opcao in enumerate(opcoes, 1):
+            print(f"  {indice} - {opcao}")
+        while True:
+            try:
+                escolha = int(input("Escolha uma opção: "))
+                if 1 <= escolha <= len(opcoes):
+                    return escolha - 1
+            except ValueError:
+                pass
+            mostrar_erro("Escolha uma opção válida.")
     # msvcrt faz parte do Python no Windows e lê uma tecla sem exigir input().
     # A seleção aparece em uma linha própria para funcionar também no cmd comum.
     print("\n" + colorir(titulo.rstrip(": "), "1;96"))
@@ -395,11 +422,15 @@ def mostrar_ativo(ativo, mostrar_detalhes=True):
     print(f"Nome ou hostname: {ativo.nome}")
     print(f"Responsável: {ativo.responsavel}")
     print(f"Setor ou localização: {ativo.localizacao}")
-    print(f"Tipo: {nome_do_tipo(ativo.tipo)} ({ativo.tipo})")
+    print(f"Tipo: {ativo.nome_do_tipo()} ({ativo.tipo})")
     # Este dado é do ativo: mostra o impacto de ele ser comprometido ou parar.
     # A severidade da vulnerabilidade é exibida separadamente, quando houver uma.
     print(f"Importância do ativo para a segurança: {ativo.criticidade}")
     if mostrar_detalhes:
+        if ativo.dependencias:
+            print("Dependências de risco:")
+            for dependencia in ativo.dependencias:
+                print(f"  - Ativo {dependencia['ativo_id']} (peso {dependencia['peso']:.2f})")
         mostrar_vulnerabilidades(ativo)
         print("Histórico:")
         for evento in ativo.historico or ["Nenhuma alteração registrada."]:
@@ -690,6 +721,9 @@ def navegar_vulnerabilidades(resultado):
 
 def aguardar_retorno_lista():
     """Mantém os detalhes visíveis até Enter ou a seta esquerda voltar à lista."""
+    if msvcrt is None:
+        input("Pressione Enter para voltar à lista.")
+        return
     print(colorir("Pressione Enter ou a seta esquerda para voltar à lista.", "2"))
     while True:
         tecla = msvcrt.getch()
@@ -844,6 +878,59 @@ def mostrar_resumo(ativos):
     print(f"Total de vulnerabilidades cadastradas: {total}")
 
 
+def mostrar_riscos_tela(ativos):
+    """Exibe os dois riscos calculados pelo modelo linear do Trabalho 2."""
+    if not ativos:
+        mostrar_aviso("Cadastre ao menos um ativo antes de calcular riscos.")
+        return
+    try:
+        lista_ativos, _, _, risco_proprio, _, risco_efetivo = calcular_riscos(ativos)
+    except ValueError as erro:
+        mostrar_erro(str(erro))
+        return
+    print()
+    mostrar_titulo("Análise de risco")
+    print("Risco próprio: soma dos CVSS das vulnerabilidades do ativo.")
+    print("Risco efetivo: risco próprio mais o risco recebido por dependências.")
+    for indice, ativo in enumerate(lista_ativos):
+        print(f"{ativo.id} - {ativo.nome}: próprio {risco_proprio[indice]:.2f} | "
+              f"efetivo {risco_efetivo[indice]:.2f}")
+
+
+def dependencias_e_riscos_tela(ativos):
+    """Mantém o cadastro das dependências e a consulta de risco no mesmo lugar."""
+    escolha = escolher_com_setas("Dependências e risco:", [
+        "Cadastrar dependência",
+        "Remover dependência",
+        "Consultar riscos",
+        "Retornar ao menu",
+    ], True)
+    if escolha is None or escolha == 3:
+        return False
+    if escolha == 2:
+        mostrar_riscos_tela(ativos)
+        return False
+
+    identificador = ler_id_para_operacao("ID do ativo")
+    if identificador is None:
+        return False
+    ativo_dependente = ler_id_para_operacao("ID do ativo do qual ele depende")
+    if ativo_dependente is None:
+        return False
+    try:
+        if escolha == 0:
+            peso = ler_texto("Peso da dependência (ex.: 0,30)")
+            adicionar_dependencia(ativos, identificador, ativo_dependente, peso)
+            mostrar_sucesso("Dependência cadastrada com sucesso.")
+        else:
+            remover_dependencia(ativos, identificador, ativo_dependente)
+            mostrar_sucesso("Dependência removida com sucesso.")
+        return True
+    except DadosInvalidosError as erro:
+        mostrar_erro(str(erro))
+        return False
+
+
 def mostrar_menu():
     """Exibe o menu principal e devolve o código escolhido pelas setas."""
     opcoes_menu = [
@@ -857,6 +944,7 @@ def mostrar_menu():
         ("Atualizar vulnerabilidade", "8"),
         ("Remover vulnerabilidade", "9"),
         ("Mostrar resumo do inventário", "10"),
+        ("Gerenciar dependências e consultar riscos", "11"),
         ("Sair", "0"),
     ]
     print()
@@ -894,6 +982,8 @@ def executar_programa(ativos, caminho_dados):
             alterou = remover_vulnerabilidade_tela(ativos)
         elif opcao == "10":
             mostrar_resumo(ativos)
+        elif opcao == "11":
+            alterou = dependencias_e_riscos_tela(ativos)
         elif opcao == "0":
             if salvar_com_aviso(ativos, caminho_dados):
                 mostrar_sucesso("Programa encerrado.")

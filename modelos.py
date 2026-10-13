@@ -78,10 +78,11 @@ class Vulnerabilidade:
 
 
 class Ativo:
-    """Representa um ativo inventariado e suas vulnerabilidades."""
+    """Classe base dos equipamentos cadastrados no inventário."""
 
     def __init__(self, identificador, nome, responsavel, localizacao, tipo,
-                 criticidade, vulnerabilidades=None, historico=None):
+                 criticidade, vulnerabilidades=None, historico=None,
+                 dependencias=None):
         self.id = identificador
         self.nome = nome
         self.responsavel = responsavel
@@ -90,6 +91,11 @@ class Ativo:
         self.criticidade = criticidade
         self.vulnerabilidades = vulnerabilidades if vulnerabilidades is not None else []
         self.historico = historico if historico is not None else []
+        self.dependencias = dependencias if dependencias is not None else []
+
+    def nome_do_tipo(self):
+        """Nome exibido pela interface; as subclasses o sobrescrevem."""
+        return "Ativo de TI"
 
     def registrar_historico(self, mensagem):
         """Guarda uma evidência simples de criação, alteração ou cadastro."""
@@ -109,6 +115,7 @@ class Ativo:
             "criticidade": self.criticidade,
             "vulnerabilidades": vulnerabilidades,
             "historico": self.historico,
+            "dependencias": self.dependencias,
         }
 
     @classmethod
@@ -117,7 +124,7 @@ class Ativo:
         vulnerabilidades = []
         for vulnerabilidade in dados["vulnerabilidades"]:
             vulnerabilidades.append(Vulnerabilidade.de_dicionario(vulnerabilidade))
-        return cls(
+        return criar_ativo(
             dados["id"],
             dados["nome"],
             dados["responsavel"],
@@ -126,4 +133,54 @@ class Ativo:
             dados["criticidade"],
             vulnerabilidades,
             dados["historico"],
+            dados.get("dependencias", []),
         )
+
+
+class Notebook(Ativo):
+    def nome_do_tipo(self):
+        return "Notebook"
+
+
+class Servidor(Ativo):
+    def nome_do_tipo(self):
+        return "Servidor"
+
+
+class Roteador(Ativo):
+    def nome_do_tipo(self):
+        return "Roteador"
+
+
+class AplicacaoWeb(Ativo):
+    def nome_do_tipo(self):
+        return "Aplicação Web"
+
+
+class BancoDeDados(Ativo):
+    def nome_do_tipo(self):
+        return "Banco de Dados"
+
+
+class SoftwareLicenciado(Ativo):
+    def nome_do_tipo(self):
+        return "Software Licenciado"
+
+
+CLASSES_DE_ATIVO = {
+    TipoAtivo.NOTEBOOK.value: Notebook,
+    TipoAtivo.SERVIDOR.value: Servidor,
+    TipoAtivo.ROTEADOR.value: Roteador,
+    TipoAtivo.APLICACAO_WEB.value: AplicacaoWeb,
+    TipoAtivo.BANCO_DE_DADOS.value: BancoDeDados,
+    TipoAtivo.SOFTWARE_LICENCIADO.value: SoftwareLicenciado,
+}
+
+
+def criar_ativo(identificador, nome, responsavel, localizacao, tipo,
+                criticidade, vulnerabilidades=None, historico=None,
+                dependencias=None):
+    """Cria o objeto concreto correspondente ao tipo escolhido."""
+    classe = CLASSES_DE_ATIVO[tipo]
+    return classe(identificador, nome, responsavel, localizacao, tipo,
+                  criticidade, vulnerabilidades, historico, dependencias)

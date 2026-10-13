@@ -12,6 +12,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+import interface
 from interface import (VOLTAR, atualizar_ativo_tela, confirmar_remocao,
                        consultar_vulnerabilidades_tela, executar_programa,
                        ler_id_para_operacao, ler_texto_formulario,
@@ -50,6 +51,19 @@ class TesteInventario(unittest.TestCase):
     def test_id_duplicado_e_rejeitado(self):
         with self.assertRaises(DadosInvalidosError):
             cadastrar_ativo(self.ativos, 10, "OUTRO", "TI", "Sala 1", 1, "Baixa")
+
+    def test_nome_duplicado_e_rejeitado(self):
+        """Hostname repetido não pode identificar dois ativos diferentes."""
+        with self.assertRaises(DadosInvalidosError):
+            cadastrar_ativo(self.ativos, 20, " srv-arquivos ", "TI", "Sala 1", 1,
+                            "Baixa")
+        self.assertNotIn(20, self.ativos)
+
+    def test_atualizacao_nao_permite_nome_de_outro_ativo(self):
+        cadastrar_ativo(self.ativos, 20, "NOTEBOOK-ANA", "Ana", "Sala 2", 1, "Média")
+        with self.assertRaises(DadosInvalidosError):
+            atualizar_ativo(self.ativos, 20, nome="SRV-ARQUIVOS")
+        self.assertEqual(self.ativos[20].nome, "NOTEBOOK-ANA")
 
     def test_tipo_invalido_e_rejeitado(self):
         with self.assertRaises(DadosInvalidosError):
@@ -125,6 +139,7 @@ class TesteInventario(unittest.TestCase):
         self.assertIn("CVE-2024-1234", tela.getvalue())
         self.assertNotIn("CVE-2025-4321", tela.getvalue())
 
+    @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
     def test_letra_a_com_crase_nao_e_tratada_como_seta(self):
         with patch("interface.msvcrt.getwch", side_effect=["à", "\r"]), \
                 patch("interface.msvcrt.kbhit", return_value=False):
@@ -132,6 +147,7 @@ class TesteInventario(unittest.TestCase):
                 texto = ler_texto_formulario("Localização")
         self.assertEqual(texto, "à")
 
+    @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
     def test_letra_a_com_crase_em_texto_colado_e_preservada(self):
         with patch("interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), \
                 patch("interface.msvcrt.kbhit", return_value=True):

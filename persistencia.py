@@ -14,17 +14,25 @@ def carregar_ativos(caminho):
     try:
         with open(caminho, "r", encoding="utf-8") as arquivo:
             dados = json.load(arquivo)
-        if not isinstance(dados, dict):
-            raise DadosInvalidosError("A base deve conter ativos por ID.")
+        if not isinstance(dados, list):
+            raise DadosInvalidosError("A base deve conter uma lista de ativos.")
         ativos = {}
-        for identificador, dados_ativo in dados.items():
+        for dados_ativo in dados:
             if not isinstance(dados_ativo, dict):
                 raise ValueError("Ativo inválido no arquivo de dados.")
-            chave = int(identificador)
             ativo = Ativo.de_dicionario(dados_ativo)
-            if ativo.id != chave:
-                raise ValueError("ID do ativo não corresponde à chave do arquivo.")
-            ativos[chave] = validar_ativo_carregado(ativo)
+            if ativo.id in ativos:
+                raise ValueError("ID repetido no arquivo de dados.")
+            ativos[ativo.id] = validar_ativo_carregado(ativo)
+        nomes = set()
+        for ativo in ativos.values():
+            nome = ativo.nome.lower()
+            if nome in nomes:
+                raise DadosInvalidosError("Nome ou hostname repetido no arquivo de dados.")
+            nomes.add(nome)
+            for dependencia in ativo.dependencias:
+                if dependencia["ativo_id"] not in ativos:
+                    raise DadosInvalidosError("Dependência aponta para ativo inexistente.")
         return ativos
     except (OSError, json.JSONDecodeError, ValueError, KeyError, TypeError,
             AttributeError, DadosInvalidosError):
@@ -34,9 +42,9 @@ def carregar_ativos(caminho):
 
 def salvar_ativos(ativos, caminho):
     """Converte os objetos em dicionários e grava um JSON legível."""
-    dados = {}
-    for identificador, ativo in ativos.items():
-        dados[str(identificador)] = ativo.para_dicionario()
+    dados = []
+    for identificador in sorted(ativos):
+        dados.append(ativos[identificador].para_dicionario())
     try:
         pasta = os.path.dirname(caminho)
         if pasta:

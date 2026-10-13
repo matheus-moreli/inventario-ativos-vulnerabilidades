@@ -1,6 +1,6 @@
 # Inventário de Ativos e Vulnerabilidades
 
-Projeto acadêmico em Python para registrar ativos de tecnologia e as vulnerabilidades associadas a eles. Ele foi desenvolvido para as Sprints 1 e 2 da disciplina e funciona inteiramente no terminal do Windows, sem bibliotecas externas, internet, banco de dados ou interface gráfica.
+Projeto acadêmico em Python para registrar ativos de tecnologia e as vulnerabilidades associadas a eles. Ele começou nas Sprints 1 e 2 e foi evoluído para o Trabalho 2 das Sprints 3, 4 e 5. Funciona no terminal, sem bibliotecas externas, internet, banco de dados ou interface gráfica.
 
 O objetivo é demonstrar os fundamentos de Python em um problema realista: saber quais equipamentos e sistemas existem, quem é responsável por eles, qual é sua importância para a segurança e quais falhas precisam de tratamento.
 
@@ -26,9 +26,12 @@ O sistema permite:
 - consultar vulnerabilidades pela lista, por ID do ativo ou com filtros avançados;
 - aceitar CVSS com ponto ou vírgula decimal, como 9.8 ou 9,8;
 - impedir ID de ativo repetido e CVE repetido no mesmo ativo;
+- impedir nome ou hostname repetido, mesmo com diferença de maiúsculas ou espaços;
 - exigir evidência antes de marcar uma vulnerabilidade como corrigida;
 - manter um histórico simples das alterações feitas em cada ativo;
-- salvar as mudanças em um arquivo JSON local.
+- salvar as mudanças em um arquivo JSON local formado por uma lista de objetos;
+- representar cada tipo de ativo por uma classe derivada de `Ativo`;
+- cadastrar dependências entre ativos e consultar o risco próprio e efetivo.
 
 Esta é uma aplicação didática. Ela não realiza varredura automática de rede, não consulta o NVD automaticamente, não possui login, não armazena senhas e não substitui uma ferramenta profissional de gestão de vulnerabilidades.
 
@@ -36,7 +39,7 @@ Esta é uma aplicação didática. Ela não realiza varredura automática de red
 
 Para executar o programa, são necessários:
 
-- Windows;
+- Windows para usar as setas do menu, ou Linux no container Docker;
 - Python 3;
 - PowerShell ou Prompt de Comando;
 - Git apenas se a intenção for clonar o repositório.
@@ -88,6 +91,25 @@ O programa carrega automaticamente o arquivo dados/inventario.json e mostra a qu
 
 Para encerrar, selecione Sair no menu principal. O programa tenta salvar os dados automaticamente depois de cada cadastro, atualização ou remoção. Ao sair, ele tenta salvar novamente. Caso haja falha de gravação, a tela oferece a escolha entre tentar salvar de novo ou sair conscientemente sem salvar as alterações mais recentes.
 
+## Docker (Trabalho 2)
+
+Com o Docker Desktop instalado e aberto, execute na pasta do projeto:
+
+~~~powershell
+docker build -t inventario-ativos .
+docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos
+~~~
+
+O mesmo programa é aberto dentro do container. O volume `dados` mantém o JSON salvo na pasta do computador.
+
+Para manter o container em execução contínua, inclusive após reiniciar o Docker, use:
+
+~~~powershell
+docker run -dit --name inventario-ativos-24h --restart unless-stopped -v "${PWD}/dados:/app/dados" inventario-ativos
+~~~
+
+Para abrir o menu desse container depois, execute `docker attach inventario-ativos-24h`.
+
 ## Navegação no terminal
 
 O menu principal e todas as listas de opções são controlados pelo teclado.
@@ -119,6 +141,7 @@ Nas telas de remoção, a escolha inicial é sempre Cancelar. Isso evita apagar 
 | Atualizar vulnerabilidade | Altera descrição, prioridade, tratamento, status e verificação. |
 | Remover vulnerabilidade | Exclui uma vulnerabilidade após confirmação explícita. |
 | Mostrar resumo do inventário | Mostra o total de ativos e de vulnerabilidades. |
+| Gerenciar dependências e consultar riscos | Cadastra/remover dependências e mostra o risco próprio e efetivo dos ativos. |
 | Sair | Encerra o programa de maneira segura. |
 
 ## Primeiro roteiro de uso
