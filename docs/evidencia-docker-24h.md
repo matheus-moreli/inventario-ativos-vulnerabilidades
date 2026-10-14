@@ -6,6 +6,8 @@ O workflow `verificar.yml` executa testes Python e flake8. Em 13/10/2026, o Dock
 
 O container local anterior `inventario-ativos-24h` iniciou em **13/10/2026 11:24:50 BRT** e ainda estava ativo, com **zero reinícios**, na coleta de **13/10/2026 21:42 BRT** (aproximadamente 10 h 17 min). Sua imagem contém código anterior à PR #3. Ele foi preservado; essa contagem não vale como prova da versão nova nem da hospedagem no servidor do docente.
 
+Depois dos testes e da revisão, a versão nova do commit `3395957` iniciou em outro container local, `inventario-ativos-trabalho2-novo`, em **13/10/2026 21:46:48 BRT** (`2026-10-14T00:46:48.968560529Z`). Ela usa `python app.py`, volume próprio `inventario-trabalho2-novo-dados` e política `unless-stopped`. A primeira inspeção registrou `running=true`, `RestartCount=0`, seis ativos no JSON e o menu completo nos logs. A marca de 24 horas desta versão só poderá ser aferida após **14/10/2026 21:46:48 BRT**, desde que permaneça sem reinícios. Essa execução é no PC do aluno, não no servidor do docente.
+
 ## Execução no servidor da disciplina
 
 No servidor disponibilizado pelo docente, com Docker e uma cópia da branch aprovada:
@@ -38,4 +40,4 @@ docker logs inventario-ativos-24h
 
 Guarde as duas saídas completas, horário da coleta, identificação do servidor e um registro da operação de CRUD feita via menu. O critério de aceite é: mesmo container e imagem, início há pelo menos 24 horas, `ativo=true`, `reinicios=0`, menu funcional e dados persistidos. Um reinício durante o período recomeça a contagem. Credenciais e dados privados do servidor não devem aparecer na evidência pública.
 
-**Estado atual:** build e execução curta locais verificados; execução de 24 horas da versão final no servidor do docente ainda pendente. Não há evidência de 24 horas neste repositório.
+**Estado atual:** build, testes, serviço HTTP e menu completo locais verificados; versão nova em execução no Docker Desktop. Ainda faltam 24 horas verificadas e a hospedagem no servidor do docente. Não há evidência de 24 horas neste repositório.
