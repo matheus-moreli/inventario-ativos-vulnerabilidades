@@ -21,16 +21,16 @@ Fontes lidas: **1ª Atividade Avaliativa, versão 2.0 (2026/2)**, páginas 1–4
 
 | Nº | Exigência | Evidência | Estado |
 |---|---|---|---|
-| 1 | Cada ativo como objeto de classe base e tipos derivados | `Ativo` e seis subclasses em `modelos.py`; `Inventario`, `RepositorioJSON`, `AnalisadorRisco` e `Aplicacao` organizam o domínio | Presente pela Tabela 1; a interface de terminal ainda usa funções auxiliares, ponto discutível na expressão “reescrever integralmente” da introdução |
+| 1 | Cada ativo como objeto de classe base e tipos derivados | `Equipamento` e seis subclasses em `modelos.py`; `Inventario`, `InterfaceTerminal`, `RepositorioJSON`, `AnalisadorRisco` e `Aplicacao` organizam o programa. Funções auxiliares de entrada/saída e adaptadores preservam compatibilidade com o Trabalho 1 | Presente; herança, polimorfismo e fluxo principal orientado a objetos verificados |
 | 2 | Arquivo JSON formado por array de objetos | `dados/inventario.json` começa com `[` e `RepositorioJSON.salvar` serializa lista; subclasses são reconstituídas | Presente |
-| 3 | Aplicação no Docker ativa por no mínimo 24 h no servidor do docente | `Dockerfile` e comando `docker run -dit ... python app.py` preparados em `evidencia-docker-24h.md`; o menu completo pode ficar ativo com TTY e volume persistente | **Não comprovado**: Docker indisponível nesta máquina e servidor docente ainda não usado |
-| 4 | M, v, A, b=Mv, invertibilidade de I−A, solução e consulta de b/x | `risco.py` monta matrizes/vetor, verifica pivôs, resolve por Gauss; `interface.mostrar_riscos_tela` consulta; `test_risco.py` prova cenário com três ativos, JSON das dependências e matriz singular | Presente nos testes locais; comportamento no container depende do item 3 |
+| 3 | Aplicação no Docker ativa por no mínimo 24 h no servidor do docente | `Dockerfile` e comando `docker run -dit ... python app.py` em `evidencia-docker-24h.md`. Docker Desktop localizou container antigo iniciado em 13/10 às 11:24:50 BRT, sem reinícios até 21:42 BRT; imagem candidata nova compilou, passou nos testes e respondeu às rotas HTTP | **Não comprovado integralmente**: ainda não há 24 h verificadas nem execução no servidor do docente; o container antigo usa código anterior à PR |
+| 4 | M, v, A, b=Mv, invertibilidade de I−A, solução e consulta de b/x | `risco.py` monta matrizes/vetor, verifica pivôs, resolve por Gauss; `InterfaceTerminal.mostrar_riscos_tela` consulta; `test_risco.py` prova cenário com três ativos, JSON das dependências e matriz singular; `/riscos` respondeu na imagem candidata | Presente nos testes locais e na imagem candidata; 24 h no servidor ainda pendentes |
 
 As dependências são persistidas no mesmo JSON do ativo. A soma dos pesos por linha é limitada a menos de 1, condição suficiente de invertibilidade; a verificação explícita também existe. O CVSS é usado como severidade numérica. O fator de exposição específico por tipo e o número de condição aparecem como **dicas** no enunciado, não como itens obrigatórios da Tabela 1.
 
 ## Limites da conclusão
 
 - O código melhorado está publicado na **PR #3 em rascunho**; a `main` ainda não contém essas mudanças. A recomendação do README para executar a versão final da `main` só valerá após integração.
-- O CI da PR testa Python e estilo. Não comprova build Docker nem 24 horas.
+- O CI da PR testa Python e estilo. O build e teste de fumaça Docker foram feitos no Docker Desktop local; eles não comprovam 24 horas no servidor do docente.
 - A exigência do Trabalho 2 sobre apresentação individual e domínio do conteúdo depende de Matheus demonstrar e explicar o programa; não pode ser certificada pelo repositório.
 - Este documento não atribui nota. A avaliação e o prazo final são do docente.

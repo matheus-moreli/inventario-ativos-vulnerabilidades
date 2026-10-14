@@ -13,18 +13,7 @@ except ImportError:
 
 from inventario import (
     DadosInvalidosError,
-    atualizar_ativo,
-    atualizar_vulnerabilidade,
-    buscar_vulnerabilidade,
-    cadastrar_ativo,
-    cadastrar_vulnerabilidade,
-    consultar_por_id,
-    consultar_vulnerabilidades,
-    excluir_ativo,
-    excluir_vulnerabilidade,
-    filtrar_ativos,
-    adicionar_dependencia,
-    remover_dependencia,
+    Inventario,
     validar_cve,
     validar_cwe,
     validar_cvss,
@@ -32,7 +21,6 @@ from inventario import (
 )
 from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
 from persistencia import salvar_ativos
-from risco import calcular_riscos
 
 # Valor especial usado apenas pela interface para voltar uma etapa do formulário.
 VOLTAR = object()
@@ -483,378 +471,35 @@ def mostrar_ativo(ativo, mostrar_detalhes=True):
 
 
 def cadastrar_ativo_tela(ativos):
-    print()
-    mostrar_titulo("Cadastro de ativo")
-
-    def ler_id_novo(valores, anterior, preenchido):
-        while True:
-            identificador = ler_inteiro_formulario(
-                "ID único do ativo", anterior, preenchido
-            )
-            if identificador is VOLTAR:
-                return VOLTAR
-            if consultar_por_id(ativos, identificador) is None:
-                return identificador
-            mostrar_erro("Já existe um ativo com esse ID.")
-
-    dados = preencher_formulario(
-        [
-            ("identificador", ler_id_novo),
-            (
-                "nome",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Nome ou hostname", True, anterior, preenchido
-                ),
-            ),
-            (
-                "responsavel",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Responsável", True, anterior, preenchido
-                ),
-            ),
-            (
-                "localizacao",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Setor ou localização", True, anterior, preenchido
-                ),
-            ),
-            (
-                "tipo",
-                lambda valores, anterior, preenchido: escolher_tipo_formulario(
-                    anterior, preenchido
-                ),
-            ),
-            (
-                "criticidade",
-                lambda valores, anterior, preenchido: escolher_item_formulario(
-                    "Importância do ativo para a segurança (criticidade): ",
-                    CRITICIDADES,
-                    anterior,
-                    preenchido,
-                ),
-            ),
-        ]
-    )
-    if dados is None:
-        return False
-    try:
-        ativo = cadastrar_ativo(
-            ativos,
-            dados["identificador"],
-            dados["nome"],
-            dados["responsavel"],
-            dados["localizacao"],
-            dados["tipo"],
-            dados["criticidade"],
-        )
-        mostrar_sucesso(f"Ativo {ativo.id} cadastrado com sucesso.")
-        while ler_sim_ou_nao("Cadastrar vulnerabilidade inicial neste ativo?"):
-            if not cadastrar_vulnerabilidade_tela(ativos, ativo.id):
-                break
-        return True
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).cadastrar_ativo_tela()
 
 
 def listar_ativos_tela(ativos):
-    print()
-    mostrar_titulo("Ativos cadastrados")
-    if not ativos:
-        mostrar_aviso("Não há ativos cadastrados.")
-        return
-    for identificador in sorted(ativos):
-        mostrar_ativo(ativos[identificador], False)
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).listar_ativos_tela()
 
 
 def buscar_ativo_tela(ativos):
-    print()
-    mostrar_titulo("Buscar ativo")
-    escolha = escolher_com_setas(
-        "Buscar ativo:",
-        [
-            "Buscar por ID",
-            "Filtrar por nome, tipo ou importância do ativo",
-            "Retornar ao menu",
-        ],
-        True,
-    )
-    if escolha is None or escolha == 2:
-        return
-    if escolha == 0:
-        identificador = ler_id_para_operacao("ID do ativo")
-        if identificador is None:
-            return
-        ativo = consultar_por_id(ativos, identificador)
-        if ativo is None:
-            mostrar_aviso("Ativo não encontrado.")
-        else:
-            mostrar_ativo(ativo)
-    elif escolha == 1:
-        termo = ler_texto("Nome ou hostname (vazio = todos): ", False)
-        tipo = (
-            escolher_tipo_ativo()
-            if ler_sim_ou_nao("Deseja filtrar por tipo?")
-            else None
-        )
-        criticidade = (
-            escolher_item(
-                "Importância do ativo para a segurança (criticidade): ", CRITICIDADES
-            )
-            if ler_sim_ou_nao("Deseja filtrar por importância do ativo?")
-            else None
-        )
-        resultado = filtrar_ativos(ativos, termo, tipo, criticidade)
-        if not resultado:
-            mostrar_aviso("Nenhum ativo encontrado.")
-        for ativo in resultado:
-            mostrar_ativo(ativo, False)
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).buscar_ativo_tela()
 
 
 def atualizar_ativo_tela(ativos):
-    print()
-    mostrar_titulo("Atualização de ativo")
-
-    def ler_id_existente(valores, anterior, preenchido):
-        while True:
-            identificador = ler_inteiro_formulario(
-                "ID do ativo que será atualizado", anterior, preenchido
-            )
-            if identificador is VOLTAR:
-                return VOLTAR
-            if consultar_por_id(ativos, identificador) is not None:
-                if anterior is not None and identificador != anterior:
-                    # Trocar o alvo invalida as respostas preenchidas para o ativo anterior.
-                    valores.clear()
-                return identificador
-            mostrar_erro("Ativo não encontrado.")
-
-    def ativo_do_formulario(valores):
-        return consultar_por_id(ativos, valores["identificador"])
-
-    dados = preencher_formulario(
-        [
-            ("identificador", ler_id_existente),
-            (
-                "nome",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    f"Nome ou hostname [{ativo_do_formulario(valores).nome}]",
-                    False,
-                    anterior,
-                    preenchido,
-                ),
-            ),
-            (
-                "responsavel",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    f"Responsável [{ativo_do_formulario(valores).responsavel}]",
-                    False,
-                    anterior,
-                    preenchido,
-                ),
-            ),
-            (
-                "localizacao",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    f"Setor ou localização [{ativo_do_formulario(valores).localizacao}]",
-                    False,
-                    anterior,
-                    preenchido,
-                ),
-            ),
-            (
-                "tipo",
-                lambda valores, anterior, preenchido: escolher_tipo_atualizacao(
-                    anterior, preenchido
-                ),
-            ),
-            (
-                "criticidade",
-                lambda valores, anterior, preenchido: escolher_item_atualizacao(
-                    "Nova importância do ativo para a segurança:",
-                    CRITICIDADES,
-                    anterior,
-                    preenchido,
-                ),
-            ),
-        ]
-    )
-    if dados is None:
-        return False
-    if not any(
-        [
-            dados["nome"],
-            dados["responsavel"],
-            dados["localizacao"],
-            dados["tipo"] is not None,
-            dados["criticidade"] is not None,
-        ]
-    ):
-        mostrar_aviso("Nenhum campo foi alterado.")
-        return False
-    try:
-        atualizar_ativo(
-            ativos,
-            dados["identificador"],
-            dados["nome"],
-            dados["responsavel"],
-            dados["localizacao"],
-            dados["tipo"],
-            dados["criticidade"],
-        )
-        mostrar_sucesso("Ativo atualizado com sucesso. A alteração está no histórico.")
-        return True
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).atualizar_ativo_tela()
 
 
 def remover_ativo_tela(ativos):
-    print()
-    mostrar_titulo("Remoção de ativo")
-    identificador = ler_id_para_operacao("ID do ativo que será removido")
-    if identificador is None:
-        return False
-    ativo = consultar_por_id(ativos, identificador)
-    if ativo is None:
-        mostrar_erro("Ativo não encontrado.")
-        return False
-    print(f"Confirme o alvo: ID {ativo.id} - {ativo.nome}.")
-    print("Política: a exclusão remove o ativo e as vulnerabilidades associadas.")
-    try:
-        if excluir_ativo(ativos, identificador, confirmar_remocao()):
-            mostrar_sucesso("Ativo removido com sucesso.")
-            return True
-        mostrar_aviso("Remoção cancelada.")
-        return False
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).remover_ativo_tela()
 
 
 def cadastrar_vulnerabilidade_tela(ativos, identificador_inicial=None):
-    print()
-    mostrar_titulo("Cadastro de vulnerabilidade")
-
-    def ler_id_existente(valores, anterior, preenchido):
-        if identificador_inicial is not None:
-            return identificador_inicial
-        while True:
-            identificador = ler_inteiro_formulario(
-                "ID do ativo afetado", anterior, preenchido
-            )
-            if identificador is VOLTAR:
-                return VOLTAR
-            if consultar_por_id(ativos, identificador) is not None:
-                return identificador
-            mostrar_erro("Ativo não encontrado.")
-
-    def ler_cve_novo(valores, anterior, preenchido):
-        while True:
-            cve = ler_validado_formulario(
-                "CVE (ex.: CVE-2024-1234)", validar_cve, anterior, preenchido
-            )
-            if cve is VOLTAR:
-                return VOLTAR
-            ativo = consultar_por_id(ativos, valores["identificador"])
-            if buscar_vulnerabilidade(ativo, cve) is None:
-                return cve
-            mostrar_erro("Esta vulnerabilidade já foi cadastrada para o ativo.")
-
-    dados = preencher_formulario(
-        [
-            ("identificador", ler_id_existente),
-            ("cve", ler_cve_novo),
-            (
-                "cwe",
-                lambda valores, anterior, preenchido: ler_validado_formulario(
-                    "CWE (ex.: CWE-79)", validar_cwe, anterior, preenchido
-                ),
-            ),
-            (
-                "cvss",
-                lambda valores, anterior, preenchido: ler_validado_formulario(
-                    "Nota CVSS (0.0 a 10.0)", validar_cvss, anterior, preenchido
-                ),
-            ),
-            (
-                "descricao",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Descrição", True, anterior, preenchido
-                ),
-            ),
-            (
-                "fonte",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Fonte verificável (URL ou órgão)", True, anterior, preenchido
-                ),
-            ),
-            (
-                "data_fonte",
-                lambda valores, anterior, preenchido: ler_validado_formulario(
-                    "Data da fonte (dd/mm/aaaa)",
-                    validar_data_fonte,
-                    anterior,
-                    preenchido,
-                ),
-            ),
-            (
-                "impacto",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Impacto no ativo", True, anterior, preenchido
-                ),
-            ),
-            (
-                "prioridade",
-                lambda valores, anterior, preenchido: escolher_item_formulario(
-                    "Prioridade:", SEVERIDADES, anterior, preenchido
-                ),
-            ),
-            (
-                "tratamento",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Tratamento planejado", True, anterior, preenchido
-                ),
-            ),
-            (
-                "status",
-                lambda valores, anterior, preenchido: escolher_item_formulario(
-                    "Status:", STATUS, anterior, preenchido
-                ),
-            ),
-            (
-                "verificacao",
-                lambda valores, anterior, preenchido: ler_verificacao_formulario(
-                    valores, "Como será verificado o tratamento", anterior, preenchido
-                ),
-            ),
-        ]
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).cadastrar_vulnerabilidade_tela(
+        identificador_inicial
     )
-    if dados is None:
-        return False
-    try:
-        vulnerabilidade = cadastrar_vulnerabilidade(
-            ativos,
-            dados["identificador"],
-            dados["cve"],
-            dados["cwe"],
-            dados["cvss"],
-            dados["descricao"],
-            dados["fonte"],
-            dados["data_fonte"],
-            dados["impacto"],
-            dados["prioridade"],
-            dados["tratamento"],
-            dados["status"],
-            dados["verificacao"],
-        )
-        mostrar_sucesso(
-            f"Vulnerabilidade {vulnerabilidade.cve} cadastrada com sucesso."
-        )
-        return True
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
 
 
 def resumo_vulnerabilidade(ativo, vulnerabilidade):
@@ -922,249 +567,33 @@ def aguardar_retorno_lista():
 
 
 def consultar_vulnerabilidades_tela(ativos):
-    print()
-    mostrar_titulo("Consulta de vulnerabilidades")
-    modo = escolher_com_setas(
-        "Como deseja consultar?",
-        [
-            "Ver vulnerabilidades cadastradas",
-            "Ver vulnerabilidades de um ativo por ID",
-            "Filtrar vulnerabilidades (avançado)",
-            "Retornar ao menu",
-        ],
-        True,
-    )
-    if modo is None or modo == 3:
-        return
-
-    if modo == 0:
-        resultado = consultar_vulnerabilidades(ativos)
-    elif modo == 1:
-        identificador = ler_id_para_operacao("ID do ativo")
-        if identificador is None:
-            return
-        ativo = consultar_por_id(ativos, identificador)
-        if ativo is None:
-            mostrar_erro("Ativo não encontrado.")
-            return
-        resultado = [
-            (ativo, vulnerabilidade) for vulnerabilidade in ativo.vulnerabilidades
-        ]
-    else:
-        resultado = consultar_vulnerabilidades(
-            ativos,
-            ler_texto("CVE exato (vazio = todos): ", False),
-            escolher_item("Prioridade: ", SEVERIDADES, True),
-            escolher_item("Status: ", STATUS, True),
-        )
-
-    navegar_vulnerabilidades(resultado)
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).consultar_vulnerabilidades_tela()
 
 
 def atualizar_vulnerabilidade_tela(ativos):
-    print()
-    mostrar_titulo("Atualização de vulnerabilidade")
-
-    def ler_id_existente(valores, anterior, preenchido):
-        while True:
-            identificador = ler_inteiro_formulario(
-                "ID do ativo afetado", anterior, preenchido
-            )
-            if identificador is VOLTAR:
-                return VOLTAR
-            if consultar_por_id(ativos, identificador) is not None:
-                if anterior is not None and identificador != anterior:
-                    valores.clear()
-                return identificador
-            mostrar_erro("Ativo não encontrado.")
-
-    def ler_cve_existente(valores, anterior, preenchido):
-        while True:
-            cve = ler_validado_formulario(
-                "CVE da vulnerabilidade", validar_cve, anterior, preenchido
-            )
-            if cve is VOLTAR:
-                return VOLTAR
-            ativo = consultar_por_id(ativos, valores["identificador"])
-            if buscar_vulnerabilidade(ativo, cve) is not None:
-                if anterior is not None and cve != anterior:
-                    # Um novo CVE é outro registro: não reaproveitar seus campos.
-                    identificador_atual = valores["identificador"]
-                    valores.clear()
-                    valores["identificador"] = identificador_atual
-                return cve
-            mostrar_erro("Vulnerabilidade não encontrada para este ativo.")
-
-    dados = preencher_formulario(
-        [
-            ("identificador", ler_id_existente),
-            ("cve", ler_cve_existente),
-            (
-                "descricao",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Nova descrição", False, anterior, preenchido
-                ),
-            ),
-            (
-                "prioridade",
-                lambda valores, anterior, preenchido: escolher_item_atualizacao(
-                    "Nova prioridade:", SEVERIDADES, anterior, preenchido
-                ),
-            ),
-            (
-                "tratamento",
-                lambda valores, anterior, preenchido: ler_texto_formulario(
-                    "Novo tratamento", False, anterior, preenchido
-                ),
-            ),
-            (
-                "status",
-                lambda valores, anterior, preenchido: escolher_item_atualizacao(
-                    "Novo status:", STATUS, anterior, preenchido
-                ),
-            ),
-            (
-                "verificacao",
-                lambda valores, anterior, preenchido: ler_verificacao_formulario(
-                    valores,
-                    "Nova verificação",
-                    anterior,
-                    preenchido,
-                    False,
-                    buscar_vulnerabilidade(
-                        consultar_por_id(ativos, valores["identificador"]),
-                        valores["cve"],
-                    ).verificacao,
-                ),
-            ),
-        ]
-    )
-    if dados is None:
-        return False
-    if not any(
-        [
-            dados["descricao"],
-            dados["prioridade"],
-            dados["tratamento"],
-            dados["status"],
-            dados["verificacao"],
-        ]
-    ):
-        mostrar_aviso("Nenhum campo foi alterado.")
-        return False
-    try:
-        atualizar_vulnerabilidade(
-            ativos,
-            dados["identificador"],
-            dados["cve"],
-            dados["descricao"],
-            dados["prioridade"],
-            dados["tratamento"],
-            dados["status"],
-            dados["verificacao"],
-        )
-        mostrar_sucesso("Vulnerabilidade atualizada com sucesso.")
-        return True
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).atualizar_vulnerabilidade_tela()
 
 
 def remover_vulnerabilidade_tela(ativos):
-    print()
-    mostrar_titulo("Remoção de vulnerabilidade")
-    identificador = ler_id_para_operacao("ID do ativo afetado")
-    if identificador is None:
-        return False
-    ativo = consultar_por_id(ativos, identificador)
-    if ativo is None:
-        mostrar_erro("Ativo não encontrado.")
-        return False
-    cve = ler_validado_formulario("CVE da vulnerabilidade", validar_cve)
-    if cve is VOLTAR:
-        mostrar_aviso("Operação cancelada.")
-        return False
-    vulnerabilidade = buscar_vulnerabilidade(ativo, cve)
-    if vulnerabilidade is None:
-        mostrar_erro("Vulnerabilidade não encontrada para este ativo.")
-        return False
-    print(f"Confirme o alvo: {vulnerabilidade.cve} - {vulnerabilidade.descricao}.")
-    try:
-        if excluir_vulnerabilidade(ativos, identificador, cve, confirmar_remocao()):
-            mostrar_sucesso("Vulnerabilidade removida com sucesso.")
-            return True
-        mostrar_aviso("Remoção cancelada.")
-        return False
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).remover_vulnerabilidade_tela()
 
 
 def mostrar_resumo(ativos):
-    total = sum(len(ativo.vulnerabilidades) for ativo in ativos.values())
-    print()
-    mostrar_titulo("Resumo do inventário")
-    print(f"Total de ativos cadastrados: {len(ativos)}")
-    print(f"Total de vulnerabilidades cadastradas: {total}")
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).mostrar_resumo()
 
 
 def mostrar_riscos_tela(ativos):
-    """Exibe os dois riscos calculados pelo modelo linear do Trabalho 2."""
-    if not ativos:
-        mostrar_aviso("Cadastre ao menos um ativo antes de calcular riscos.")
-        return
-    try:
-        lista_ativos, _, _, risco_proprio, _, risco_efetivo = calcular_riscos(ativos)
-    except ValueError as erro:
-        mostrar_erro(str(erro))
-        return
-    print()
-    mostrar_titulo("Análise de risco")
-    print("Risco próprio: soma dos CVSS das vulnerabilidades do ativo.")
-    print("Risco efetivo: risco próprio mais o risco recebido por dependências.")
-    for indice, ativo in enumerate(lista_ativos):
-        print(
-            f"{ativo.id} - {ativo.nome}: próprio {risco_proprio[indice]:.2f} | "
-            f"efetivo {risco_efetivo[indice]:.2f}"
-        )
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).mostrar_riscos_tela()
 
 
 def dependencias_e_riscos_tela(ativos):
-    """Mantém o cadastro das dependências e a consulta de risco no mesmo lugar."""
-    escolha = escolher_com_setas(
-        "Dependências e risco:",
-        [
-            "Cadastrar dependência",
-            "Remover dependência",
-            "Consultar riscos",
-            "Retornar ao menu",
-        ],
-        True,
-    )
-    if escolha is None or escolha == 3:
-        return False
-    if escolha == 2:
-        mostrar_riscos_tela(ativos)
-        return False
-
-    identificador = ler_id_para_operacao("ID do ativo")
-    if identificador is None:
-        return False
-    ativo_dependente = ler_id_para_operacao("ID do ativo do qual ele depende")
-    if ativo_dependente is None:
-        return False
-    try:
-        if escolha == 0:
-            peso = ler_texto("Peso da dependência (ex.: 0,30)")
-            adicionar_dependencia(ativos, identificador, ativo_dependente, peso)
-            mostrar_sucesso("Dependência cadastrada com sucesso.")
-        else:
-            remover_dependencia(ativos, identificador, ativo_dependente)
-            mostrar_sucesso("Dependência removida com sucesso.")
-        return True
-    except DadosInvalidosError as erro:
-        mostrar_erro(str(erro))
-        return False
+    """Compatibilidade com as chamadas anteriores da interface."""
+    return InterfaceTerminal(ativos).dependencias_e_riscos_tela()
 
 
 def mostrar_menu():
@@ -1193,46 +622,672 @@ def mostrar_menu():
     return opcoes_menu[indice][1]
 
 
-def executar_programa(ativos, caminho_dados):
-    mostrar_sucesso(f"Base carregada: {len(ativos)} ativo(s).")
-    while True:
-        opcao = mostrar_menu()
-        alterou = False
-        if opcao == "1":
-            alterou = cadastrar_ativo_tela(ativos)
-        elif opcao == "2":
-            listar_ativos_tela(ativos)
-        elif opcao == "3":
-            buscar_ativo_tela(ativos)
-        elif opcao == "4":
-            alterou = atualizar_ativo_tela(ativos)
-        elif opcao == "5":
-            alterou = remover_ativo_tela(ativos)
-        elif opcao == "6":
-            alterou = cadastrar_vulnerabilidade_tela(ativos)
-        elif opcao == "7":
-            consultar_vulnerabilidades_tela(ativos)
-        elif opcao == "8":
-            alterou = atualizar_vulnerabilidade_tela(ativos)
-        elif opcao == "9":
-            alterou = remover_vulnerabilidade_tela(ativos)
-        elif opcao == "10":
-            mostrar_resumo(ativos)
-        elif opcao == "11":
-            alterou = dependencias_e_riscos_tela(ativos)
-        elif opcao == "0":
-            if salvar_com_aviso(ativos, caminho_dados):
-                mostrar_sucesso("Programa encerrado.")
-                break
-            if ler_sim_ou_nao("Deseja sair sem salvar?"):
-                mostrar_aviso(
-                    "Programa encerrado sem salvar as alterações mais recentes."
+class InterfaceTerminal:
+    """Coordena as telas em torno do mesmo objeto de inventário."""
+
+    def __init__(self, inventario, caminho_dados=None):
+        self.inventario = (
+            inventario if isinstance(inventario, Inventario) else Inventario(inventario)
+        )
+        self.caminho_dados = caminho_dados
+        self.operacoes = {
+            "1": self.cadastrar_ativo_tela,
+            "2": self.listar_ativos_tela,
+            "3": self.buscar_ativo_tela,
+            "4": self.atualizar_ativo_tela,
+            "5": self.remover_ativo_tela,
+            "6": self.cadastrar_vulnerabilidade_tela,
+            "7": self.consultar_vulnerabilidades_tela,
+            "8": self.atualizar_vulnerabilidade_tela,
+            "9": self.remover_vulnerabilidade_tela,
+            "10": self.mostrar_resumo,
+            "11": self.dependencias_e_riscos_tela,
+        }
+        self.operacoes_que_alteram = {"1", "4", "5", "6", "8", "9", "11"}
+
+    def cadastrar_ativo_tela(self):
+        print()
+        mostrar_titulo("Cadastro de ativo")
+
+        def ler_id_novo(valores, anterior, preenchido):
+            while True:
+                identificador = ler_inteiro_formulario(
+                    "ID único do ativo", anterior, preenchido
                 )
-                break
+                if identificador is VOLTAR:
+                    return VOLTAR
+                if self.inventario.consultar_por_id(identificador) is None:
+                    return identificador
+                mostrar_erro("Já existe um ativo com esse ID.")
+
+        dados = preencher_formulario(
+            [
+                ("identificador", ler_id_novo),
+                (
+                    "nome",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Nome ou hostname", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "responsavel",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Responsável", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "localizacao",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Setor ou localização", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "tipo",
+                    lambda valores, anterior, preenchido: escolher_tipo_formulario(
+                        anterior, preenchido
+                    ),
+                ),
+                (
+                    "criticidade",
+                    lambda valores, anterior, preenchido: escolher_item_formulario(
+                        "Importância do ativo para a segurança (criticidade): ",
+                        CRITICIDADES,
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+            ]
+        )
+        if dados is None:
+            return False
+        try:
+            ativo = self.inventario.cadastrar_ativo(
+                dados["identificador"],
+                dados["nome"],
+                dados["responsavel"],
+                dados["localizacao"],
+                dados["tipo"],
+                dados["criticidade"],
+            )
+            mostrar_sucesso(f"Ativo {ativo.id} cadastrado com sucesso.")
+            while ler_sim_ou_nao("Cadastrar vulnerabilidade inicial neste ativo?"):
+                if not self.cadastrar_vulnerabilidade_tela(ativo.id):
+                    break
+            return True
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def listar_ativos_tela(self):
+        ativos = self.inventario
+        print()
+        mostrar_titulo("Ativos cadastrados")
+        if not ativos:
+            mostrar_aviso("Não há ativos cadastrados.")
+            return
+        for identificador in sorted(ativos):
+            mostrar_ativo(ativos[identificador], False)
+
+    def buscar_ativo_tela(self):
+        print()
+        mostrar_titulo("Buscar ativo")
+        escolha = escolher_com_setas(
+            "Buscar ativo:",
+            [
+                "Buscar por ID",
+                "Filtrar por nome, tipo ou importância do ativo",
+                "Retornar ao menu",
+            ],
+            True,
+        )
+        if escolha is None or escolha == 2:
+            return
+        if escolha == 0:
+            identificador = ler_id_para_operacao("ID do ativo")
+            if identificador is None:
+                return
+            ativo = self.inventario.consultar_por_id(identificador)
+            if ativo is None:
+                mostrar_aviso("Ativo não encontrado.")
+            else:
+                mostrar_ativo(ativo)
+        elif escolha == 1:
+            termo = ler_texto("Nome ou hostname (vazio = todos): ", False)
+            tipo = (
+                escolher_tipo_ativo()
+                if ler_sim_ou_nao("Deseja filtrar por tipo?")
+                else None
+            )
+            criticidade = (
+                escolher_item(
+                    "Importância do ativo para a segurança (criticidade): ",
+                    CRITICIDADES,
+                )
+                if ler_sim_ou_nao("Deseja filtrar por importância do ativo?")
+                else None
+            )
+            resultado = self.inventario.filtrar_ativos(termo, tipo, criticidade)
+            if not resultado:
+                mostrar_aviso("Nenhum ativo encontrado.")
+            for ativo in resultado:
+                mostrar_ativo(ativo, False)
+
+    def atualizar_ativo_tela(self):
+        print()
+        mostrar_titulo("Atualização de ativo")
+
+        def ler_id_existente(valores, anterior, preenchido):
+            while True:
+                identificador = ler_inteiro_formulario(
+                    "ID do ativo que será atualizado", anterior, preenchido
+                )
+                if identificador is VOLTAR:
+                    return VOLTAR
+                if self.inventario.consultar_por_id(identificador) is not None:
+                    if anterior is not None and identificador != anterior:
+                        # Trocar o alvo invalida as respostas preenchidas para o ativo anterior.
+                        valores.clear()
+                    return identificador
+                mostrar_erro("Ativo não encontrado.")
+
+        def ativo_do_formulario(valores):
+            return self.inventario.consultar_por_id(valores["identificador"])
+
+        dados = preencher_formulario(
+            [
+                ("identificador", ler_id_existente),
+                (
+                    "nome",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        f"Nome ou hostname [{ativo_do_formulario(valores).nome}]",
+                        False,
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+                (
+                    "responsavel",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        f"Responsável [{ativo_do_formulario(valores).responsavel}]",
+                        False,
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+                (
+                    "localizacao",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        f"Setor ou localização [{ativo_do_formulario(valores).localizacao}]",
+                        False,
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+                (
+                    "tipo",
+                    lambda valores, anterior, preenchido: escolher_tipo_atualizacao(
+                        anterior, preenchido
+                    ),
+                ),
+                (
+                    "criticidade",
+                    lambda valores, anterior, preenchido: escolher_item_atualizacao(
+                        "Nova importância do ativo para a segurança:",
+                        CRITICIDADES,
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+            ]
+        )
+        if dados is None:
+            return False
+        if not any(
+            [
+                dados["nome"],
+                dados["responsavel"],
+                dados["localizacao"],
+                dados["tipo"] is not None,
+                dados["criticidade"] is not None,
+            ]
+        ):
+            mostrar_aviso("Nenhum campo foi alterado.")
+            return False
+        try:
+            self.inventario.atualizar_ativo(
+                dados["identificador"],
+                dados["nome"],
+                dados["responsavel"],
+                dados["localizacao"],
+                dados["tipo"],
+                dados["criticidade"],
+            )
+            mostrar_sucesso(
+                "Ativo atualizado com sucesso. A alteração está no histórico."
+            )
+            return True
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def remover_ativo_tela(self):
+        print()
+        mostrar_titulo("Remoção de ativo")
+        identificador = ler_id_para_operacao("ID do ativo que será removido")
+        if identificador is None:
+            return False
+        ativo = self.inventario.consultar_por_id(identificador)
+        if ativo is None:
+            mostrar_erro("Ativo não encontrado.")
+            return False
+        print(f"Confirme o alvo: ID {ativo.id} - {ativo.nome}.")
+        print("Política: a exclusão remove o ativo e as vulnerabilidades associadas.")
+        try:
+            if self.inventario.excluir_ativo(identificador, confirmar_remocao()):
+                mostrar_sucesso("Ativo removido com sucesso.")
+                return True
+            mostrar_aviso("Remoção cancelada.")
+            return False
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def cadastrar_vulnerabilidade_tela(self, identificador_inicial=None):
+        print()
+        mostrar_titulo("Cadastro de vulnerabilidade")
+
+        def ler_id_existente(valores, anterior, preenchido):
+            if identificador_inicial is not None:
+                return identificador_inicial
+            while True:
+                identificador = ler_inteiro_formulario(
+                    "ID do ativo afetado", anterior, preenchido
+                )
+                if identificador is VOLTAR:
+                    return VOLTAR
+                if self.inventario.consultar_por_id(identificador) is not None:
+                    return identificador
+                mostrar_erro("Ativo não encontrado.")
+
+        def ler_cve_novo(valores, anterior, preenchido):
+            while True:
+                cve = ler_validado_formulario(
+                    "CVE (ex.: CVE-2024-1234)", validar_cve, anterior, preenchido
+                )
+                if cve is VOLTAR:
+                    return VOLTAR
+                ativo = self.inventario.consultar_por_id(valores["identificador"])
+                if ativo.buscar_vulnerabilidade(cve) is None:
+                    return cve
+                mostrar_erro("Esta vulnerabilidade já foi cadastrada para o ativo.")
+
+        dados = preencher_formulario(
+            [
+                ("identificador", ler_id_existente),
+                ("cve", ler_cve_novo),
+                (
+                    "cwe",
+                    lambda valores, anterior, preenchido: ler_validado_formulario(
+                        "CWE (ex.: CWE-79)", validar_cwe, anterior, preenchido
+                    ),
+                ),
+                (
+                    "cvss",
+                    lambda valores, anterior, preenchido: ler_validado_formulario(
+                        "Nota CVSS (0.0 a 10.0)", validar_cvss, anterior, preenchido
+                    ),
+                ),
+                (
+                    "descricao",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Descrição", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "fonte",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Fonte verificável (URL ou órgão)", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "data_fonte",
+                    lambda valores, anterior, preenchido: ler_validado_formulario(
+                        "Data da fonte (dd/mm/aaaa)",
+                        validar_data_fonte,
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+                (
+                    "impacto",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Impacto no ativo", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "prioridade",
+                    lambda valores, anterior, preenchido: escolher_item_formulario(
+                        "Prioridade:", SEVERIDADES, anterior, preenchido
+                    ),
+                ),
+                (
+                    "tratamento",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Tratamento planejado", True, anterior, preenchido
+                    ),
+                ),
+                (
+                    "status",
+                    lambda valores, anterior, preenchido: escolher_item_formulario(
+                        "Status:", STATUS, anterior, preenchido
+                    ),
+                ),
+                (
+                    "verificacao",
+                    lambda valores, anterior, preenchido: ler_verificacao_formulario(
+                        valores,
+                        "Como será verificado o tratamento",
+                        anterior,
+                        preenchido,
+                    ),
+                ),
+            ]
+        )
+        if dados is None:
+            return False
+        try:
+            vulnerabilidade = self.inventario.cadastrar_vulnerabilidade(
+                dados["identificador"],
+                dados["cve"],
+                dados["cwe"],
+                dados["cvss"],
+                dados["descricao"],
+                dados["fonte"],
+                dados["data_fonte"],
+                dados["impacto"],
+                dados["prioridade"],
+                dados["tratamento"],
+                dados["status"],
+                dados["verificacao"],
+            )
+            mostrar_sucesso(
+                f"Vulnerabilidade {vulnerabilidade.cve} cadastrada com sucesso."
+            )
+            return True
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def consultar_vulnerabilidades_tela(self):
+        print()
+        mostrar_titulo("Consulta de vulnerabilidades")
+        modo = escolher_com_setas(
+            "Como deseja consultar?",
+            [
+                "Ver vulnerabilidades cadastradas",
+                "Ver vulnerabilidades de um ativo por ID",
+                "Filtrar vulnerabilidades (avançado)",
+                "Retornar ao menu",
+            ],
+            True,
+        )
+        if modo is None or modo == 3:
+            return
+
+        if modo == 0:
+            resultado = self.inventario.consultar_vulnerabilidades()
+        elif modo == 1:
+            identificador = ler_id_para_operacao("ID do ativo")
+            if identificador is None:
+                return
+            ativo = self.inventario.consultar_por_id(identificador)
+            if ativo is None:
+                mostrar_erro("Ativo não encontrado.")
+                return
+            resultado = [
+                (ativo, vulnerabilidade) for vulnerabilidade in ativo.vulnerabilidades
+            ]
         else:
-            mostrar_erro("Opção inválida. Escolha uma opção do menu.")
-        if alterou:
-            salvar_com_aviso(ativos, caminho_dados)
+            resultado = self.inventario.consultar_vulnerabilidades(
+                ler_texto("CVE exato (vazio = todos): ", False),
+                escolher_item("Prioridade: ", SEVERIDADES, True),
+                escolher_item("Status: ", STATUS, True),
+            )
+
+        navegar_vulnerabilidades(resultado)
+
+    def atualizar_vulnerabilidade_tela(self):
+        print()
+        mostrar_titulo("Atualização de vulnerabilidade")
+
+        def ler_id_existente(valores, anterior, preenchido):
+            while True:
+                identificador = ler_inteiro_formulario(
+                    "ID do ativo afetado", anterior, preenchido
+                )
+                if identificador is VOLTAR:
+                    return VOLTAR
+                if self.inventario.consultar_por_id(identificador) is not None:
+                    if anterior is not None and identificador != anterior:
+                        valores.clear()
+                    return identificador
+                mostrar_erro("Ativo não encontrado.")
+
+        def ler_cve_existente(valores, anterior, preenchido):
+            while True:
+                cve = ler_validado_formulario(
+                    "CVE da vulnerabilidade", validar_cve, anterior, preenchido
+                )
+                if cve is VOLTAR:
+                    return VOLTAR
+                ativo = self.inventario.consultar_por_id(valores["identificador"])
+                if ativo.buscar_vulnerabilidade(cve) is not None:
+                    if anterior is not None and cve != anterior:
+                        # Um novo CVE é outro registro: não reaproveitar seus campos.
+                        identificador_atual = valores["identificador"]
+                        valores.clear()
+                        valores["identificador"] = identificador_atual
+                    return cve
+                mostrar_erro("Vulnerabilidade não encontrada para este ativo.")
+
+        dados = preencher_formulario(
+            [
+                ("identificador", ler_id_existente),
+                ("cve", ler_cve_existente),
+                (
+                    "descricao",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Nova descrição", False, anterior, preenchido
+                    ),
+                ),
+                (
+                    "prioridade",
+                    lambda valores, anterior, preenchido: escolher_item_atualizacao(
+                        "Nova prioridade:", SEVERIDADES, anterior, preenchido
+                    ),
+                ),
+                (
+                    "tratamento",
+                    lambda valores, anterior, preenchido: ler_texto_formulario(
+                        "Novo tratamento", False, anterior, preenchido
+                    ),
+                ),
+                (
+                    "status",
+                    lambda valores, anterior, preenchido: escolher_item_atualizacao(
+                        "Novo status:", STATUS, anterior, preenchido
+                    ),
+                ),
+                (
+                    "verificacao",
+                    lambda valores, anterior, preenchido: ler_verificacao_formulario(
+                        valores,
+                        "Nova verificação",
+                        anterior,
+                        preenchido,
+                        False,
+                        self.inventario.consultar_por_id(valores["identificador"])
+                        .buscar_vulnerabilidade(valores["cve"])
+                        .verificacao,
+                    ),
+                ),
+            ]
+        )
+        if dados is None:
+            return False
+        if not any(
+            [
+                dados["descricao"],
+                dados["prioridade"],
+                dados["tratamento"],
+                dados["status"],
+                dados["verificacao"],
+            ]
+        ):
+            mostrar_aviso("Nenhum campo foi alterado.")
+            return False
+        try:
+            self.inventario.atualizar_vulnerabilidade(
+                dados["identificador"],
+                dados["cve"],
+                dados["descricao"],
+                dados["prioridade"],
+                dados["tratamento"],
+                dados["status"],
+                dados["verificacao"],
+            )
+            mostrar_sucesso("Vulnerabilidade atualizada com sucesso.")
+            return True
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def remover_vulnerabilidade_tela(self):
+        print()
+        mostrar_titulo("Remoção de vulnerabilidade")
+        identificador = ler_id_para_operacao("ID do ativo afetado")
+        if identificador is None:
+            return False
+        ativo = self.inventario.consultar_por_id(identificador)
+        if ativo is None:
+            mostrar_erro("Ativo não encontrado.")
+            return False
+        cve = ler_validado_formulario("CVE da vulnerabilidade", validar_cve)
+        if cve is VOLTAR:
+            mostrar_aviso("Operação cancelada.")
+            return False
+        vulnerabilidade = ativo.buscar_vulnerabilidade(cve)
+        if vulnerabilidade is None:
+            mostrar_erro("Vulnerabilidade não encontrada para este ativo.")
+            return False
+        print(f"Confirme o alvo: {vulnerabilidade.cve} - {vulnerabilidade.descricao}.")
+        try:
+            if self.inventario.excluir_vulnerabilidade(
+                identificador, cve, confirmar_remocao()
+            ):
+                mostrar_sucesso("Vulnerabilidade removida com sucesso.")
+                return True
+            mostrar_aviso("Remoção cancelada.")
+            return False
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def mostrar_resumo(self):
+        ativos = self.inventario
+        total = sum(len(ativo.vulnerabilidades) for ativo in ativos.values())
+        print()
+        mostrar_titulo("Resumo do inventário")
+        print(f"Total de ativos cadastrados: {len(ativos)}")
+        print(f"Total de vulnerabilidades cadastradas: {total}")
+
+    def mostrar_riscos_tela(self):
+        """Exibe os dois riscos calculados pelo modelo linear do Trabalho 2."""
+        if not self.inventario:
+            mostrar_aviso("Cadastre ao menos um ativo antes de calcular riscos.")
+            return
+        try:
+            lista_ativos, _, _, risco_proprio, _, risco_efetivo = (
+                self.inventario.calcular_riscos()
+            )
+        except ValueError as erro:
+            mostrar_erro(str(erro))
+            return
+        print()
+        mostrar_titulo("Análise de risco")
+        print("Risco próprio: soma dos CVSS das vulnerabilidades do ativo.")
+        print("Risco efetivo: risco próprio mais o risco recebido por dependências.")
+        for indice, ativo in enumerate(lista_ativos):
+            print(
+                f"{ativo.id} - {ativo.nome}: próprio {risco_proprio[indice]:.2f} | "
+                f"efetivo {risco_efetivo[indice]:.2f}"
+            )
+
+    def dependencias_e_riscos_tela(self):
+        """Mantém o cadastro das dependências e a consulta de risco no mesmo lugar."""
+        escolha = escolher_com_setas(
+            "Dependências e risco:",
+            [
+                "Cadastrar dependência",
+                "Remover dependência",
+                "Consultar riscos",
+                "Retornar ao menu",
+            ],
+            True,
+        )
+        if escolha is None or escolha == 3:
+            return False
+        if escolha == 2:
+            self.mostrar_riscos_tela()
+            return False
+
+        identificador = ler_id_para_operacao("ID do ativo")
+        if identificador is None:
+            return False
+        ativo_dependente = ler_id_para_operacao("ID do ativo do qual ele depende")
+        if ativo_dependente is None:
+            return False
+        try:
+            if escolha == 0:
+                peso = ler_texto("Peso da dependência (ex.: 0,30)")
+                self.inventario.adicionar_dependencia(
+                    identificador, ativo_dependente, peso
+                )
+                mostrar_sucesso("Dependência cadastrada com sucesso.")
+            else:
+                self.inventario.remover_dependencia(identificador, ativo_dependente)
+                mostrar_sucesso("Dependência removida com sucesso.")
+            return True
+        except DadosInvalidosError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+    def executar(self):
+        mostrar_sucesso(f"Base carregada: {len(self.inventario)} ativo(s).")
+        while True:
+            opcao = mostrar_menu()
+            if opcao == "0":
+                if salvar_com_aviso(self.inventario, self.caminho_dados):
+                    mostrar_sucesso("Programa encerrado.")
+                    return
+                if ler_sim_ou_nao("Deseja sair sem salvar?"):
+                    mostrar_aviso(
+                        "Programa encerrado sem salvar as alterações mais recentes."
+                    )
+                    return
+                continue
+            operacao = self.operacoes.get(opcao)
+            if operacao is None:
+                mostrar_erro("Opção inválida. Escolha uma opção do menu.")
+                continue
+            alterou = operacao()
+            if opcao in self.operacoes_que_alteram and alterou:
+                salvar_com_aviso(self.inventario, self.caminho_dados)
+
+
+def executar_programa(ativos, caminho_dados):
+    """Entrada mantida para os testes e chamadas anteriores."""
+    return InterfaceTerminal(ativos, caminho_dados).executar()
 
 
 def salvar_com_aviso(ativos, caminho_dados):

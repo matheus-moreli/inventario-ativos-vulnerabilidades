@@ -96,6 +96,33 @@ class Inventario:
     def ativos(self):
         return self._ativos
 
+    def __len__(self):
+        return len(self._ativos)
+
+    def __iter__(self):
+        return iter(self._ativos)
+
+    def __getitem__(self, identificador):
+        return self._ativos[identificador]
+
+    def __contains__(self, identificador):
+        return identificador in self._ativos
+
+    def values(self):
+        return self._ativos.values()
+
+    def items(self):
+        return self._ativos.items()
+
+    def get(self, identificador, padrao=None):
+        return self._ativos.get(identificador, padrao)
+
+    def calcular_riscos(self):
+        """Consulta o risco da coleção mantida por este objeto."""
+        from risco import AnalisadorRisco
+
+        return AnalisadorRisco(self._ativos).calcular()
+
     def validar_nome_unico(self, nome, identificador_ignorado=None):
         """Impede que dois ativos usem o mesmo nome ou hostname.
 
@@ -123,7 +150,7 @@ class Inventario:
         if type(identificador) is not int or identificador <= 0:
             raise DadosInvalidosError("ID deve ser um número inteiro maior que zero.")
         nome = validar_texto(nome, "Nome ou hostname")
-        validar_nome_unico(ativos, nome)
+        self.validar_nome_unico(nome)
         ativo = criar_ativo(
             identificador,
             nome,
@@ -166,14 +193,14 @@ class Inventario:
     ):
         """Altera campos permitidos somente depois de validar todos os novos valores."""
         ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
+        ativo = self.consultar_por_id(identificador)
         if ativo is None:
             raise DadosInvalidosError("Ativo não encontrado.")
 
         alteracoes = []
         if nome is not None and nome != "":
             novo_nome = validar_texto(nome, "Nome ou hostname")
-            validar_nome_unico(ativos, novo_nome, identificador)
+            self.validar_nome_unico(novo_nome, identificador)
             alteracoes.append("nome")
         else:
             novo_nome = ativo.nome
@@ -189,7 +216,8 @@ class Inventario:
             nova_localizacao = ativo.localizacao
         if tipo is not None:
             novo_tipo = validar_tipo_ativo(tipo)
-            alteracoes.append("tipo")
+            if novo_tipo != ativo.tipo:
+                alteracoes.append("tipo")
         else:
             novo_tipo = ativo.tipo
         if criticidade is not None:
@@ -198,18 +226,25 @@ class Inventario:
         else:
             nova_criticidade = ativo.criticidade
         if alteracoes:
-            ativo_atualizado = criar_ativo(
-                ativo.id,
-                novo_nome,
-                novo_responsavel,
-                nova_localizacao,
-                novo_tipo,
-                nova_criticidade,
-                ativo.vulnerabilidades,
-                ativo.historico,
-                ativo.dependencias,
-            )
-            ativos[identificador] = ativo_atualizado
+            if novo_tipo != ativo.tipo:
+                ativo_atualizado = criar_ativo(
+                    ativo.id,
+                    novo_nome,
+                    novo_responsavel,
+                    nova_localizacao,
+                    novo_tipo,
+                    nova_criticidade,
+                    ativo.vulnerabilidades,
+                    ativo.historico,
+                    ativo.dependencias,
+                )
+                ativos[identificador] = ativo_atualizado
+            else:
+                ativo_atualizado = ativo
+                ativo.nome = novo_nome
+                ativo.responsavel = novo_responsavel
+                ativo.localizacao = nova_localizacao
+                ativo.criticidade = nova_criticidade
             ativo_atualizado.registrar_historico(
                 "Campos alterados: " + ", ".join(alteracoes) + "."
             )
@@ -219,25 +254,29 @@ class Inventario:
     def excluir_ativo(self, identificador, confirmou):
         """Remove um ativo somente quando a confirmação explícita for verdadeira."""
         ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
+        ativo = self.consultar_por_id(identificador)
         if ativo is None:
             raise DadosInvalidosError("Ativo não encontrado.")
         if not confirmou:
             return False
         del ativos[identificador]
         for outro_ativo in ativos.values():
+            quantidade_anterior = len(outro_ativo.dependencias)
             outro_ativo.dependencias = [
                 dependencia
                 for dependencia in outro_ativo.dependencias
                 if dependencia["ativo_id"] != identificador
             ]
+            if len(outro_ativo.dependencias) != quantidade_anterior:
+                outro_ativo.registrar_historico(
+                    f"Dependência do ativo {identificador} removida com a exclusão do ativo."
+                )
         return True
 
     def adicionar_dependencia(self, identificador, ativo_dependente, peso):
         """Registra a fração do risco de outro ativo herdada pelo ativo informado."""
-        ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
-        if ativo is None or consultar_por_id(ativos, ativo_dependente) is None:
+        ativo = self.consultar_por_id(identificador)
+        if ativo is None or self.consultar_por_id(ativo_dependente) is None:
             raise DadosInvalidosError("Ativo não encontrado.")
         if identificador == ativo_dependente:
             raise DadosInvalidosError("Um ativo não pode depender de si mesmo.")
@@ -258,8 +297,7 @@ class Inventario:
 
     def remover_dependencia(self, identificador, ativo_dependente):
         """Remove uma dependência existente sem alterar os demais dados do ativo."""
-        ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
+        ativo = self.consultar_por_id(identificador)
         if ativo is None:
             raise DadosInvalidosError("Ativo não encontrado.")
         novas_dependencias = [
@@ -286,12 +324,11 @@ class Inventario:
         verificacao="Pendente",
     ):
         """Inclui vulnerabilidade apenas em ativo existente e com dados verificáveis."""
-        ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
+        ativo = self.consultar_por_id(identificador)
         if ativo is None:
             raise DadosInvalidosError("Ativo não encontrado.")
         cve = validar_cve(cve)
-        if buscar_vulnerabilidade(ativo, cve) is not None:
+        if ativo.buscar_vulnerabilidade(cve) is not None:
             raise DadosInvalidosError(
                 "Esta vulnerabilidade já foi cadastrada para o ativo."
             )
@@ -337,12 +374,11 @@ class Inventario:
         verificacao=None,
     ):
         """Altera os dados de uma vulnerabilidade sem trocar seu CVE."""
-        ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
+        ativo = self.consultar_por_id(identificador)
         if ativo is None:
             raise DadosInvalidosError("Ativo não encontrado.")
         cve = validar_cve(cve)
-        vulnerabilidade = buscar_vulnerabilidade(ativo, cve)
+        vulnerabilidade = ativo.buscar_vulnerabilidade(cve)
         if vulnerabilidade is None:
             raise DadosInvalidosError("Vulnerabilidade não encontrada para este ativo.")
 
@@ -385,12 +421,11 @@ class Inventario:
 
     def excluir_vulnerabilidade(self, identificador, cve, confirmou):
         """Remove uma vulnerabilidade somente após confirmação explícita."""
-        ativos = self._ativos
-        ativo = consultar_por_id(ativos, identificador)
+        ativo = self.consultar_por_id(identificador)
         if ativo is None:
             raise DadosInvalidosError("Ativo não encontrado.")
         cve = validar_cve(cve)
-        vulnerabilidade = buscar_vulnerabilidade(ativo, cve)
+        vulnerabilidade = ativo.buscar_vulnerabilidade(cve)
         if vulnerabilidade is None:
             raise DadosInvalidosError("Vulnerabilidade não encontrada para este ativo.")
         if not confirmou:
@@ -490,67 +525,68 @@ def validar_ativo_carregado(ativo):
 
 def buscar_vulnerabilidade(ativo, cve):
     """Procura uma vulnerabilidade pelo CVE dentro de um ativo."""
-    for vulnerabilidade in ativo.vulnerabilidades:
-        if vulnerabilidade.cve == cve:
-            return vulnerabilidade
-    return None
+    return ativo.buscar_vulnerabilidade(cve)
+
+
+def _como_inventario(ativos):
+    return ativos if isinstance(ativos, Inventario) else Inventario(ativos)
 
 
 def validar_nome_unico(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).validar_nome_unico(*args, **kwargs)
+    return _como_inventario(ativos).validar_nome_unico(*args, **kwargs)
 
 
 def cadastrar_ativo(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).cadastrar_ativo(*args, **kwargs)
+    return _como_inventario(ativos).cadastrar_ativo(*args, **kwargs)
 
 
 def consultar_por_id(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).consultar_por_id(*args, **kwargs)
+    return _como_inventario(ativos).consultar_por_id(*args, **kwargs)
 
 
 def filtrar_ativos(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).filtrar_ativos(*args, **kwargs)
+    return _como_inventario(ativos).filtrar_ativos(*args, **kwargs)
 
 
 def atualizar_ativo(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).atualizar_ativo(*args, **kwargs)
+    return _como_inventario(ativos).atualizar_ativo(*args, **kwargs)
 
 
 def excluir_ativo(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).excluir_ativo(*args, **kwargs)
+    return _como_inventario(ativos).excluir_ativo(*args, **kwargs)
 
 
 def adicionar_dependencia(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).adicionar_dependencia(*args, **kwargs)
+    return _como_inventario(ativos).adicionar_dependencia(*args, **kwargs)
 
 
 def remover_dependencia(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).remover_dependencia(*args, **kwargs)
+    return _como_inventario(ativos).remover_dependencia(*args, **kwargs)
 
 
 def cadastrar_vulnerabilidade(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).cadastrar_vulnerabilidade(*args, **kwargs)
+    return _como_inventario(ativos).cadastrar_vulnerabilidade(*args, **kwargs)
 
 
 def atualizar_vulnerabilidade(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).atualizar_vulnerabilidade(*args, **kwargs)
+    return _como_inventario(ativos).atualizar_vulnerabilidade(*args, **kwargs)
 
 
 def excluir_vulnerabilidade(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).excluir_vulnerabilidade(*args, **kwargs)
+    return _como_inventario(ativos).excluir_vulnerabilidade(*args, **kwargs)
 
 
 def consultar_vulnerabilidades(ativos, *args, **kwargs):
     """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return Inventario(ativos).consultar_vulnerabilidades(*args, **kwargs)
+    return _como_inventario(ativos).consultar_vulnerabilidades(*args, **kwargs)

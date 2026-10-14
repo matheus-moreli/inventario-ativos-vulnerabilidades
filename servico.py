@@ -5,30 +5,39 @@ import os
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from persistencia import RepositorioJSON
 from risco import calcular_riscos
 
 
 class ServicoInventario:
     """Expõe saúde e riscos sem depender da entrada do terminal."""
 
-    def __init__(self, ativos, host="0.0.0.0", porta=None):
+    def __init__(self, ativos, host="0.0.0.0", porta=None, caminho_dados=None):
         self.ativos = ativos
+        self.caminho_dados = caminho_dados
         self.host = host
         self.porta = int(porta or os.environ.get("INVENTARIO_PORTA", "8080"))
         self.inicio = datetime.now(timezone.utc)
 
     def resposta(self, caminho):
+        if caminho not in {"/saude", "/riscos"}:
+            return 404, {"erro": "Rota não encontrada."}
+        ativos = self.ativos
+        if self.caminho_dados is not None:
+            ativos = RepositorioJSON(self.caminho_dados).carregar()
+            if ativos is None:
+                return 503, {"erro": "Arquivo de dados inválido; corrija a base JSON."}
         if caminho == "/saude":
             agora = datetime.now(timezone.utc)
             return 200, {
                 "estado": "ativo",
                 "inicio_utc": self.inicio.isoformat(),
                 "tempo_ativo_segundos": int((agora - self.inicio).total_seconds()),
-                "ativos": len(self.ativos),
+                "ativos": len(ativos),
             }
         if caminho == "/riscos":
             try:
-                lista, m, v, proprio, a, efetivo = calcular_riscos(self.ativos)
+                lista, m, v, proprio, a, efetivo = calcular_riscos(ativos)
             except (ValueError, KeyError) as erro:
                 return 422, {"erro": str(erro)}
             return 200, {
@@ -39,7 +48,6 @@ class ServicoInventario:
                 "matriz_dependencias": a,
                 "risco_efetivo": efetivo,
             }
-        return 404, {"erro": "Rota não encontrada."}
 
     def executar(self):
         servico = self

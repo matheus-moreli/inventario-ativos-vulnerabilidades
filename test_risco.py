@@ -4,15 +4,18 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
+from interface import InterfaceTerminal
 from inventario import (
     DadosInvalidosError,
+    Inventario,
     adicionar_dependencia,
     atualizar_ativo,
     cadastrar_ativo,
     cadastrar_vulnerabilidade,
 )
-from modelos import Notebook, Servidor
+from modelos import Ativo, Equipamento, Notebook, Servidor
 from persistencia import carregar_ativos, salvar_ativos
 from risco import calcular_riscos, resolver_sistema
 
@@ -40,6 +43,8 @@ class TesteRisco(unittest.TestCase):
         )
 
     def test_cada_tipo_gera_o_objeto_correspondente(self):
+        self.assertIs(Ativo, Equipamento)
+        self.assertTrue(issubclass(Servidor, Equipamento))
         self.assertIsInstance(self.ativos[1], Notebook)
         self.assertIsInstance(self.ativos[2], Servidor)
         self.assertEqual(self.ativos[2].nome_do_tipo(), "Servidor")
@@ -94,6 +99,31 @@ class TesteRisco(unittest.TestCase):
     def test_matriz_singular_e_rejeitada_antes_da_solucao(self):
         with self.assertRaisesRegex(ValueError, "não é invertível"):
             resolver_sistema([[1.0, 1.0], [2.0, 2.0]], [1.0, 2.0])
+
+    def test_ciclo_de_tres_ativos_resolvido_a_mao(self):
+        # x1=4+0,5x2; x2=6+0,25x1; x3=0,2x1+0,3x2.
+        # Substituindo: x1=8, x2=8 e x3=4.
+        self.vulnerabilidade(1, "CVE-2026-0001", 4)
+        self.vulnerabilidade(2, "CVE-2026-0002", 6)
+        adicionar_dependencia(self.ativos, 1, 2, 0.5)
+        adicionar_dependencia(self.ativos, 2, 1, 0.25)
+        adicionar_dependencia(self.ativos, 3, 1, 0.2)
+        adicionar_dependencia(self.ativos, 3, 2, 0.3)
+        _, _, _, proprio, matriz_a, efetivo = calcular_riscos(self.ativos)
+        self.assertEqual(proprio, [4.0, 6.0, 0])
+        self.assertEqual(matriz_a, [[0.0, 0.5, 0.0], [0.25, 0.0, 0.0], [0.2, 0.3, 0.0]])
+        for obtido, esperado in zip(efetivo, [8.0, 8.0, 4.0]):
+            self.assertAlmostEqual(obtido, esperado)
+
+    def test_interface_usa_a_mesma_instancia_do_inventario(self):
+        inventario = Inventario(self.ativos)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            tela = InterfaceTerminal(inventario, caminho)
+            self.assertIs(tela.inventario, inventario)
+            with patch("interface.mostrar_menu", side_effect=["2", "0"]):
+                tela.executar()
+            self.assertIsInstance(carregar_ativos(caminho)[1], Notebook)
 
 
 if __name__ == "__main__":

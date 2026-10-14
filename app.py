@@ -3,13 +3,16 @@
 import os
 import sys
 
-from interface import executar_programa
+from interface import InterfaceTerminal
+from inventario import Inventario
 from persistencia import RepositorioJSON
 from servico import ServicoInventario
 
 # O caminho parte desta pasta, mesmo se o comando for executado de outro local.
 PASTA_DO_PROJETO = os.path.dirname(os.path.abspath(__file__))
-ARQUIVO_DADOS = os.path.join(PASTA_DO_PROJETO, "dados", "inventario.json")
+ARQUIVO_DADOS = os.environ.get(
+    "INVENTARIO_DADOS", os.path.join(PASTA_DO_PROJETO, "dados", "inventario.json")
+)
 
 
 class Aplicacao:
@@ -24,11 +27,12 @@ class Aplicacao:
         if ativos is None:
             print("Corrija ou recupere o arquivo JSON antes de iniciar o programa.")
             return False
+        inventario = Inventario(ativos)
         if modo_servico:
-            ServicoInventario(ativos).executar()
+            ServicoInventario(inventario, caminho_dados=self.caminho_dados).executar()
         else:
             try:
-                executar_programa(ativos, self.caminho_dados)
+                InterfaceTerminal(inventario, self.caminho_dados).executar()
             except EOFError:
                 print("Entrada encerrada. Use um terminal interativo para o menu.")
         return True
@@ -41,4 +45,4 @@ def iniciar(modo_servico=False):
 
 # Assim os testes podem importar funções sem abrir o menu interativo.
 if __name__ == "__main__":
-    iniciar("--servico" in sys.argv[1:])
+    raise SystemExit(0 if iniciar("--servico" in sys.argv[1:]) else 1)
