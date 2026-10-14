@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from persistencia import RepositorioJSON
-from risco import calcular_riscos
+from risco import AnalisadorRisco
 
 
 class ServicoInventario:
@@ -37,7 +37,8 @@ class ServicoInventario:
             }
         if caminho == "/riscos":
             try:
-                lista, m, v, proprio, a, efetivo = calcular_riscos(ativos)
+                analisador = AnalisadorRisco(ativos)
+                lista, m, v, proprio, a, efetivo = analisador.calcular()
             except (ValueError, KeyError) as erro:
                 return 422, {"erro": str(erro)}
             return 200, {
@@ -47,6 +48,8 @@ class ServicoInventario:
                 "risco_proprio": proprio,
                 "matriz_dependencias": a,
                 "risco_efetivo": efetivo,
+                "numero_condicao_infinito": analisador.numero_condicao,
+                "aviso_condicionamento": analisador.numero_condicao > 1e8,
             }
 
     def executar(self):

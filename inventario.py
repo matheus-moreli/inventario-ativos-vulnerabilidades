@@ -1,5 +1,6 @@
 """Regras de negócio do CRUD. Este arquivo não usa input nem print."""
 
+import math
 from datetime import datetime
 
 from modelos import (
@@ -121,7 +122,10 @@ class Inventario:
         """Consulta o risco da coleção mantida por este objeto."""
         from risco import AnalisadorRisco
 
-        return AnalisadorRisco(self._ativos).calcular()
+        analisador = AnalisadorRisco(self._ativos)
+        resultado = analisador.calcular()
+        self.numero_condicao_risco = analisador.numero_condicao
+        return resultado
 
     def validar_nome_unico(self, nome, identificador_ignorado=None):
         """Impede que dois ativos usem o mesmo nome ou hostname.
@@ -334,6 +338,14 @@ class Inventario:
             )
         cwe = validar_cwe(cwe)
         cvss = validar_cvss(cvss)
+        for outro_ativo in self._ativos.values():
+            anterior = outro_ativo.buscar_vulnerabilidade(cve)
+            if anterior is not None and not math.isclose(
+                anterior.cvss, cvss, rel_tol=0, abs_tol=1e-9
+            ):
+                raise DadosInvalidosError(
+                    f"CVE {cve} já existe com outra nota CVSS. Use a mesma severidade."
+                )
         descricao = validar_texto(descricao, "Descrição")
         fonte = validar_texto(fonte, "Fonte")
         data_fonte = validar_data_fonte(data_fonte)
@@ -521,6 +533,21 @@ def validar_ativo_carregado(ativo):
         ):
             raise DadosInvalidosError("Correção sem verificação no arquivo de dados.")
     return ativo
+
+
+def validar_cvss_compartilhado(ativos):
+    """Garante um único valor de severidade para cada coluna CVE de M."""
+    notas = {}
+    for ativo in ativos.values():
+        for vulnerabilidade in ativo.vulnerabilidades:
+            anterior = notas.get(vulnerabilidade.cve)
+            if anterior is not None and not math.isclose(
+                anterior, vulnerabilidade.cvss, rel_tol=0, abs_tol=1e-9
+            ):
+                raise DadosInvalidosError(
+                    f"CVE {vulnerabilidade.cve} tem notas CVSS diferentes no JSON."
+                )
+            notas[vulnerabilidade.cve] = vulnerabilidade.cvss
 
 
 def buscar_vulnerabilidade(ativo, cve):

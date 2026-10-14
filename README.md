@@ -30,7 +30,7 @@ O sistema permite:
 - exigir evidência antes de marcar uma vulnerabilidade como corrigida;
 - manter um histórico simples das alterações feitas em cada ativo;
 - salvar as mudanças em um arquivo JSON local formado por uma lista de objetos;
-- representar cada tipo de ativo por uma classe derivada de `Ativo`;
+- representar cada tipo de ativo por uma classe derivada de `Equipamento`;
 - cadastrar dependências entre ativos e consultar o risco próprio e efetivo.
 
 Esta é uma aplicação didática. Ela não realiza varredura automática de rede, não consulta o NVD automaticamente, não possui login, não armazena senhas e não substitui uma ferramenta profissional de gestão de vulnerabilidades.
@@ -194,7 +194,9 @@ O CVSS pode ser informado como 9.8 ou 9,8. O programa converte a vírgula para p
 
 Se o status for Corrigida, a verificação não pode ficar como Pendente. É necessário informar uma evidência, como atualização conferida, teste realizado ou versão corrigida validada.
 
-O CVE é a identidade da vulnerabilidade dentro do ativo e não é alterado depois do cadastro. Um mesmo CVE pode existir em ativos diferentes, mas não pode aparecer duas vezes no mesmo ativo.
+O CVE é a identidade da vulnerabilidade dentro do ativo e não é alterado depois do cadastro. Um mesmo CVE pode existir em ativos diferentes, mas não pode aparecer duas vezes no mesmo ativo. Para que represente uma única coluna da matriz de incidência, sua nota CVSS deve ser igual em todos os ativos afetados.
+
+Na análise de risco, cada CVE ocupa uma coluna de `M`, inclusive quando afeta mais de um ativo. O vetor `v` guarda suas notas CVSS, e `b = Mv` soma o risco próprio de cada ativo. A matriz `A` registra as frações herdadas das dependências; o programa verifica `I - A`, calcula seu número de condição na norma infinita e resolve `(I - A)x = b` por eliminação de Gauss, sem inverter a matriz para obter `x`. Valores de condicionamento acima de `10^8` geram aviso. O fator de exposição `F` mostrado na aula é uma extensão ilustrativa: não há pesos de exposição cadastrados no inventário, portanto ele não altera as notas apresentadas.
 
 ## Base demonstrativa
 
@@ -230,7 +232,7 @@ Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 python -m unittest -v
 ~~~
 
-Atualmente, a suíte possui 47 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, dependências salvas no JSON, matriz singular, cálculo de risco e as respostas do serviço.
+Atualmente, a suíte possui 53 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, dependências salvas no JSON, CVE compartilhada em mais de um ativo, condicionamento numérico, matriz singular, cálculo de risco e as respostas do serviço.
 
 Se todos passarem, o final exibirá OK.
 

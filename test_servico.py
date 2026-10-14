@@ -20,6 +20,7 @@ class TesteServico(unittest.TestCase):
         codigo, riscos = servico.resposta("/riscos")
         self.assertEqual(codigo, 200)
         self.assertEqual(riscos["risco_efetivo"], [])
+        self.assertEqual(riscos["numero_condicao_infinito"], 1.0)
 
     def test_riscos_de_objeto_cadastrado(self):
         ativos = {}

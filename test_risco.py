@@ -17,7 +17,8 @@ from inventario import (
 )
 from modelos import Ativo, Equipamento, Notebook, Servidor
 from persistencia import carregar_ativos, salvar_ativos
-from risco import calcular_riscos, resolver_sistema
+from risco import calcular_riscos, numero_condicao_infinito, resolver_sistema
+from servico import ServicoInventario
 
 
 class TesteRisco(unittest.TestCase):
@@ -114,6 +115,44 @@ class TesteRisco(unittest.TestCase):
         self.assertEqual(matriz_a, [[0.0, 0.5, 0.0], [0.25, 0.0, 0.0], [0.2, 0.3, 0.0]])
         for obtido, esperado in zip(efetivo, [8.0, 8.0, 4.0]):
             self.assertAlmostEqual(obtido, esperado)
+
+    def test_cve_compartilhada_ocupa_uma_coluna_com_dois_uns(self):
+        # Cenário da aula: V2 atinge Web e Banco com a mesma nota CVSS.
+        self.vulnerabilidade(1, "CVE-2026-0001", 9.8)
+        self.vulnerabilidade(1, "CVE-2026-0002", 5.3)
+        self.vulnerabilidade(2, "CVE-2026-0003", 7.5)
+        self.vulnerabilidade(3, "CVE-2026-0002", 5.3)
+        adicionar_dependencia(self.ativos, 1, 2, 0.2)
+        adicionar_dependencia(self.ativos, 2, 1, 0.5)
+        adicionar_dependencia(self.ativos, 3, 2, 0.6)
+
+        _, matriz, vetor, proprio, _, efetivo = calcular_riscos(self.ativos)
+        self.assertEqual(matriz, [[1, 1, 0], [0, 0, 1], [0, 1, 0]])
+        self.assertEqual(vetor, [9.8, 5.3, 7.5])
+        for obtido, esperado in zip(proprio, [15.1, 7.5, 5.3]):
+            self.assertAlmostEqual(obtido, esperado)
+        for obtido, esperado in zip(efetivo, [18.444444, 16.722222, 15.333333]):
+            self.assertAlmostEqual(obtido, esperado, places=5)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            self.assertTrue(salvar_ativos(self.ativos, caminho))
+            carregados = carregar_ativos(caminho)
+        self.assertEqual(calcular_riscos(carregados)[1], matriz)
+        codigo, resposta = ServicoInventario(carregados).resposta("/riscos")
+        self.assertEqual(codigo, 200)
+        self.assertEqual(resposta["matriz_incidencia"], matriz)
+        self.assertAlmostEqual(resposta["numero_condicao_infinito"], 3.2)
+
+    def test_mesma_cve_nao_aceita_cvss_divergente(self):
+        self.vulnerabilidade(1, "CVE-2026-0002", 5.3)
+        with self.assertRaisesRegex(DadosInvalidosError, "outra nota CVSS"):
+            self.vulnerabilidade(3, "CVE-2026-0002", 5.4)
+
+    def test_condicionamento_alerta_antes_de_singularidade(self):
+        quase_singular = [[1.0, -0.99999999], [-0.99999999, 1.0]]
+        self.assertGreater(numero_condicao_infinito(quase_singular), 1e8)
+        with self.assertRaisesRegex(ValueError, "não é invertível"):
+            resolver_sistema([[1.0, -1.0], [-1.0, 1.0]], [1.0, 1.0])
 
     def test_interface_usa_a_mesma_instancia_do_inventario(self):
         inventario = Inventario(self.ativos)

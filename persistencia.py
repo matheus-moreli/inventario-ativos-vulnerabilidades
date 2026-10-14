@@ -4,7 +4,11 @@ import json
 import os
 import tempfile
 
-from inventario import DadosInvalidosError, validar_ativo_carregado
+from inventario import (
+    DadosInvalidosError,
+    validar_ativo_carregado,
+    validar_cvss_compartilhado,
+)
 from modelos import Ativo
 
 
@@ -44,6 +48,7 @@ class RepositorioJSON:
                         raise DadosInvalidosError(
                             "Dependência aponta para ativo inexistente."
                         )
+            validar_cvss_compartilhado(ativos)
             return ativos
         except (
             OSError,

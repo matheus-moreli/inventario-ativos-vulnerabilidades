@@ -1217,6 +1217,13 @@ class InterfaceTerminal:
         mostrar_titulo("Análise de risco")
         print("Risco próprio: soma dos CVSS das vulnerabilidades do ativo.")
         print("Risco efetivo: risco próprio mais o risco recebido por dependências.")
+        print(
+            f"Condicionamento de I - A (norma infinita): {self.inventario.numero_condicao_risco:.2e}"
+        )
+        if self.inventario.numero_condicao_risco > 1e8:
+            mostrar_aviso(
+                "Resultado sensível a pequenas mudanças nos pesos das dependências."
+            )
         for indice, ativo in enumerate(lista_ativos):
             print(
                 f"{ativo.id} - {ativo.nome}: próprio {risco_proprio[indice]:.2f} | "
