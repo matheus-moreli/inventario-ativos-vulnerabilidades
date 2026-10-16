@@ -1,5 +1,8 @@
 """Cálculo do risco próprio e efetivo pedido no Trabalho 2."""
 
+import math
+import sys
+
 EPSILON = 0.000000000001
 
 
@@ -9,19 +12,29 @@ def ativos_ordenados(ativos):
 
 
 def montar_matriz_incidencia(ativos):
-    """M[i][j] vale 1 quando a vulnerabilidade j pertence ao ativo i."""
+    """Uma coluna por CVE; ela pode afetar mais de um equipamento."""
     lista_ativos = ativos_ordenados(ativos)
     vulnerabilidades = []
+    por_cve = {}
     for ativo in lista_ativos:
         for vulnerabilidade in ativo.vulnerabilidades:
-            vulnerabilidades.append((ativo.id, vulnerabilidade))
+            anterior = por_cve.get(vulnerabilidade.cve)
+            if anterior is None:
+                por_cve[vulnerabilidade.cve] = vulnerabilidade
+                vulnerabilidades.append(vulnerabilidade)
+            elif not math.isclose(
+                anterior.cvss, vulnerabilidade.cvss, rel_tol=0, abs_tol=1e-9
+            ):
+                raise ValueError(
+                    f"CVE {vulnerabilidade.cve} tem notas CVSS diferentes entre ativos."
+                )
 
     matriz = []
     for ativo in lista_ativos:
-        linha = []
-        for ativo_id, vulnerabilidade in vulnerabilidades:
-            linha.append(1 if ativo.id == ativo_id else 0)
-        matriz.append(linha)
+        cves_do_ativo = {item.cve for item in ativo.vulnerabilidades}
+        matriz.append(
+            [1 if item.cve in cves_do_ativo else 0 for item in vulnerabilidades]
+        )
     return lista_ativos, vulnerabilidades, matriz
 
 
@@ -49,8 +62,13 @@ def montar_matriz_dependencias(lista_ativos):
 def identidade_menos(matriz):
     """Monta I - A, sistema usado para calcular o risco efetivo."""
     tamanho = len(matriz)
-    return [[(1.0 if linha == coluna else 0.0) - matriz[linha][coluna]
-             for coluna in range(tamanho)] for linha in range(tamanho)]
+    return [
+        [
+            (1.0 if linha == coluna else 0.0) - matriz[linha][coluna]
+            for coluna in range(tamanho)
+        ]
+        for linha in range(tamanho)
+    ]
 
 
 def sistema_e_invertivel(matriz):
@@ -76,7 +94,9 @@ def resolver_sistema(matriz, vetor):
     tamanho = len(matriz)
     aumentado = [matriz[linha][:] + [vetor[linha]] for linha in range(tamanho)]
     for coluna in range(tamanho):
-        pivo = max(range(coluna, tamanho), key=lambda linha: abs(aumentado[linha][coluna]))
+        pivo = max(
+            range(coluna, tamanho), key=lambda linha: abs(aumentado[linha][coluna])
+        )
         aumentado[coluna], aumentado[pivo] = aumentado[pivo], aumentado[coluna]
         for linha in range(coluna + 1, tamanho):
             fator = aumentado[linha][coluna] / aumentado[coluna][coluna]
@@ -85,18 +105,51 @@ def resolver_sistema(matriz, vetor):
 
     resultado = [0.0] * tamanho
     for linha in range(tamanho - 1, -1, -1):
-        soma = sum(aumentado[linha][coluna] * resultado[coluna]
-                   for coluna in range(linha + 1, tamanho))
+        soma = sum(
+            aumentado[linha][coluna] * resultado[coluna]
+            for coluna in range(linha + 1, tamanho)
+        )
         resultado[linha] = (aumentado[linha][-1] - soma) / aumentado[linha][linha]
     return resultado
 
 
+def numero_condicao_infinito(matriz):
+    """Calcula κ∞ = ||S||∞ ||S⁻¹||∞ sem usar a inversa para resolver o risco."""
+    tamanho = len(matriz)
+    if tamanho == 0:
+        return 1.0
+    norma = max(sum(abs(valor) for valor in linha) for linha in matriz)
+    somas_inversa = [0.0] * tamanho
+    for coluna in range(tamanho):
+        base = [1.0 if indice == coluna else 0.0 for indice in range(tamanho)]
+        solucao = resolver_sistema(matriz, base)
+        for linha, valor in enumerate(solucao):
+            somas_inversa[linha] += abs(valor)
+    return norma * max(somas_inversa)
+
+
+class AnalisadorRisco:
+    """Calcula o risco dos objetos Ativo recebidos do inventário."""
+
+    def __init__(self, ativos):
+        self.ativos = ativos
+
+    def calcular(self):
+        """Devolve M, v, A e riscos próprios e efetivos na ordem dos IDs."""
+        lista, vulnerabilidades, matriz = montar_matriz_incidencia(self.ativos)
+        vetor = [vulnerabilidade.cvss for vulnerabilidade in vulnerabilidades]
+        proprio = produto_matriz_vetor(matriz, vetor)
+        dependencias = montar_matriz_dependencias(lista)
+        sistema = identidade_menos(dependencias)
+        self.numero_condicao = numero_condicao_infinito(sistema)
+        if self.numero_condicao > 1 / sys.float_info.epsilon:
+            raise ValueError(
+                "I - A é singular ou quase singular; revise as dependências."
+            )
+        efetivo = resolver_sistema(sistema, proprio)
+        return lista, matriz, vetor, proprio, dependencias, efetivo
+
+
 def calcular_riscos(ativos):
-    """Monta M, v e A a partir do inventário e devolve riscos próprio e efetivo."""
-    lista_ativos, vulnerabilidades, matriz_incidencia = montar_matriz_incidencia(ativos)
-    vetor_severidade = [vulnerabilidade.cvss for _, vulnerabilidade in vulnerabilidades]
-    risco_proprio = produto_matriz_vetor(matriz_incidencia, vetor_severidade)
-    matriz_dependencias = montar_matriz_dependencias(lista_ativos)
-    sistema = identidade_menos(matriz_dependencias)
-    risco_efetivo = resolver_sistema(sistema, risco_proprio)
-    return lista_ativos, matriz_incidencia, vetor_severidade, risco_proprio, matriz_dependencias, risco_efetivo
+    """Compatibilidade com as chamadas das Sprints anteriores."""
+    return AnalisadorRisco(ativos).calcular()

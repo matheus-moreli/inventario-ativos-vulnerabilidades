@@ -30,7 +30,7 @@ O sistema permite:
 - exigir evidência antes de marcar uma vulnerabilidade como corrigida;
 - manter um histórico simples das alterações feitas em cada ativo;
 - salvar as mudanças em um arquivo JSON local formado por uma lista de objetos;
-- representar cada tipo de ativo por uma classe derivada de `Ativo`;
+- representar cada tipo de ativo por uma classe derivada de `Equipamento`;
 - cadastrar dependências entre ativos e consultar o risco próprio e efetivo.
 
 Esta é uma aplicação didática. Ela não realiza varredura automática de rede, não consulta o NVD automaticamente, não possui login, não armazena senhas e não substitui uma ferramenta profissional de gestão de vulnerabilidades.
@@ -97,18 +97,20 @@ Com o Docker Desktop instalado e aberto, execute na pasta do projeto:
 
 ~~~powershell
 docker build -t inventario-ativos .
-docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos
+docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos python app.py
 ~~~
 
 O mesmo programa é aberto dentro do container. O volume `dados` mantém o JSON salvo na pasta do computador.
 
-Para manter o container em execução contínua, inclusive após reiniciar o Docker, use:
+Para comprovar **o programa completo** em execução contínua no servidor da disciplina, mantenha o menu interativo dentro de um container com terminal persistente:
 
 ~~~powershell
-docker run -dit --name inventario-ativos-24h --restart unless-stopped -v "${PWD}/dados:/app/dados" inventario-ativos
+docker run -dit --no-healthcheck --name inventario-ativos-24h --restart unless-stopped -v inventario-dados:/app/dados inventario-ativos python app.py
 ~~~
 
-Para abrir o menu desse container depois, execute `docker attach inventario-ativos-24h`.
+O volume nomeado guarda os dados e evita conflito de permissões do diretório do servidor. Use `docker attach inventario-ativos-24h` para demonstrar cadastros, consultas, vulnerabilidades e riscos; desprenda-se sem encerrar o programa com `Ctrl+P`, `Ctrl+Q`. Não escolha Sair durante a prova de 24 horas. O modo de serviço HTTP somente leitura continua disponível ao iniciar a imagem sem substituir o comando padrão, mas não é usado como prova de que o CRUD permaneceu ativo.
+
+O workflow do GitHub verifica testes e estilo. O build do Docker e **a prova de 24 horas no servidor da disciplina estão pendentes de execução**. O procedimento e os critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md). Uma execução local curta não substitui a prova de 24 horas.
 
 ## Navegação no terminal
 
@@ -192,7 +194,9 @@ O CVSS pode ser informado como 9.8 ou 9,8. O programa converte a vírgula para p
 
 Se o status for Corrigida, a verificação não pode ficar como Pendente. É necessário informar uma evidência, como atualização conferida, teste realizado ou versão corrigida validada.
 
-O CVE é a identidade da vulnerabilidade dentro do ativo e não é alterado depois do cadastro. Um mesmo CVE pode existir em ativos diferentes, mas não pode aparecer duas vezes no mesmo ativo.
+O CVE é a identidade da vulnerabilidade dentro do ativo e não é alterado depois do cadastro. Um mesmo CVE pode existir em ativos diferentes, mas não pode aparecer duas vezes no mesmo ativo. Para que represente uma única coluna da matriz de incidência, sua nota CVSS deve ser igual em todos os ativos afetados.
+
+Na análise de risco, cada CVE ocupa uma coluna de `M`, inclusive quando afeta mais de um ativo. O vetor `v` guarda suas notas CVSS, e `b = Mv` soma o risco próprio de cada ativo. A matriz `A` registra as frações herdadas das dependências; o programa verifica `I - A`, calcula seu número de condição na norma infinita e resolve `(I - A)x = b` por eliminação de Gauss, sem inverter a matriz para obter `x`. Valores de condicionamento acima de `10^8` geram aviso. O fator de exposição `F` mostrado na aula é uma extensão ilustrativa: não há pesos de exposição cadastrados no inventário, portanto ele não altera as notas apresentadas.
 
 ## Base demonstrativa
 
@@ -228,7 +232,7 @@ Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 python -m unittest -v
 ~~~
 
-Atualmente, a suíte possui 40 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos e cálculo de risco com dependências.
+Atualmente, a suíte possui 53 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, dependências salvas no JSON, CVE compartilhada em mais de um ativo, condicionamento numérico, matriz singular, cálculo de risco e as respostas do serviço.
 
 Se todos passarem, o final exibirá OK.
 
@@ -237,6 +241,7 @@ Se todos passarem, o final exibirá OK.
 | Arquivo ou pasta | Responsabilidade |
 |---|---|
 | app.py | Ponto de entrada. Define o caminho do JSON e inicia o programa. |
+| servico.py | Consultas HTTP somente leitura para execução contínua em Docker. |
 | interface.py | Menus, leitura do teclado, mensagens e formulários do terminal. |
 | inventario.py | Regras de negócio, validações e operações de cadastro, consulta, atualização e remoção. |
 | modelos.py | Classes Ativo e Vulnerabilidade, enumeração dos tipos e listas de opções padronizadas. |
@@ -266,9 +271,9 @@ Os materiais individuais estão disponíveis em:
 
 ## Branches e histórico
 
-A branch principal é a main. Ela contém a versão completa do programa pronta para execução e apresentação.
+A branch principal é a main. Nesta revisão, a melhoria do Trabalho 2 está na branch `melhoria-trabalho-2-completo` e na [Pull Request #3](https://github.com/matheus-moreli/inventario-ativos-vulnerabilidades/pull/3); ainda não foi integrada à `main`. Para conferir os recursos descritos nesta revisão antes do merge, execute essa branch.
 
-As branches de funcionalidade preservam o histórico de aprendizagem e dos Pull Requests realizados durante o desenvolvimento. O código final integrado deve ser executado sempre a partir da main.
+As branches de funcionalidade preservam o histórico de aprendizagem e dos Pull Requests realizados durante o desenvolvimento. Depois de aprovada e integrada a PR, a versão final estará na `main`.
 
 ## Problemas comuns
 

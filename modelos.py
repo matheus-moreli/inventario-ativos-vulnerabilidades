@@ -28,9 +28,20 @@ def data_hora_atual():
 class Vulnerabilidade:
     """Representa uma vulnerabilidade ligada a exatamente um ativo."""
 
-    def __init__(self, cve, cwe, cvss, descricao, fonte, data_fonte,
-                 impacto, prioridade, tratamento, status="Aberta",
-                 verificacao="Pendente"):
+    def __init__(
+        self,
+        cve,
+        cwe,
+        cvss,
+        descricao,
+        fonte,
+        data_fonte,
+        impacto,
+        prioridade,
+        tratamento,
+        status="Aberta",
+        verificacao="Pendente",
+    ):
         self.cve = cve
         self.cwe = cwe
         self.cvss = cvss
@@ -77,12 +88,21 @@ class Vulnerabilidade:
         )
 
 
-class Ativo:
+class Equipamento:
     """Classe base dos equipamentos cadastrados no inventário."""
 
-    def __init__(self, identificador, nome, responsavel, localizacao, tipo,
-                 criticidade, vulnerabilidades=None, historico=None,
-                 dependencias=None):
+    def __init__(
+        self,
+        identificador,
+        nome,
+        responsavel,
+        localizacao,
+        tipo,
+        criticidade,
+        vulnerabilidades=None,
+        historico=None,
+        dependencias=None,
+    ):
         self.id = identificador
         self.nome = nome
         self.responsavel = responsavel
@@ -100,6 +120,10 @@ class Ativo:
     def registrar_historico(self, mensagem):
         """Guarda uma evidência simples de criação, alteração ou cadastro."""
         self.historico.append(f"{data_hora_atual()} - {mensagem}")
+
+    def buscar_vulnerabilidade(self, cve):
+        """Consulta uma vulnerabilidade pertencente a este equipamento."""
+        return next((item for item in self.vulnerabilidades if item.cve == cve), None)
 
     def para_dicionario(self):
         """Transforma o ativo em dicionário para persistência no arquivo JSON."""
@@ -137,32 +161,35 @@ class Ativo:
         )
 
 
-class Notebook(Ativo):
+Ativo = Equipamento  # Nome mantido para compatibilidade com o Trabalho 1.
+
+
+class Notebook(Equipamento):
     def nome_do_tipo(self):
         return "Notebook"
 
 
-class Servidor(Ativo):
+class Servidor(Equipamento):
     def nome_do_tipo(self):
         return "Servidor"
 
 
-class Roteador(Ativo):
+class Roteador(Equipamento):
     def nome_do_tipo(self):
         return "Roteador"
 
 
-class AplicacaoWeb(Ativo):
+class AplicacaoWeb(Equipamento):
     def nome_do_tipo(self):
         return "Aplicação Web"
 
 
-class BancoDeDados(Ativo):
+class BancoDeDados(Equipamento):
     def nome_do_tipo(self):
         return "Banco de Dados"
 
 
-class SoftwareLicenciado(Ativo):
+class SoftwareLicenciado(Equipamento):
     def nome_do_tipo(self):
         return "Software Licenciado"
 
@@ -177,10 +204,27 @@ CLASSES_DE_ATIVO = {
 }
 
 
-def criar_ativo(identificador, nome, responsavel, localizacao, tipo,
-                criticidade, vulnerabilidades=None, historico=None,
-                dependencias=None):
+def criar_ativo(
+    identificador,
+    nome,
+    responsavel,
+    localizacao,
+    tipo,
+    criticidade,
+    vulnerabilidades=None,
+    historico=None,
+    dependencias=None,
+):
     """Cria o objeto concreto correspondente ao tipo escolhido."""
     classe = CLASSES_DE_ATIVO[tipo]
-    return classe(identificador, nome, responsavel, localizacao, tipo,
-                  criticidade, vulnerabilidades, historico, dependencias)
+    return classe(
+        identificador,
+        nome,
+        responsavel,
+        localizacao,
+        tipo,
+        criticidade,
+        vulnerabilidades,
+        historico,
+        dependencias,
+    )

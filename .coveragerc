@@ -1,0 +1,8 @@
+[run]
+source =
+    interface
+    inventario
+    modelos
+    persistencia
+    risco
+    servico

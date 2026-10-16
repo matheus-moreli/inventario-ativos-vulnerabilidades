@@ -13,17 +13,31 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 import interface
-from interface import (VOLTAR, atualizar_ativo_tela, confirmar_remocao,
-                       consultar_vulnerabilidades_tela, executar_programa,
-                       ler_id_para_operacao, ler_texto_formulario,
-                       ler_verificacao_formulario, resumo_vulnerabilidade,
-                       salvar_com_aviso)
-from inventario import (DadosInvalidosError, atualizar_ativo,
-                        atualizar_vulnerabilidade, cadastrar_ativo,
-                        cadastrar_vulnerabilidade, consultar_por_id,
-                        consultar_vulnerabilidades, excluir_ativo,
-                        excluir_vulnerabilidade, filtrar_ativos)
-from persistencia import carregar_ativos, salvar_ativos
+from interface import (
+    VOLTAR,
+    atualizar_ativo_tela,
+    confirmar_remocao,
+    consultar_vulnerabilidades_tela,
+    executar_programa,
+    ler_id_para_operacao,
+    ler_texto_formulario,
+    ler_verificacao_formulario,
+    resumo_vulnerabilidade,
+    salvar_com_aviso,
+)
+from inventario import (
+    DadosInvalidosError,
+    atualizar_ativo,
+    atualizar_vulnerabilidade,
+    cadastrar_ativo,
+    cadastrar_vulnerabilidade,
+    consultar_por_id,
+    consultar_vulnerabilidades,
+    excluir_ativo,
+    excluir_vulnerabilidade,
+    filtrar_ativos,
+)
+from persistencia import RepositorioJSON, carregar_ativos, salvar_ativos
 
 
 class TesteInventario(unittest.TestCase):
@@ -31,16 +45,27 @@ class TesteInventario(unittest.TestCase):
 
     def setUp(self):
         self.ativos = {}
-        cadastrar_ativo(self.ativos, 10, "SRV-ARQUIVOS", "Equipe TI",
-                        "Datacenter", 2, "Alta")
+        cadastrar_ativo(
+            self.ativos, 10, "SRV-ARQUIVOS", "Equipe TI", "Datacenter", 2, "Alta"
+        )
 
     def cadastrar_vulnerabilidade_de_exemplo(self):
         """Evita repetir os mesmos dados válidos em vários testes."""
         return cadastrar_vulnerabilidade(
-            self.ativos, 10, "CVE-2024-1234", "CWE-79", "7.5",
-            "Exemplo de validação", "https://nvd.nist.gov", "01/01/2026",
-            "Execução de código", "Alta", "Aplicar correção", "Aberta",
-            "Validar versão após atualização")
+            self.ativos,
+            10,
+            "CVE-2024-1234",
+            "CWE-79",
+            "7.5",
+            "Exemplo de validação",
+            "https://nvd.nist.gov",
+            "01/01/2026",
+            "Execução de código",
+            "Alta",
+            "Aplicar correção",
+            "Aberta",
+            "Validar versão após atualização",
+        )
 
     def test_cadastro_e_busca_por_id(self):
         ativo = consultar_por_id(self.ativos, 10)
@@ -55,8 +80,9 @@ class TesteInventario(unittest.TestCase):
     def test_nome_duplicado_e_rejeitado(self):
         """Hostname repetido não pode identificar dois ativos diferentes."""
         with self.assertRaises(DadosInvalidosError):
-            cadastrar_ativo(self.ativos, 20, " srv-arquivos ", "TI", "Sala 1", 1,
-                            "Baixa")
+            cadastrar_ativo(
+                self.ativos, 20, " srv-arquivos ", "TI", "Sala 1", 1, "Baixa"
+            )
         self.assertNotIn(20, self.ativos)
 
     def test_atualizacao_nao_permite_nome_de_outro_ativo(self):
@@ -97,6 +123,14 @@ class TesteInventario(unittest.TestCase):
         self.assertTrue(excluir_ativo(self.ativos, 10, True))
         self.assertNotIn(10, self.ativos)
 
+    def test_exclusao_remove_vulnerabilidades_e_dependencias(self):
+        self.cadastrar_vulnerabilidade_de_exemplo()
+        cadastrar_ativo(self.ativos, 20, "APP-PORTAL", "TI", "Nuvem", 4, "Alta")
+        self.ativos[20].dependencias.append({"ativo_id": 10, "peso": 0.3})
+        self.assertTrue(excluir_ativo(self.ativos, 10, True))
+        self.assertEqual(consultar_vulnerabilidades(self.ativos), [])
+        self.assertEqual(self.ativos[20].dependencias, [])
+
     def test_vulnerabilidade_com_dados_verificaveis(self):
         vulnerabilidade = self.cadastrar_vulnerabilidade_de_exemplo()
         self.assertEqual(vulnerabilidade.cvss, 7.5)
@@ -115,8 +149,9 @@ class TesteInventario(unittest.TestCase):
         self.cadastrar_vulnerabilidade_de_exemplo()
         tela = io.StringIO()
         # Simula: ver todas, abrir a primeira e voltar para a lista.
-        with patch("interface.escolher_com_setas", side_effect=[0, 0, None]), \
-                patch("interface.aguardar_retorno_lista"):
+        with patch("interface.escolher_com_setas", side_effect=[0, 0, None]), patch(
+            "interface.aguardar_retorno_lista"
+        ):
             with redirect_stdout(tela):
                 consultar_vulnerabilidades_tela(self.ativos)
         self.assertIn("CVE-2024-1234", tela.getvalue())
@@ -126,14 +161,24 @@ class TesteInventario(unittest.TestCase):
         self.cadastrar_vulnerabilidade_de_exemplo()
         cadastrar_ativo(self.ativos, 20, "NOTEBOOK-ANA", "Ana", "Sala 2", 1, "Média")
         cadastrar_vulnerabilidade(
-            self.ativos, 20, "CVE-2025-4321", "CWE-89", "6.0", "Outro teste",
-            "Fonte", "02/01/2026", "Impacto", "Média", "Tratar"
+            self.ativos,
+            20,
+            "CVE-2025-4321",
+            "CWE-89",
+            "6.0",
+            "Outro teste",
+            "Fonte",
+            "02/01/2026",
+            "Impacto",
+            "Média",
+            "Tratar",
         )
         tela = io.StringIO()
         # Simula: consultar por ID 10, abrir a vulnerabilidade e voltar.
         with patch("interface.ler_id_para_operacao", return_value=10):
-            with patch("interface.escolher_com_setas", side_effect=[1, 0, None]), \
-                    patch("interface.aguardar_retorno_lista"):
+            with patch("interface.escolher_com_setas", side_effect=[1, 0, None]), patch(
+                "interface.aguardar_retorno_lista"
+            ):
                 with redirect_stdout(tela):
                     consultar_vulnerabilidades_tela(self.ativos)
         self.assertIn("CVE-2024-1234", tela.getvalue())
@@ -141,16 +186,18 @@ class TesteInventario(unittest.TestCase):
 
     @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
     def test_letra_a_com_crase_nao_e_tratada_como_seta(self):
-        with patch("interface.msvcrt.getwch", side_effect=["à", "\r"]), \
-                patch("interface.msvcrt.kbhit", return_value=False):
+        with patch("interface.msvcrt.getwch", side_effect=["à", "\r"]), patch(
+            "interface.msvcrt.kbhit", return_value=False
+        ):
             with redirect_stdout(io.StringIO()):
                 texto = ler_texto_formulario("Localização")
         self.assertEqual(texto, "à")
 
     @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
     def test_letra_a_com_crase_em_texto_colado_e_preservada(self):
-        with patch("interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), \
-                patch("interface.msvcrt.kbhit", return_value=True):
+        with patch("interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), patch(
+            "interface.msvcrt.kbhit", return_value=True
+        ):
             with redirect_stdout(io.StringIO()):
                 texto = ler_texto_formulario("Localização")
         self.assertEqual(texto, "à r")
@@ -162,7 +209,9 @@ class TesteInventario(unittest.TestCase):
 
     def test_correcao_exige_verificacao_antes_de_finalizar_formulario(self):
         valores = {"status": "Corrigida"}
-        with patch("interface.ler_texto_formulario", side_effect=["Pendente", "Teste aplicado"]):
+        with patch(
+            "interface.ler_texto_formulario", side_effect=["Pendente", "Teste aplicado"]
+        ):
             with redirect_stdout(io.StringIO()):
                 verificacao = ler_verificacao_formulario(
                     valores, "Verificação", obrigatorio=False
@@ -174,8 +223,10 @@ class TesteInventario(unittest.TestCase):
         with patch("interface.ler_texto_formulario", return_value=""):
             with redirect_stdout(io.StringIO()):
                 verificacao = ler_verificacao_formulario(
-                    valores, "Verificação", obrigatorio=False,
-                    verificacao_atual="Teste da atualização aplicado"
+                    valores,
+                    "Verificação",
+                    obrigatorio=False,
+                    verificacao_atual="Teste da atualização aplicado",
                 )
         self.assertEqual(verificacao, "")
 
@@ -191,9 +242,9 @@ class TesteInventario(unittest.TestCase):
         self.assertIn("Não foi possível salvar", tela.getvalue())
 
     def test_saida_pode_ser_confirmada_sem_salvar(self):
-        with patch("interface.mostrar_menu", return_value="0"), \
-                patch("interface.salvar_ativos", return_value=False), \
-                patch("interface.ler_sim_ou_nao", return_value=True):
+        with patch("interface.mostrar_menu", return_value="0"), patch(
+            "interface.salvar_ativos", return_value=False
+        ), patch("interface.ler_sim_ou_nao", return_value=True):
             with redirect_stdout(io.StringIO()) as tela:
                 executar_programa(self.ativos, "dados/inventario.json")
         self.assertIn("sem salvar", tela.getvalue())
@@ -207,38 +258,94 @@ class TesteInventario(unittest.TestCase):
             chamadas_de_texto.append((mensagem, anterior, preenchido))
             return respostas_de_texto.pop(0)
 
-        with patch("interface.ler_inteiro_formulario", side_effect=[10, 20]), \
-                patch("interface.ler_texto_formulario", side_effect=texto_controlado), \
-                patch("interface.escolher_tipo_atualizacao", return_value=None), \
-                patch("interface.escolher_item_atualizacao", return_value=None):
+        with patch("interface.ler_inteiro_formulario", side_effect=[10, 20]), patch(
+            "interface.ler_texto_formulario", side_effect=texto_controlado
+        ), patch("interface.escolher_tipo_atualizacao", return_value=None), patch(
+            "interface.escolher_item_atualizacao", return_value=None
+        ):
             with redirect_stdout(io.StringIO()):
                 atualizar_ativo_tela(self.ativos)
 
         self.assertEqual(self.ativos[20].nome, "NOTEBOOK-ANA")
-        self.assertIn(("Nome ou hostname [NOTEBOOK-ANA]", None, False), chamadas_de_texto)
+        self.assertIn(
+            ("Nome ou hostname [NOTEBOOK-ANA]", None, False), chamadas_de_texto
+        )
 
     def test_cvss_com_virgula_e_aceito(self):
         vulnerabilidade = cadastrar_vulnerabilidade(
-            self.ativos, 10, "CVE-2024-9999", "CWE-79", "9,8",
-            "Exemplo", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar"
+            self.ativos,
+            10,
+            "CVE-2024-9999",
+            "CWE-79",
+            "9,8",
+            "Exemplo",
+            "Fonte",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Tratar",
         )
         self.assertEqual(vulnerabilidade.cvss, 9.8)
 
     def test_cve_e_cvss_invalidos_sao_rejeitados(self):
         with self.assertRaises(DadosInvalidosError):
-            cadastrar_vulnerabilidade(self.ativos, 10, "123", "CWE-79", 5,
-                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+            cadastrar_vulnerabilidade(
+                self.ativos,
+                10,
+                "123",
+                "CWE-79",
+                5,
+                "Teste",
+                "Fonte",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
+            )
         with self.assertRaises(DadosInvalidosError):
-            cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 11,
-                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+            cadastrar_vulnerabilidade(
+                self.ativos,
+                10,
+                "CVE-2024-1234",
+                "CWE-79",
+                11,
+                "Teste",
+                "Fonte",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
+            )
         with self.assertRaises(DadosInvalidosError):
-            cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", "nan",
-                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+            cadastrar_vulnerabilidade(
+                self.ativos,
+                10,
+                "CVE-2024-1234",
+                "CWE-79",
+                "nan",
+                "Teste",
+                "Fonte",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
+            )
 
     def test_data_da_fonte_invalida_e_rejeitada(self):
         with self.assertRaises(DadosInvalidosError):
-            cadastrar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", "CWE-79", 5,
-                "Teste", "Fonte", "2026-01-01", "Impacto", "Alta", "Tratar")
+            cadastrar_vulnerabilidade(
+                self.ativos,
+                10,
+                "CVE-2024-1234",
+                "CWE-79",
+                5,
+                "Teste",
+                "Fonte",
+                "2026-01-01",
+                "Impacto",
+                "Alta",
+                "Tratar",
+            )
 
     def test_cve_duplicado_no_mesmo_ativo_e_rejeitado(self):
         self.cadastrar_vulnerabilidade_de_exemplo()
@@ -247,8 +354,13 @@ class TesteInventario(unittest.TestCase):
 
     def test_atualizacao_de_vulnerabilidade_registra_historico(self):
         self.cadastrar_vulnerabilidade_de_exemplo()
-        atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-1234",
-                                  status="Em tratamento", verificacao="Revisar versão")
+        atualizar_vulnerabilidade(
+            self.ativos,
+            10,
+            "CVE-2024-1234",
+            status="Em tratamento",
+            verificacao="Revisar versão",
+        )
         vulnerabilidade = self.ativos[10].vulnerabilidades[0]
         self.assertEqual(vulnerabilidade.status, "Em tratamento")
         self.assertEqual(vulnerabilidade.verificacao, "Revisar versão")
@@ -256,18 +368,35 @@ class TesteInventario(unittest.TestCase):
 
     def test_atualizacao_invalida_nao_altera_a_vulnerabilidade(self):
         cadastrar_vulnerabilidade(
-            self.ativos, 10, "CVE-2024-5678", "CWE-79", 5,
-            "Descrição original", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+            self.ativos,
+            10,
+            "CVE-2024-5678",
+            "CWE-79",
+            5,
+            "Descrição original",
+            "Fonte",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Tratar",
+        )
         vulnerabilidade = self.ativos[10].vulnerabilidades[0]
         with self.assertRaises(DadosInvalidosError):
-            atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-5678",
-                                      descricao="Descrição nova", status="Corrigida")
+            atualizar_vulnerabilidade(
+                self.ativos,
+                10,
+                "CVE-2024-5678",
+                descricao="Descrição nova",
+                status="Corrigida",
+            )
         self.assertEqual(vulnerabilidade.descricao, "Descrição original")
         self.assertEqual(vulnerabilidade.status, "Aberta")
 
     def test_remocao_de_vulnerabilidade_exige_confirmacao(self):
         self.cadastrar_vulnerabilidade_de_exemplo()
-        self.assertFalse(excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", False))
+        self.assertFalse(
+            excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", False)
+        )
         self.assertEqual(len(self.ativos[10].vulnerabilidades), 1)
         self.assertTrue(excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", True))
         self.assertEqual(len(self.ativos[10].vulnerabilidades), 0)
@@ -275,17 +404,40 @@ class TesteInventario(unittest.TestCase):
     def test_correcao_exige_verificacao(self):
         # Não informamos verificação: a função usa o padrão "Pendente".
         cadastrar_vulnerabilidade(
-            self.ativos, 10, "CVE-2024-5678", "CWE-79", 5,
-            "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar")
+            self.ativos,
+            10,
+            "CVE-2024-5678",
+            "CWE-79",
+            5,
+            "Teste",
+            "Fonte",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Tratar",
+        )
         with self.assertRaises(DadosInvalidosError):
-            atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-5678", status="Corrigida")
+            atualizar_vulnerabilidade(
+                self.ativos, 10, "CVE-2024-5678", status="Corrigida"
+            )
 
     def test_cadastro_corrigido_exige_verificacao(self):
         with self.assertRaises(DadosInvalidosError):
             cadastrar_vulnerabilidade(
-                self.ativos, 10, "CVE-2024-9999", "CWE-79", 5,
-                "Teste", "Fonte", "01/01/2026", "Impacto", "Alta", "Tratar",
-                "Corrigida", "Pendente")
+                self.ativos,
+                10,
+                "CVE-2024-9999",
+                "CWE-79",
+                5,
+                "Teste",
+                "Fonte",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
+                "Corrigida",
+                "Pendente",
+            )
 
     def test_json_invalido_nao_e_substituido(self):
         with tempfile.TemporaryDirectory() as pasta:
@@ -308,6 +460,19 @@ class TesteInventario(unittest.TestCase):
         self.assertEqual(recarregados[10].criticidade, "Alta")
         self.assertEqual(recarregados[10].vulnerabilidades[0].cve, vulnerabilidade.cve)
         self.assertEqual(recarregados[10].vulnerabilidades[0].cvss, 7.5)
+
+    def test_falha_na_substituicao_preserva_json_anterior(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            self.assertTrue(RepositorioJSON(caminho).salvar(self.ativos))
+            with open(caminho, "r", encoding="utf-8") as arquivo:
+                anterior = arquivo.read()
+            with patch("persistencia.os.replace", side_effect=OSError("disco")):
+                with redirect_stdout(io.StringIO()):
+                    self.assertFalse(RepositorioJSON(caminho).salvar({}))
+            with open(caminho, "r", encoding="utf-8") as arquivo:
+                self.assertEqual(arquivo.read(), anterior)
+            self.assertEqual(os.listdir(pasta), ["inventario.json"])
 
     def test_json_com_id_inconsistente_e_rejeitado(self):
         with tempfile.TemporaryDirectory() as pasta:

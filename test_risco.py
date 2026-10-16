@@ -4,13 +4,21 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from inventario import (DadosInvalidosError, adicionar_dependencia,
-                        atualizar_ativo, cadastrar_ativo,
-                        cadastrar_vulnerabilidade)
-from modelos import Notebook, Servidor
-from persistencia import salvar_ativos
-from risco import calcular_riscos
+from interface import InterfaceTerminal
+from inventario import (
+    DadosInvalidosError,
+    Inventario,
+    adicionar_dependencia,
+    atualizar_ativo,
+    cadastrar_ativo,
+    cadastrar_vulnerabilidade,
+)
+from modelos import Ativo, Equipamento, Notebook, Servidor
+from persistencia import carregar_ativos, salvar_ativos
+from risco import calcular_riscos, numero_condicao_infinito, resolver_sistema
+from servico import ServicoInventario
 
 
 class TesteRisco(unittest.TestCase):
@@ -22,11 +30,22 @@ class TesteRisco(unittest.TestCase):
 
     def vulnerabilidade(self, identificador, cve, cvss):
         cadastrar_vulnerabilidade(
-            self.ativos, identificador, cve, "CWE-79", cvss, "Teste", "Fonte",
-            "01/01/2026", "Impacto", "Alta", "Tratar"
+            self.ativos,
+            identificador,
+            cve,
+            "CWE-79",
+            cvss,
+            "Teste",
+            "Fonte",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Tratar",
         )
 
     def test_cada_tipo_gera_o_objeto_correspondente(self):
+        self.assertIs(Ativo, Equipamento)
+        self.assertTrue(issubclass(Servidor, Equipamento))
         self.assertIsInstance(self.ativos[1], Notebook)
         self.assertIsInstance(self.ativos[2], Servidor)
         self.assertEqual(self.ativos[2].nome_do_tipo(), "Servidor")
@@ -52,7 +71,9 @@ class TesteRisco(unittest.TestCase):
         adicionar_dependencia(self.ativos, 3, 1, "0,25")
         adicionar_dependencia(self.ativos, 3, 2, "0.50")
 
-        ativos, matriz, vetor, proprio, dependencias, efetivo = calcular_riscos(self.ativos)
+        ativos, matriz, vetor, proprio, dependencias, efetivo = calcular_riscos(
+            self.ativos
+        )
 
         self.assertEqual([ativo.id for ativo in ativos], [1, 2, 3])
         self.assertEqual(matriz, [[1, 0], [0, 1], [0, 0]])
@@ -65,6 +86,83 @@ class TesteRisco(unittest.TestCase):
         adicionar_dependencia(self.ativos, 3, 1, 0.60)
         with self.assertRaises(DadosInvalidosError):
             adicionar_dependencia(self.ativos, 3, 2, 0.40)
+
+    def test_dependencias_persistem_e_mantem_o_risco(self):
+        self.vulnerabilidade(1, "CVE-2026-0001", 4)
+        adicionar_dependencia(self.ativos, 3, 1, 0.25)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            self.assertTrue(salvar_ativos(self.ativos, caminho))
+            carregados = carregar_ativos(caminho)
+        self.assertEqual(carregados[3].dependencias, [{"ativo_id": 1, "peso": 0.25}])
+        self.assertEqual(calcular_riscos(carregados)[-1], [4.0, 0.0, 1.0])
+
+    def test_matriz_singular_e_rejeitada_antes_da_solucao(self):
+        with self.assertRaisesRegex(ValueError, "não é invertível"):
+            resolver_sistema([[1.0, 1.0], [2.0, 2.0]], [1.0, 2.0])
+
+    def test_ciclo_de_tres_ativos_resolvido_a_mao(self):
+        # x1=4+0,5x2; x2=6+0,25x1; x3=0,2x1+0,3x2.
+        # Substituindo: x1=8, x2=8 e x3=4.
+        self.vulnerabilidade(1, "CVE-2026-0001", 4)
+        self.vulnerabilidade(2, "CVE-2026-0002", 6)
+        adicionar_dependencia(self.ativos, 1, 2, 0.5)
+        adicionar_dependencia(self.ativos, 2, 1, 0.25)
+        adicionar_dependencia(self.ativos, 3, 1, 0.2)
+        adicionar_dependencia(self.ativos, 3, 2, 0.3)
+        _, _, _, proprio, matriz_a, efetivo = calcular_riscos(self.ativos)
+        self.assertEqual(proprio, [4.0, 6.0, 0])
+        self.assertEqual(matriz_a, [[0.0, 0.5, 0.0], [0.25, 0.0, 0.0], [0.2, 0.3, 0.0]])
+        for obtido, esperado in zip(efetivo, [8.0, 8.0, 4.0]):
+            self.assertAlmostEqual(obtido, esperado)
+
+    def test_cve_compartilhada_ocupa_uma_coluna_com_dois_uns(self):
+        # Cenário da aula: V2 atinge Web e Banco com a mesma nota CVSS.
+        self.vulnerabilidade(1, "CVE-2026-0001", 9.8)
+        self.vulnerabilidade(1, "CVE-2026-0002", 5.3)
+        self.vulnerabilidade(2, "CVE-2026-0003", 7.5)
+        self.vulnerabilidade(3, "CVE-2026-0002", 5.3)
+        adicionar_dependencia(self.ativos, 1, 2, 0.2)
+        adicionar_dependencia(self.ativos, 2, 1, 0.5)
+        adicionar_dependencia(self.ativos, 3, 2, 0.6)
+
+        _, matriz, vetor, proprio, _, efetivo = calcular_riscos(self.ativos)
+        self.assertEqual(matriz, [[1, 1, 0], [0, 0, 1], [0, 1, 0]])
+        self.assertEqual(vetor, [9.8, 5.3, 7.5])
+        for obtido, esperado in zip(proprio, [15.1, 7.5, 5.3]):
+            self.assertAlmostEqual(obtido, esperado)
+        for obtido, esperado in zip(efetivo, [18.444444, 16.722222, 15.333333]):
+            self.assertAlmostEqual(obtido, esperado, places=5)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            self.assertTrue(salvar_ativos(self.ativos, caminho))
+            carregados = carregar_ativos(caminho)
+        self.assertEqual(calcular_riscos(carregados)[1], matriz)
+        codigo, resposta = ServicoInventario(carregados).resposta("/riscos")
+        self.assertEqual(codigo, 200)
+        self.assertEqual(resposta["matriz_incidencia"], matriz)
+        self.assertAlmostEqual(resposta["numero_condicao_infinito"], 3.2)
+
+    def test_mesma_cve_nao_aceita_cvss_divergente(self):
+        self.vulnerabilidade(1, "CVE-2026-0002", 5.3)
+        with self.assertRaisesRegex(DadosInvalidosError, "outra nota CVSS"):
+            self.vulnerabilidade(3, "CVE-2026-0002", 5.4)
+
+    def test_condicionamento_alerta_antes_de_singularidade(self):
+        quase_singular = [[1.0, -0.99999999], [-0.99999999, 1.0]]
+        self.assertGreater(numero_condicao_infinito(quase_singular), 1e8)
+        with self.assertRaisesRegex(ValueError, "não é invertível"):
+            resolver_sistema([[1.0, -1.0], [-1.0, 1.0]], [1.0, 1.0])
+
+    def test_interface_usa_a_mesma_instancia_do_inventario(self):
+        inventario = Inventario(self.ativos)
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            tela = InterfaceTerminal(inventario, caminho)
+            self.assertIs(tela.inventario, inventario)
+            with patch("interface.mostrar_menu", side_effect=["2", "0"]):
+                tela.executar()
+            self.assertIsInstance(carregar_ativos(caminho)[1], Notebook)
 
 
 if __name__ == "__main__":
