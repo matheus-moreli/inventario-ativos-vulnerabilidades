@@ -6,9 +6,19 @@ O workflow `verificar.yml` executa testes Python e flake8. Em 13/10/2026, o Dock
 
 O container local anterior `inventario-ativos-24h` iniciou em **13/10/2026 11:24:50 BRT** e ainda estava ativo, com **zero reinícios**, na coleta de **13/10/2026 21:42 BRT** (aproximadamente 10 h 17 min). Sua imagem contém código anterior à PR #3. Ele foi preservado; essa contagem não vale como prova da versão nova nem da hospedagem no servidor do docente.
 
-Depois dos testes e da revisão, a versão nova do commit `3395957` iniciou em outro container local, `inventario-ativos-trabalho2-novo`, em **13/10/2026 21:46:48 BRT** (`2026-10-14T00:46:48.968560529Z`). Ela usa `python app.py`, volume próprio `inventario-trabalho2-novo-dados` e política `unless-stopped`. A primeira inspeção registrou `running=true`, `RestartCount=0`, seis ativos no JSON e o menu completo nos logs. A marca de 24 horas desta versão só poderá ser aferida após **14/10/2026 21:46:48 BRT**, desde que permaneça sem reinícios. Essa execução é no PC do aluno, não no servidor do docente.
+Depois dos testes e da revisão, a versão nova do commit `3395957` iniciou em outro container local, `inventario-ativos-trabalho2-novo`, em **13/10/2026 21:46:48 BRT** (`2026-10-14T00:46:48.968560529Z`). Ela usa `python app.py`, volume próprio `inventario-trabalho2-novo-dados` e política `unless-stopped`. A primeira inspeção registrou `running=true`, `RestartCount=0`, seis ativos no JSON e o menu completo nos logs. Essa execução é no PC do aluno, não no servidor do docente.
 
-Após conferir o material de risco da aula, o commit final `4e9d6ad` iniciou em um **terceiro container isolado**, `inventario-ativos-trabalho2-aula`, em **13/10/2026 22:06:25 BRT** (`2026-10-14T01:06:25.405335648Z`). Usa `python app.py`, imagem `inventario-ativos-trabalho2:4e9d6ad`, volume exclusivo `inventario-trabalho2-aula-dados` e política `unless-stopped`. A inspeção inicial mostrou `running=true`, `RestartCount=0`, seis ativos no JSON e menu completo nos logs. Os dois containers anteriores foram preservados. A prova de 24 horas **desta versão final** só pode ser aferida após **14/10/2026 22:06:25 BRT**, se permanecer sem reinícios.
+Após conferir o material de risco da aula, o commit final `4e9d6ad` iniciou em um **terceiro container isolado**, `inventario-ativos-trabalho2-aula`, em **13/10/2026 22:06:25 BRT** (`2026-10-14T01:06:25.405335648Z`). Usa `python app.py`, imagem `inventario-ativos-trabalho2:4e9d6ad`, volume exclusivo `inventario-trabalho2-aula-dados` e política `unless-stopped`. A inspeção inicial mostrou `running=true`, `RestartCount=0`, seis ativos no JSON e menu completo nos logs. Os dois containers anteriores foram preservados.
+
+### Conferência de 19/10/2026
+
+Na conferência automática de **19/10/2026 às 22:14 BRT**, a API do Docker Desktop estava indisponível (`dockerDesktopLinuxEngine` sem pipe). O aplicativo Docker Desktop foi iniciado para inspecionar o estado persistido, sem remover containers nem volumes. A inspeção posterior do container final mostrou:
+
+- mesmo ID `3eb83a71dad6c7dadd343be9c8065b9591e758d8e18d3f4c789ca5ad34c815f6` e imagem `inventario-ativos-trabalho2:4e9d6ad`;
+- `State.StartedAt=2026-10-20T01:15:22.961694147Z` (**19/10/2026 22:15:22 BRT**), `Running=true` e `RestartCount=0`;
+- logs com duas inicializações do menu completo e JSON do volume com seis ativos.
+
+O `StartedAt` mudou em relação a 13/10. Portanto, **não há prova de 24 horas contínuas da execução iniciada em 13/10**, apesar do ID e da imagem preservados e do contador de reinícios em zero. O contador sozinho não comprova continuidade após reiniciar o Docker Desktop. A contagem atual só poderá ser conferida após **20/10/2026 22:15:22 BRT**, se o novo `StartedAt` permanecer igual e o container continuar ativo. Não há evidência de quando o Docker Desktop ficou indisponível; não se afirma a duração da execução anterior.
 
 ## Execução no servidor da disciplina
 
@@ -42,4 +52,4 @@ docker logs inventario-ativos-24h
 
 Guarde as duas saídas completas, horário da coleta, identificação do servidor e um registro da operação de CRUD feita via menu. O critério de aceite é: mesmo container e imagem, início há pelo menos 24 horas, `ativo=true`, `reinicios=0`, menu funcional e dados persistidos. Um reinício durante o período recomeça a contagem. Credenciais e dados privados do servidor não devem aparecer na evidência pública.
 
-**Estado atual:** build, testes, serviço HTTP e menu completo locais verificados; versão final `4e9d6ad` em execução no Docker Desktop. Ainda faltam 24 horas verificadas dessa versão e a hospedagem no servidor do docente. Não há evidência de 24 horas neste repositório.
+**Estado atual:** build, testes, serviço HTTP e menu completo locais verificados; versão final `4e9d6ad` novamente em execução no Docker Desktop desde 19/10 às 22:15:22 BRT. Ainda faltam 24 horas contínuas verificadas dessa execução e a hospedagem no servidor do docente. Não há evidência de 24 horas neste repositório.
