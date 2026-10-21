@@ -18,7 +18,11 @@ Na conferência automática de **19/10/2026 às 22:14 BRT**, a API do Docker Des
 - `State.StartedAt=2026-10-20T01:15:22.961694147Z` (**19/10/2026 22:15:22 BRT**), `Running=true` e `RestartCount=0`;
 - logs com duas inicializações do menu completo e JSON do volume com seis ativos.
 
-O `StartedAt` mudou em relação a 13/10. Portanto, **não há prova de 24 horas contínuas da execução iniciada em 13/10**, apesar do ID e da imagem preservados e do contador de reinícios em zero. O contador sozinho não comprova continuidade após reiniciar o Docker Desktop. A contagem atual só poderá ser conferida após **20/10/2026 22:15:22 BRT**, se o novo `StartedAt` permanecer igual e o container continuar ativo. Não há evidência de quando o Docker Desktop ficou indisponível; não se afirma a duração da execução anterior.
+O `StartedAt` mudou em relação a 13/10. Portanto, **não há prova de 24 horas contínuas da execução iniciada em 13/10**, apesar do ID e da imagem preservados e do contador de reinícios em zero. O contador sozinho não comprova continuidade após reiniciar o Docker Desktop. Não há evidência de quando o Docker Desktop ficou indisponível; não se afirma a duração da execução anterior.
+
+### Conferência de 20/10/2026
+
+Em **20/10/2026 às 22:18 BRT**, após mais de 24 horas corridas desde a inspeção anterior, a API do Docker Desktop estava novamente indisponível. O aplicativo foi aberto apenas para inspecionar o estado persistido. O mesmo ID e imagem voltaram com `State.StartedAt=2026-10-21T01:19:12.638904366Z` (**20/10/2026 22:19:12 BRT**), `Running=true` e `RestartCount=0`. Os logs mostram três inicializações do menu completo; o JSON do volume ainda contém seis ativos. A execução iniciada em 19/10 **também não tem prova de 24 horas contínuas**. A próxima contagem só pode ser conferida após **21/10/2026 22:19:12 BRT**, se o `StartedAt` permanecer igual. Não se conhece o instante em que o Docker Desktop parou; não se atribui duração à execução anterior.
 
 ## Execução no servidor da disciplina
 
@@ -52,4 +56,4 @@ docker logs inventario-ativos-24h
 
 Guarde as duas saídas completas, horário da coleta, identificação do servidor e um registro da operação de CRUD feita via menu. O critério de aceite é: mesmo container e imagem, início há pelo menos 24 horas, `ativo=true`, `reinicios=0`, menu funcional e dados persistidos. Um reinício durante o período recomeça a contagem. Credenciais e dados privados do servidor não devem aparecer na evidência pública.
 
-**Estado atual:** build, testes, serviço HTTP e menu completo locais verificados; versão final `4e9d6ad` novamente em execução no Docker Desktop desde 19/10 às 22:15:22 BRT. Ainda faltam 24 horas contínuas verificadas dessa execução e a hospedagem no servidor do docente. Não há evidência de 24 horas neste repositório.
+**Estado atual:** build, testes, serviço HTTP e menu completo locais verificados; versão final `4e9d6ad` novamente em execução no Docker Desktop desde 20/10 às 22:19:12 BRT. Ainda faltam 24 horas contínuas verificadas dessa execução e a hospedagem no servidor do docente. Não há evidência de 24 horas neste repositório.
