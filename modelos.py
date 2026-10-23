@@ -78,10 +78,13 @@ class Vulnerabilidade:
 
 
 class Ativo:
-    """Representa um ativo inventariado e suas vulnerabilidades."""
+    """Classe base com os dados comuns a qualquer equipamento."""
+
+    nome_do_tipo = "Equipamento"
 
     def __init__(self, identificador, nome, responsavel, localizacao, tipo,
-                 criticidade, vulnerabilidades=None, historico=None):
+                 criticidade, vulnerabilidades=None, historico=None,
+                 dependencias=None):
         self.id = identificador
         self.nome = nome
         self.responsavel = responsavel
@@ -90,6 +93,13 @@ class Ativo:
         self.criticidade = criticidade
         self.vulnerabilidades = vulnerabilidades if vulnerabilidades is not None else []
         self.historico = historico if historico is not None else []
+        # Um item informa de qual ativo este equipamento depende e qual fração
+        # do risco é recebida: {"id": 2, "peso": 0.30}.
+        self.dependencias = dependencias if dependencias is not None else []
+
+    def descricao_tipo(self):
+        """Método polimórfico usado pela interface para identificar o equipamento."""
+        return self.nome_do_tipo
 
     def registrar_historico(self, mensagem):
         """Guarda uma evidência simples de criação, alteração ou cadastro."""
@@ -109,21 +119,81 @@ class Ativo:
             "criticidade": self.criticidade,
             "vulnerabilidades": vulnerabilidades,
             "historico": self.historico,
+            "dependencias": self.dependencias,
         }
 
     @classmethod
     def de_dicionario(cls, dados):
         """Reconstrói um ativo salvo a partir dos dados completos do JSON."""
-        vulnerabilidades = []
-        for vulnerabilidade in dados["vulnerabilidades"]:
-            vulnerabilidades.append(Vulnerabilidade.de_dicionario(vulnerabilidade))
-        return cls(
-            dados["id"],
-            dados["nome"],
-            dados["responsavel"],
-            dados["localizacao"],
-            dados["tipo"],
-            dados["criticidade"],
-            vulnerabilidades,
-            dados["historico"],
-        )
+        return criar_ativo(dados)
+
+
+# As subclasses não criam campos artificiais. Elas existem para que o tipo de
+# equipamento seja um objeto de verdade, permitindo herança e polimorfismo.
+class Notebook(Ativo):
+    nome_do_tipo = "Notebook"
+
+    def descricao_tipo(self):
+        return "Notebook"
+
+
+class Servidor(Ativo):
+    nome_do_tipo = "Servidor"
+
+    def descricao_tipo(self):
+        return "Servidor"
+
+
+class Roteador(Ativo):
+    nome_do_tipo = "Roteador"
+
+    def descricao_tipo(self):
+        return "Roteador"
+
+
+class AplicacaoWeb(Ativo):
+    nome_do_tipo = "Aplicação Web"
+
+    def descricao_tipo(self):
+        return "Aplicação Web"
+
+
+class BancoDeDados(Ativo):
+    nome_do_tipo = "Banco de Dados"
+
+    def descricao_tipo(self):
+        return "Banco de Dados"
+
+
+class SoftwareLicenciado(Ativo):
+    nome_do_tipo = "Software Licenciado"
+
+    def descricao_tipo(self):
+        return "Software Licenciado"
+
+
+CLASSES_DE_ATIVO = {
+    TipoAtivo.NOTEBOOK.value: Notebook,
+    TipoAtivo.SERVIDOR.value: Servidor,
+    TipoAtivo.ROTEADOR.value: Roteador,
+    TipoAtivo.APLICACAO_WEB.value: AplicacaoWeb,
+    TipoAtivo.BANCO_DE_DADOS.value: BancoDeDados,
+    TipoAtivo.SOFTWARE_LICENCIADO.value: SoftwareLicenciado,
+}
+
+
+def criar_ativo(dados):
+    """Reconstrói a subclasse correta a partir do campo ``tipo`` do JSON."""
+    tipo = int(dados["tipo"])
+    classe = CLASSES_DE_ATIVO.get(tipo)
+    if classe is None:
+        raise ValueError("Tipo de ativo inválido.")
+    vulnerabilidades = [
+        Vulnerabilidade.de_dicionario(vulnerabilidade)
+        for vulnerabilidade in dados.get("vulnerabilidades", [])
+    ]
+    return classe(
+        dados["id"], dados["nome"], dados["responsavel"],
+        dados["localizacao"], tipo, dados["criticidade"], vulnerabilidades,
+        dados.get("historico", []), dados.get("dependencias", [])
+    )

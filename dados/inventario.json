@@ -1,5 +1,5 @@
-{
-  "1": {
+[
+  {
     "id": 1,
     "nome": "NB-LAB-01",
     "responsavel": "Coordenação de Laboratório",
@@ -24,9 +24,10 @@
     "historico": [
       "25/09/2026 18:00 - Ativo incluído como exemplo de demonstração.",
       "25/09/2026 18:05 - Vulnerabilidade CVE-2019-0708 cadastrada."
-    ]
+    ],
+    "dependencias": []
   },
-  "2": {
+  {
     "id": 2,
     "nome": "SRV-WEB-01",
     "responsavel": "Equipe de Infraestrutura",
@@ -51,9 +52,10 @@
     "historico": [
       "25/09/2026 18:10 - Ativo incluído como exemplo de demonstração.",
       "25/09/2026 18:15 - Vulnerabilidade CVE-2021-44228 cadastrada."
-    ]
+    ],
+    "dependencias": []
   },
-  "3": {
+  {
     "id": 3,
     "nome": "RT-FILIAL-01",
     "responsavel": "Equipe de Redes",
@@ -78,9 +80,10 @@
     "historico": [
       "25/09/2026 18:20 - Ativo incluído como exemplo de demonstração.",
       "25/09/2026 18:25 - Vulnerabilidade CVE-2018-13379 cadastrada."
-    ]
+    ],
+    "dependencias": []
   },
-  "4": {
+  {
     "id": 4,
     "nome": "APP-PORTAL-01",
     "responsavel": "Time de Desenvolvimento",
@@ -105,9 +108,19 @@
     "historico": [
       "25/09/2026 18:30 - Ativo incluído como exemplo de demonstração.",
       "25/09/2026 18:35 - Vulnerabilidade CVE-2022-22965 cadastrada."
+    ],
+    "dependencias": [
+      {
+        "id": 2,
+        "peso": 0.3
+      },
+      {
+        "id": 5,
+        "peso": 0.2
+      }
     ]
   },
-  "5": {
+  {
     "id": 5,
     "nome": "DB-ESTOQUE-01",
     "responsavel": "Equipe de Banco de Dados",
@@ -118,9 +131,10 @@
     "historico": [
       "25/09/2026 18:40 - Ativo incluído como exemplo de demonstração.",
       "25/09/2026 18:45 - Nenhuma vulnerabilidade pendente registrada."
-    ]
+    ],
+    "dependencias": []
   },
-  "6": {
+  {
     "id": 6,
     "nome": "SW-OFFICE-01",
     "responsavel": "Gestão de Ativos",
@@ -145,6 +159,7 @@
     "historico": [
       "25/09/2026 18:50 - Ativo incluído como exemplo de demonstração.",
       "25/09/2026 18:55 - Vulnerabilidade CVE-2017-11882 cadastrada."
-    ]
+    ],
+    "dependencias": []
   }
-}
+]

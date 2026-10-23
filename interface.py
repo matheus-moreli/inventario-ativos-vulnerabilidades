@@ -1,18 +1,27 @@
 """Entradas e saídas do terminal. As regras estão em inventario.py."""
 
 import ctypes
-import msvcrt
 import os
 import sys
+
+try:
+    # Windows usa msvcrt para setas sem precisar pressionar Enter.
+    import msvcrt
+except ImportError:
+    # O container Linux não possui msvcrt. O programa continua funcional com
+    # digitação normal, o que permite demonstrar o Trabalho 2 no Docker.
+    msvcrt = None
 
 from inventario import (DadosInvalidosError, atualizar_ativo, atualizar_vulnerabilidade,
                         buscar_vulnerabilidade, cadastrar_ativo,
                         cadastrar_vulnerabilidade, consultar_por_id,
                         consultar_vulnerabilidades, excluir_ativo,
-                        excluir_vulnerabilidade, filtrar_ativos, validar_cve,
+                        excluir_vulnerabilidade, filtrar_ativos, adicionar_dependencia,
+                        remover_dependencia, validar_cve,
                         validar_cwe, validar_cvss, validar_data_fonte)
 from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
 from persistencia import salvar_ativos
+from risco import calcular_riscos
 
 # Valor especial usado apenas pela interface para voltar uma etapa do formulário.
 VOLTAR = object()
@@ -132,6 +141,13 @@ def ler_data_fonte(mensagem):
 
 def ler_texto_formulario(mensagem, obrigatorio=True, valor_anterior=None, preenchido=False):
     """Lê texto com seta para esquerda/direita sem perder o valor atual."""
+    if msvcrt is None:
+        # Alternativa simples para terminais Linux, inclusive dentro do Docker.
+        while True:
+            texto = input(f"{mensagem}: ").strip()
+            if texto or not obrigatorio:
+                return texto
+            mostrar_aviso("Este campo não pode ficar vazio.")
     # Nesta leitura, as setas não movem o cursor do texto: elas navegam pelo formulário.
     texto = list(str(valor_anterior) if preenchido and valor_anterior is not None else "")
     print(f"{mensagem}: {''.join(texto)}", end="", flush=True)
@@ -252,6 +268,21 @@ def escolher_com_setas(titulo, opcoes, permitir_cancelar=False, indice_inicial=0
     if permitir_avancar:
         instrucao += " A seta para a direita avança mantendo a escolha atual."
     print(colorir(instrucao, "2"))
+
+    if msvcrt is None:
+        # No Linux, o menu recebe o número da opção. Não usamos dependência
+        # externa só para reproduzir as setas do terminal Windows.
+        while True:
+            resposta = input(f"Escolha de 1 a {len(opcoes)}")
+            if permitir_cancelar and resposta.strip() == "0":
+                return None
+            try:
+                indice = int(resposta) - 1
+                if 0 <= indice < len(opcoes):
+                    return indice
+            except ValueError:
+                pass
+            mostrar_aviso("Escolha uma opção válida.")
 
     selecionado = indice_inicial
     maior_opcao = max(len(opcao) for opcao in opcoes)
@@ -395,12 +426,20 @@ def mostrar_ativo(ativo, mostrar_detalhes=True):
     print(f"Nome ou hostname: {ativo.nome}")
     print(f"Responsável: {ativo.responsavel}")
     print(f"Setor ou localização: {ativo.localizacao}")
-    print(f"Tipo: {nome_do_tipo(ativo.tipo)} ({ativo.tipo})")
+    # A chamada é polimórfica: Notebook, Servidor e os demais objetos
+    # respondem ao mesmo método com sua própria descrição de tipo.
+    print(f"Tipo: {ativo.descricao_tipo()} ({ativo.tipo})")
     # Este dado é do ativo: mostra o impacto de ele ser comprometido ou parar.
     # A severidade da vulnerabilidade é exibida separadamente, quando houver uma.
     print(f"Importância do ativo para a segurança: {ativo.criticidade}")
     if mostrar_detalhes:
         mostrar_vulnerabilidades(ativo)
+        print("Dependências:")
+        if ativo.dependencias:
+            for dependencia in ativo.dependencias:
+                print(f"  - Ativo #{dependencia['id']} (peso {dependencia['peso']:.2f})")
+        else:
+            print("  - Nenhuma dependência cadastrada.")
         print("Histórico:")
         for evento in ativo.historico or ["Nenhuma alteração registrada."]:
             print(f"  - {evento}")
@@ -836,6 +875,98 @@ def remover_vulnerabilidade_tela(ativos):
         return False
 
 
+def gerenciar_dependencias_tela(ativos):
+    """Permite manter os vínculos usados pela matriz A sem complicar o CRUD."""
+    print()
+    mostrar_titulo("Dependências entre ativos")
+    identificador = ler_id_para_operacao("ID do ativo que depende de outro")
+    if identificador is None:
+        return False
+    ativo = consultar_por_id(ativos, identificador)
+    if ativo is None:
+        mostrar_erro("Ativo não encontrado.")
+        return False
+
+    opcoes = ["Listar dependências", "Adicionar dependência",
+              "Remover dependência", "Retornar ao menu"]
+    escolha = escolher_com_setas("Escolha uma ação:", opcoes, True)
+    if escolha is None or escolha == 3:
+        return False
+    if escolha == 0:
+        mostrar_ativo(ativo)
+        return False
+
+    if escolha == 1:
+        candidatos = [outro for outro in ativos.values() if outro.id != ativo.id]
+        if not candidatos:
+            mostrar_aviso("Cadastre outro ativo antes de criar uma dependência.")
+            return False
+        rotulos = [f"#{outro.id} - {outro.nome}" for outro in candidatos]
+        indice = escolher_com_setas("De qual ativo ele depende?", rotulos, True)
+        if indice is None:
+            return False
+        while True:
+            try:
+                peso = float(ler_texto("Peso do risco recebido (ex.: 0,30)").replace(",", "."))
+                adicionar_dependencia(ativos, ativo.id, candidatos[indice].id, peso)
+                mostrar_sucesso("Dependência adicionada.")
+                return True
+            except (ValueError, DadosInvalidosError) as erro:
+                mostrar_erro(str(erro) if isinstance(erro, DadosInvalidosError)
+                              else "Peso deve ser um número entre 0 e 1.")
+
+    if not ativo.dependencias:
+        mostrar_aviso("Este ativo não possui dependências cadastradas.")
+        return False
+    rotulos = [f"#{item['id']} - peso {item['peso']:.2f}" for item in ativo.dependencias]
+    indice = escolher_com_setas("Qual dependência deseja remover?", rotulos, True)
+    if indice is None:
+        return False
+    try:
+        remover_dependencia(ativos, ativo.id, ativo.dependencias[indice]["id"])
+        mostrar_sucesso("Dependência removida.")
+        return True
+    except DadosInvalidosError as erro:
+        mostrar_erro(str(erro))
+        return False
+
+
+def formatar_matriz(matriz):
+    """Deixa matrizes pequenas legíveis para a apresentação no terminal."""
+    if not matriz:
+        return "[]"
+    return "\n".join("  " + " ".join(f"{valor:6.2f}" for valor in linha)
+                      for linha in matriz)
+
+
+def mostrar_riscos_tela(ativos):
+    """Apresenta os dois riscos exigidos no Trabalho 2 e a matemática usada."""
+    print()
+    mostrar_titulo("Análise de risco")
+    if not ativos:
+        mostrar_aviso("Cadastre ao menos um ativo antes de calcular o risco.")
+        return
+    try:
+        resultado = calcular_riscos(ativos)
+    except ValueError as erro:
+        mostrar_erro(str(erro))
+        return
+
+    print("Risco próprio (b) e risco efetivo (x):")
+    for indice, ativo in enumerate(resultado["equipamentos"]):
+        print(f"  #{ativo.id} - {ativo.nome}: "
+              f"próprio {resultado['b'][indice]:.2f} | "
+              f"efetivo {resultado['x'][indice]:.2f}")
+    print("\nMatriz de incidência M:")
+    print(formatar_matriz(resultado["M"]))
+    print("Vetor de severidade v:", [round(valor, 2) for valor in resultado["v"]])
+    print("Vetor de risco próprio b:", [round(valor, 2) for valor in resultado["b"]])
+    print("Matriz de dependências A:")
+    print(formatar_matriz(resultado["A"]))
+    print("Matriz I - A:")
+    print(formatar_matriz(resultado["I_menos_A"]))
+
+
 def mostrar_resumo(ativos):
     total = sum(len(ativo.vulnerabilidades) for ativo in ativos.values())
     print()
@@ -857,6 +988,7 @@ def mostrar_menu():
         ("Atualizar vulnerabilidade", "8"),
         ("Remover vulnerabilidade", "9"),
         ("Mostrar resumo do inventário", "10"),
+        ("Gerenciar dependências e analisar risco", "11"),
         ("Sair", "0"),
     ]
     print()
@@ -894,6 +1026,15 @@ def executar_programa(ativos, caminho_dados):
             alterou = remover_vulnerabilidade_tela(ativos)
         elif opcao == "10":
             mostrar_resumo(ativos)
+        elif opcao == "11":
+            escolha_risco = escolher_com_setas(
+                "Risco e dependências:",
+                ["Gerenciar dependências", "Calcular riscos", "Retornar ao menu"], True
+            )
+            if escolha_risco == 0:
+                alterou = gerenciar_dependencias_tela(ativos)
+            elif escolha_risco == 1:
+                mostrar_riscos_tela(ativos)
         elif opcao == "0":
             if salvar_com_aviso(ativos, caminho_dados):
                 mostrar_sucesso("Programa encerrado.")

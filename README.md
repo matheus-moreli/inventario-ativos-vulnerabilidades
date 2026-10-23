@@ -1,6 +1,6 @@
 # Inventário de Ativos e Vulnerabilidades
 
-Projeto acadêmico em Python para registrar ativos de tecnologia e as vulnerabilidades associadas a eles. Ele foi desenvolvido para as Sprints 1 e 2 da disciplina e funciona inteiramente no terminal do Windows, sem bibliotecas externas, internet, banco de dados ou interface gráfica.
+Projeto acadêmico em Python para registrar equipamentos de tecnologia, as vulnerabilidades associadas e o risco transmitido entre equipamentos dependentes. Ele mantém o terminal das Sprints 1 e 2 e evolui o mesmo sistema para o Trabalho 2, sem SQL, API ou interface gráfica.
 
 O objetivo é demonstrar os fundamentos de Python em um problema realista: saber quais equipamentos e sistemas existem, quem é responsável por eles, qual é sua importância para a segurança e quais falhas precisam de tratamento.
 
@@ -29,6 +29,16 @@ O sistema permite:
 - exigir evidência antes de marcar uma vulnerabilidade como corrigida;
 - manter um histórico simples das alterações feitas em cada ativo;
 - salvar as mudanças em um arquivo JSON local.
+
+No Trabalho 2, o mesmo inventário também:
+
+- cria objetos concretos de Notebook, Servidor, Roteador, Aplicação Web, Banco de Dados e Software Licenciado;
+- recupera a subclasse correta quando lê o JSON;
+- armazena os ativos como uma lista de objetos JSON;
+- registra dependências entre equipamentos e o peso de risco transmitido;
+- calcula o risco próprio com `b = Mv` e o risco efetivo resolvendo `(I - A)x = b`;
+- interrompe o cálculo quando o sistema não é invertível;
+- possui um Dockerfile para executar a mesma aplicação em container.
 
 Esta é uma aplicação didática. Ela não realiza varredura automática de rede, não consulta o NVD automaticamente, não possui login, não armazena senhas e não substitui uma ferramenta profissional de gestão de vulnerabilidades.
 
@@ -87,6 +97,17 @@ python app.py
 O programa carrega automaticamente o arquivo dados/inventario.json e mostra a quantidade de ativos disponíveis. A base inicial foi preparada para demonstração, com seis ativos e cinco vulnerabilidades.
 
 Para encerrar, selecione Sair no menu principal. O programa tenta salvar os dados automaticamente depois de cada cadastro, atualização ou remoção. Ao sair, ele tenta salvar novamente. Caso haja falha de gravação, a tela oferece a escolha entre tentar salvar de novo ou sair conscientemente sem salvar as alterações mais recentes.
+
+### Executar em Docker
+
+O Dockerfile não instala bibliotecas extras: a álgebra linear foi implementada com listas e laços do próprio Python. Depois de instalar e iniciar o Docker Desktop, execute:
+
+~~~powershell
+docker build -t inventario-risco .
+docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-risco
+~~~
+
+O volume mantém as alterações no arquivo JSON fora do container. No Linux do container, as opções são escolhidas digitando o número; no Windows local, continuam funcionando com as setas.
 
 ## Navegação no terminal
 
@@ -202,10 +223,10 @@ Antes de testar cadastros e remoções livremente, faça uma cópia do arquivo i
 Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 
 ~~~powershell
-python -m unittest -v test_sprint2.py
+python -m unittest -v test_sprint2.py test_risco.py
 ~~~
 
-Atualmente, a suíte possui 33 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar e outros comportamentos importantes.
+Atualmente, a suíte possui 37 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, cálculo de risco em cenário resolvido à mão e tratamento de falha ao salvar.
 
 Se todos passarem, o final exibirá OK.
 
@@ -218,8 +239,11 @@ Se todos passarem, o final exibirá OK.
 | inventario.py | Regras de negócio, validações e operações de cadastro, consulta, atualização e remoção. |
 | modelos.py | Classes Ativo e Vulnerabilidade, enumeração dos tipos e listas de opções padronizadas. |
 | persistencia.py | Leitura e gravação do arquivo JSON. |
+| risco.py | Montagem de M, v e A; cálculo de b e solução do risco efetivo. |
 | dados/inventario.json | Base local com os ativos e vulnerabilidades. |
 | test_sprint2.py | Testes automatizados com unittest. |
+| test_risco.py | Cenário de três equipamentos resolvido à mão e conferido pelo código. |
+| Dockerfile | Receita para executar o programa dentro de um container. |
 | guia_sprint1.tex | Fonte LaTeX do guia consolidado das Sprints 1 e 2. |
 | guia_sprint1.pdf | PDF pronto para leitura, estudo e apresentação. |
 
