@@ -77,66 +77,9 @@ def mostrar_titulo(titulo):
     mostrar_linha()
 
 
-def ler_texto(mensagem, obrigatorio=True):
-    # A validação na tela evita enviar campos vazios à regra de negócio.
-    while True:
-        texto = input(mensagem).strip()
-        if texto or not obrigatorio:
-            return texto
-        mostrar_aviso("Este campo não pode ficar vazio.")
-
-
-def ler_inteiro(mensagem):
-    # try impede que uma conversão inválida encerre o programa.
-    while True:
-        try:
-            numero = int(input(mensagem).strip())
-            if numero > 0:
-                return numero
-            mostrar_aviso("Digite um número maior que zero.")
-        except ValueError:
-            mostrar_erro("Digite somente um número inteiro válido.")
-
-
 def ler_sim_ou_nao(mensagem):
     indice = escolher_com_setas(mensagem, ["Sim", "Não"])
     return indice == 0
-
-
-def ler_cve(mensagem):
-    """Valida o CVE logo após a digitação, sem perder as outras respostas."""
-    while True:
-        try:
-            return validar_cve(ler_texto(mensagem))
-        except DadosInvalidosError as erro:
-            mostrar_erro(str(erro))
-
-
-def ler_cwe(mensagem):
-    """Valida o CWE logo após a digitação."""
-    while True:
-        try:
-            return validar_cwe(ler_texto(mensagem))
-        except DadosInvalidosError as erro:
-            mostrar_erro(str(erro))
-
-
-def ler_cvss(mensagem):
-    """Lê uma nota CVSS válida no intervalo de 0.0 a 10.0."""
-    while True:
-        try:
-            return validar_cvss(ler_texto(mensagem))
-        except DadosInvalidosError as erro:
-            mostrar_erro(str(erro))
-
-
-def ler_data_fonte(mensagem):
-    """Mantém a data da fonte no formato dd/mm/aaaa anunciado pelo menu."""
-    while True:
-        try:
-            return validar_data_fonte(ler_texto(mensagem))
-        except DadosInvalidosError as erro:
-            mostrar_erro(str(erro))
 
 
 def ler_texto_formulario(
