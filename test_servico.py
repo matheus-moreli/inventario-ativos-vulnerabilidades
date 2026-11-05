@@ -4,10 +4,10 @@ import os
 import tempfile
 import unittest
 
-from modelos import TipoAtivo
-from inventario import Inventario, cadastrar_ativo
-from persistencia import salvar_ativos
-from servico import ServicoInventario
+from apresentacao.servico import ServicoInventario
+from dominio.inventario import Inventario, cadastrar_ativo
+from dominio.modelos import TipoAtivo
+from infraestrutura.persistencia import salvar_ativos
 
 
 class TesteServico(unittest.TestCase):

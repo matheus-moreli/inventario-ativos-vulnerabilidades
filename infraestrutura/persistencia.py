@@ -4,12 +4,12 @@ import json
 import os
 import tempfile
 
-from inventario import (
+from dominio.inventario import (
     DadosInvalidosError,
     validar_ativo_carregado,
     validar_cvss_compartilhado,
 )
-from modelos import Ativo
+from dominio.modelos import Ativo
 
 
 class RepositorioJSON:

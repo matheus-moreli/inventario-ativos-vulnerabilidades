@@ -2,9 +2,8 @@
 
 ## Implementado no projeto
 
-- Arquitetura em camadas: terminal em `interface.py`, regras em `inventario.py`,
-  objetos em `modelos.py`, JSON em `persistencia.py` e cálculo matemático em
-  `risco.py`.
+- Arquitetura em camadas: terminal e HTTP em `apresentacao/`, regras, objetos e
+  cálculo matemático em `dominio/`, e JSON em `infraestrutura/`.
 - Painel de dependências e riscos com simulação de CVSS sem persistir mudanças.
 - Retorno com a seta para a esquerda nas telas simples de filtro e dependência,
   além dos formulários que já mantinham essa navegação.

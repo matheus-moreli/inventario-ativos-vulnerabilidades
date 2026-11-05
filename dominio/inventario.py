@@ -3,7 +3,7 @@
 import math
 from datetime import datetime
 
-from modelos import (
+from dominio.modelos import (
     CRITICIDADES,
     SEVERIDADES,
     STATUS,
@@ -120,7 +120,7 @@ class Inventario:
 
     def calcular_riscos(self):
         """Consulta o risco da coleção mantida por este objeto."""
-        from risco import AnalisadorRisco
+        from dominio.risco import AnalisadorRisco
 
         analisador = AnalisadorRisco(self._ativos)
         resultado = analisador.calcular()

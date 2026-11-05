@@ -3,10 +3,10 @@
 import os
 import sys
 
-from interface import InterfaceTerminal
-from inventario import Inventario
-from persistencia import RepositorioJSON
-from servico import ServicoInventario
+from apresentacao.interface import InterfaceTerminal
+from apresentacao.servico import ServicoInventario
+from dominio.inventario import Inventario
+from infraestrutura.persistencia import RepositorioJSON
 
 # O caminho parte desta pasta, mesmo se o comando for executado de outro local.
 PASTA_DO_PROJETO = os.path.dirname(os.path.abspath(__file__))

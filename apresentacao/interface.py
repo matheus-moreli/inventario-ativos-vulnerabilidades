@@ -1,4 +1,4 @@
-"""Entradas e saídas do terminal. As regras estão em inventario.py."""
+"""Entradas e saídas do terminal. As regras ficam em dominio/inventario.py."""
 
 import ctypes
 import os
@@ -11,7 +11,7 @@ except ImportError:
     # continua utilizável com escolhas digitadas.
     msvcrt = None
 
-from inventario import (
+from dominio.inventario import (
     DadosInvalidosError,
     Inventario,
     validar_cve,
@@ -19,9 +19,9 @@ from inventario import (
     validar_cvss,
     validar_data_fonte,
 )
-from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
-from persistencia import salvar_ativos
-from risco import simular_vulnerabilidade
+from dominio.modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
+from dominio.risco import simular_vulnerabilidade
+from infraestrutura.persistencia import salvar_ativos
 
 # Valor especial usado apenas pela interface para voltar uma etapa do formulário.
 VOLTAR = object()

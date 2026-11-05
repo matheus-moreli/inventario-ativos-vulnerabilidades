@@ -6,8 +6,9 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from interface import InterfaceTerminal
-from inventario import (
+from apresentacao.interface import InterfaceTerminal
+from apresentacao.servico import ServicoInventario
+from dominio.inventario import (
     DadosInvalidosError,
     Inventario,
     adicionar_dependencia,
@@ -15,15 +16,14 @@ from inventario import (
     cadastrar_ativo,
     cadastrar_vulnerabilidade,
 )
-from modelos import Ativo, Equipamento, Notebook, Servidor
-from persistencia import carregar_ativos, salvar_ativos
-from risco import (
+from dominio.modelos import Ativo, Equipamento, Notebook, Servidor
+from dominio.risco import (
     calcular_riscos,
     numero_condicao_infinito,
     resolver_sistema,
     simular_vulnerabilidade,
 )
-from servico import ServicoInventario
+from infraestrutura.persistencia import carregar_ativos, salvar_ativos
 
 
 class TesteRisco(unittest.TestCase):
@@ -177,7 +177,7 @@ class TesteRisco(unittest.TestCase):
             caminho = os.path.join(pasta, "inventario.json")
             tela = InterfaceTerminal(inventario, caminho)
             self.assertIs(tela.inventario, inventario)
-            with patch("interface.mostrar_menu", side_effect=["2", "0"]):
+            with patch("apresentacao.interface.mostrar_menu", side_effect=["2", "0"]):
                 tela.executar()
             self.assertIsInstance(carregar_ativos(caminho)[1], Notebook)
 

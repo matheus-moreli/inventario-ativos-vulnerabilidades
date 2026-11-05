@@ -6,7 +6,7 @@ Fontes lidas: **1ª Atividade Avaliativa, versão 2.0 (2026/2)**, páginas 1–4
 
 | Nº | Exigência | Evidência na branch `melhoria-trabalho-2-completo` | Estado |
 |---|---|---|---|
-| 1 | Menu e tratamento de entradas | `interface.py` oferece menu, valida campos vazios/tipos e captura erros de domínio | Presente |
+| 1 | Menu e tratamento de entradas | `apresentacao/interface.py` oferece menu, valida campos vazios/tipos e captura erros de domínio | Presente |
 | 2 | Enum com quatro ou mais tipos e códigos inteiros | `modelos.TipoAtivo` contém seis categorias `IntEnum` | Presente |
 | 3 | Cadastro com ID único, campos mínimos e vulnerabilidades iniciais, salvo em texto | `interface.cadastrar_ativo_tela` pergunta por vulnerabilidades iniciais; `Inventario.cadastrar_ativo`; `RepositorioJSON.salvar` | Presente |
 | 4 | Busca por ID ou nome/hostname | `Inventario.consultar_por_id` e `Inventario.filtrar_ativos` | Presente |
@@ -21,10 +21,10 @@ Fontes lidas: **1ª Atividade Avaliativa, versão 2.0 (2026/2)**, páginas 1–4
 
 | Nº | Exigência | Evidência | Estado |
 |---|---|---|---|
-| 1 | Cada ativo como objeto de classe base e tipos derivados | `Equipamento` e seis subclasses em `modelos.py`; `Inventario`, `InterfaceTerminal`, `RepositorioJSON`, `AnalisadorRisco` e `Aplicacao` organizam o programa. Funções auxiliares de entrada/saída e adaptadores preservam compatibilidade com o Trabalho 1 | Presente; herança, polimorfismo e fluxo principal orientado a objetos verificados |
+| 1 | Cada ativo como objeto de classe base e tipos derivados | `Equipamento` e seis subclasses em `dominio/modelos.py`; `Inventario`, `InterfaceTerminal`, `RepositorioJSON`, `AnalisadorRisco` e `Aplicacao` organizam o programa. Funções auxiliares de entrada/saída e adaptadores preservam compatibilidade com o Trabalho 1 | Presente; herança, polimorfismo e fluxo principal orientado a objetos verificados |
 | 2 | Arquivo JSON formado por array de objetos | `dados/inventario.json` começa com `[` e `RepositorioJSON.salvar` serializa lista; subclasses são reconstituídas | Presente |
 | 3 | Aplicação no Docker ativa por no mínimo 24 h no servidor do docente | `Dockerfile` e comando `docker run -dit ... python app.py` em `evidencia-docker-24h.md`. A versão final `4e9d6ad` iniciou em container isolado no Docker Desktop em 13/10 às 22:06:25 BRT, com menu completo, volume e zero reinícios na primeira inspeção | **Não comprovado integralmente**: ainda não há 24 h verificadas nem execução no servidor do docente |
-| 4 | M, v, A, b=Mv, invertibilidade de I−A, solução e consulta de b/x | `risco.py` monta uma coluna por CVE, inclusive quando afeta dois ativos; calcula κ∞(I−A), verifica pivôs e resolve por Gauss; `InterfaceTerminal.mostrar_riscos_tela` consulta; `test_risco.py` reproduz o cenário de V2 compartilhada da aula, a solução manual e a matriz singular | Presente nos 53 testes locais e na imagem Docker `4e9d6ad` |
+| 4 | M, v, A, b=Mv, invertibilidade de I−A, solução e consulta de b/x | `dominio/risco.py` monta uma coluna por CVE, inclusive quando afeta dois ativos; calcula κ∞(I−A), verifica pivôs e resolve por Gauss; `InterfaceTerminal.mostrar_riscos_tela` consulta; `test_risco.py` reproduz o cenário de V2 compartilhada da aula, a solução manual e a matriz singular | Presente nos testes locais; execução em Docker não integra a etapa atual |
 
 As dependências são persistidas no mesmo JSON do ativo. A soma dos pesos por linha é limitada a menos de 1, condição suficiente de invertibilidade; a verificação explícita também existe. O CVSS é usado como severidade numérica e deve ser igual para a mesma CVE em dois ativos. O número de condição da norma infinita é calculado e mostrado com aviso acima de `10^8`; o slide de exemplo usa a norma 2, portanto seus valores numéricos de κ não são idênticos. O fator de exposição `F` é uma **extensão ilustrativa** da aula e uma dica no enunciado, sem pesos de exposição definidos nos dados. A V4 sem equipamento no slide demonstra uma coluna nula; o Trabalho 1 pede cadastro de vulnerabilidades associadas a ativos, então a interface não cria vulnerabilidades avulsas.
 

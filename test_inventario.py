@@ -1,6 +1,6 @@
 """Testes automatizados das regras de negócio da Sprint 2.
 
-Execute com: python -m unittest -v test_sprint2.py
+Execute com: python -m unittest -v test_inventario.py
 Cada teste cria dados próprios e não usa dados/inventario.json.
 """
 
@@ -12,8 +12,8 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-import interface
-from interface import (
+import apresentacao.interface as interface
+from apresentacao.interface import (
     VOLTAR,
     atualizar_ativo_tela,
     confirmar_remocao,
@@ -26,7 +26,7 @@ from interface import (
     resumo_vulnerabilidade,
     salvar_com_aviso,
 )
-from inventario import (
+from dominio.inventario import (
     DadosInvalidosError,
     atualizar_ativo,
     atualizar_vulnerabilidade,
@@ -38,7 +38,7 @@ from inventario import (
     excluir_vulnerabilidade,
     filtrar_ativos,
 )
-from persistencia import RepositorioJSON, carregar_ativos, salvar_ativos
+from infraestrutura.persistencia import RepositorioJSON, carregar_ativos, salvar_ativos
 
 
 class TesteInventario(unittest.TestCase):
@@ -150,8 +150,8 @@ class TesteInventario(unittest.TestCase):
         self.cadastrar_vulnerabilidade_de_exemplo()
         tela = io.StringIO()
         # Simula: ver todas, abrir a primeira e voltar para a lista.
-        with patch("interface.escolher_com_setas", side_effect=[0, 0, None]), patch(
-            "interface.aguardar_retorno_lista"
+        with patch("apresentacao.interface.escolher_com_setas", side_effect=[0, 0, None]), patch(
+            "apresentacao.interface.aguardar_retorno_lista"
         ):
             with redirect_stdout(tela):
                 consultar_vulnerabilidades_tela(self.ativos)
@@ -176,9 +176,9 @@ class TesteInventario(unittest.TestCase):
         )
         tela = io.StringIO()
         # Simula: consultar por ID 10, abrir a vulnerabilidade e voltar.
-        with patch("interface.ler_id_para_operacao", return_value=10):
-            with patch("interface.escolher_com_setas", side_effect=[1, 0, None]), patch(
-                "interface.aguardar_retorno_lista"
+        with patch("apresentacao.interface.ler_id_para_operacao", return_value=10):
+            with patch("apresentacao.interface.escolher_com_setas", side_effect=[1, 0, None]), patch(
+                "apresentacao.interface.aguardar_retorno_lista"
             ):
                 with redirect_stdout(tela):
                     consultar_vulnerabilidades_tela(self.ativos)
@@ -187,8 +187,8 @@ class TesteInventario(unittest.TestCase):
 
     @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
     def test_letra_a_com_crase_nao_e_tratada_como_seta(self):
-        with patch("interface.msvcrt.getwch", side_effect=["à", "\r"]), patch(
-            "interface.msvcrt.kbhit", return_value=False
+        with patch("apresentacao.interface.msvcrt.getwch", side_effect=["à", "\r"]), patch(
+            "apresentacao.interface.msvcrt.kbhit", return_value=False
         ):
             with redirect_stdout(io.StringIO()):
                 texto = ler_texto_formulario("Localização")
@@ -196,27 +196,27 @@ class TesteInventario(unittest.TestCase):
 
     @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
     def test_letra_a_com_crase_em_texto_colado_e_preservada(self):
-        with patch("interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), patch(
-            "interface.msvcrt.kbhit", return_value=True
+        with patch("apresentacao.interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), patch(
+            "apresentacao.interface.msvcrt.kbhit", return_value=True
         ):
             with redirect_stdout(io.StringIO()):
                 texto = ler_texto_formulario("Localização")
         self.assertEqual(texto, "à r")
 
     def test_seta_esquerda_cancela_id_em_tela_simples(self):
-        with patch("interface.ler_inteiro_formulario", return_value=VOLTAR):
+        with patch("apresentacao.interface.ler_inteiro_formulario", return_value=VOLTAR):
             with redirect_stdout(io.StringIO()):
                 self.assertIsNone(ler_id_para_operacao("ID do ativo"))
 
     def test_seta_esquerda_cancela_texto_em_tela_simples(self):
-        with patch("interface.ler_texto_formulario", return_value=VOLTAR):
+        with patch("apresentacao.interface.ler_texto_formulario", return_value=VOLTAR):
             with redirect_stdout(io.StringIO()):
                 self.assertIsNone(ler_texto_para_operacao("Filtro"))
 
     def test_correcao_exige_verificacao_antes_de_finalizar_formulario(self):
         valores = {"status": "Corrigida"}
         with patch(
-            "interface.ler_texto_formulario", side_effect=["Pendente", "Teste aplicado"]
+            "apresentacao.interface.ler_texto_formulario", side_effect=["Pendente", "Teste aplicado"]
         ):
             with redirect_stdout(io.StringIO()):
                 verificacao = ler_verificacao_formulario(
@@ -226,7 +226,7 @@ class TesteInventario(unittest.TestCase):
 
     def test_correcao_mantem_verificacao_atual_que_ja_e_valida(self):
         valores = {"status": "Corrigida"}
-        with patch("interface.ler_texto_formulario", return_value=""):
+        with patch("apresentacao.interface.ler_texto_formulario", return_value=""):
             with redirect_stdout(io.StringIO()):
                 verificacao = ler_verificacao_formulario(
                     valores,
@@ -237,20 +237,20 @@ class TesteInventario(unittest.TestCase):
         self.assertEqual(verificacao, "")
 
     def test_confirmacao_de_remocao_inicia_em_cancelar(self):
-        with patch("interface.escolher_com_setas", return_value=1) as escolha:
+        with patch("apresentacao.interface.escolher_com_setas", return_value=1) as escolha:
             self.assertFalse(confirmar_remocao())
         self.assertEqual(escolha.call_args.args[3], 1)
 
     def test_falha_ao_salvar_e_informada_pela_interface(self):
-        with patch("interface.salvar_ativos", return_value=False):
+        with patch("apresentacao.interface.salvar_ativos", return_value=False):
             with redirect_stdout(io.StringIO()) as tela:
                 self.assertFalse(salvar_com_aviso(self.ativos, "dados/inventario.json"))
         self.assertIn("Não foi possível salvar", tela.getvalue())
 
     def test_saida_pode_ser_confirmada_sem_salvar(self):
-        with patch("interface.mostrar_menu", return_value="0"), patch(
-            "interface.salvar_ativos", return_value=False
-        ), patch("interface.ler_sim_ou_nao", return_value=True):
+        with patch("apresentacao.interface.mostrar_menu", return_value="0"), patch(
+            "apresentacao.interface.salvar_ativos", return_value=False
+        ), patch("apresentacao.interface.ler_sim_ou_nao", return_value=True):
             with redirect_stdout(io.StringIO()) as tela:
                 executar_programa(self.ativos, "dados/inventario.json")
         self.assertIn("sem salvar", tela.getvalue())
@@ -264,10 +264,10 @@ class TesteInventario(unittest.TestCase):
             chamadas_de_texto.append((mensagem, anterior, preenchido))
             return respostas_de_texto.pop(0)
 
-        with patch("interface.ler_inteiro_formulario", side_effect=[10, 20]), patch(
-            "interface.ler_texto_formulario", side_effect=texto_controlado
-        ), patch("interface.escolher_tipo_atualizacao", return_value=None), patch(
-            "interface.escolher_item_atualizacao", return_value=None
+        with patch("apresentacao.interface.ler_inteiro_formulario", side_effect=[10, 20]), patch(
+            "apresentacao.interface.ler_texto_formulario", side_effect=texto_controlado
+        ), patch("apresentacao.interface.escolher_tipo_atualizacao", return_value=None), patch(
+            "apresentacao.interface.escolher_item_atualizacao", return_value=None
         ):
             with redirect_stdout(io.StringIO()):
                 atualizar_ativo_tela(self.ativos)
@@ -473,7 +473,7 @@ class TesteInventario(unittest.TestCase):
             self.assertTrue(RepositorioJSON(caminho).salvar(self.ativos))
             with open(caminho, "r", encoding="utf-8") as arquivo:
                 anterior = arquivo.read()
-            with patch("persistencia.os.replace", side_effect=OSError("disco")):
+            with patch("infraestrutura.persistencia.os.replace", side_effect=OSError("disco")):
                 with redirect_stdout(io.StringIO()):
                     self.assertFalse(RepositorioJSON(caminho).salvar({}))
             with open(caminho, "r", encoding="utf-8") as arquivo:

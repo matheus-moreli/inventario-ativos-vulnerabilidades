@@ -269,13 +269,11 @@ python -m pytest -q
 | Arquivo ou pasta | Responsabilidade |
 |---|---|
 | app.py | Ponto de entrada. Define o caminho do JSON e inicia o programa. |
-| servico.py | Consultas HTTP somente leitura para execução contínua em Docker. |
-| interface.py | Menus, leitura do teclado, mensagens e formulários do terminal. |
-| inventario.py | Regras de negócio, validações e operações de cadastro, consulta, atualização e remoção. |
-| modelos.py | Classes Ativo e Vulnerabilidade, enumeração dos tipos e listas de opções padronizadas. |
-| persistencia.py | Leitura e gravação do arquivo JSON. |
+| apresentacao/ | Menus do terminal e serviço HTTP somente leitura. |
+| dominio/ | Objetos, regras, validações e cálculo de risco. |
+| infraestrutura/ | Leitura e gravação do arquivo JSON. |
 | dados/inventario.json | Base local com os ativos e vulnerabilidades. |
-| test_sprint2.py | Testes automatizados com unittest. |
+| test_inventario.py | Testes automatizados das regras, CRUD e navegação do inventário. |
 | risco.py | Cálculo do risco próprio e efetivo a partir das dependências cadastradas. |
 | test_risco.py | Testes do modelo de risco, das dependências e dos tipos de ativos. |
 | requirements-dev.txt | Dependência opcional para executar a suíte também com Pytest. |
@@ -284,8 +282,8 @@ python -m pytest -q
 | Dockerfile | Receita simples para executar o programa em um container. |
 | .github/workflows/verificar.yml | Automação que executa testes e verificação de estilo no GitHub. |
 | .flake8 | Regras de estilo usadas na verificação automática. |
-| guia_sprint1.tex | Fonte LaTeX do guia consolidado das Sprints 1 e 2. |
-| guia_sprint1.pdf | PDF pronto para leitura, estudo e apresentação. |
+| guia_sprints_1_e_2.tex | Fonte LaTeX do guia consolidado das Sprints 1 e 2. |
+| guia_sprints_1_e_2.pdf | PDF pronto para leitura, estudo e apresentação. |
 
 ## Entregáveis das Sprints
 
@@ -294,7 +292,7 @@ Além deste repositório do programa final, cada card possui seu material indivi
 - Sprint 1: cards S1_01 a S1_20, com PDFs, fontes LaTeX e scripts Python quando solicitados.
 - Sprint 2: cards S2_01 a S2_19, com PDFs, fontes LaTeX e imagens de verificação quando aplicáveis.
 - Sprint 3: cards S3_01 a S3_20, com PDFs, fontes LaTeX, códigos, cálculos e evidências específicas de cada card.
-- Guia consolidado: o arquivo guia_sprint1.pdf deste repositório explica a lógica de todas as Sprints em uma sequência única.
+- Guia consolidado: o arquivo guia_sprints_1_e_2.pdf deste repositório explica a lógica das duas primeiras Sprints em uma sequência única.
 
 Os materiais individuais estão disponíveis em:
 

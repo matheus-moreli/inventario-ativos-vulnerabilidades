@@ -10,7 +10,7 @@ O analista de inventário mantém ativos, vulnerabilidades e dependências para 
 
 Entrada do menu: ID, nome, responsável, localização, tipo `TipoAtivo`, criticidade e dados de vulnerabilidades. Entrada persistida: lista JSON de objetos. Saídas: mensagens de cadastro/erro, lista e filtros, histórico, matrizes e vetores de risco. No serviço: `/saude` e `/riscos`, ambos JSON e somente leitura.
 
-`Ativo` contém `id`, `nome`, `responsavel`, `localizacao`, `tipo`, `criticidade`, lista de `vulnerabilidades`, `historico` e `dependencias`. Cada dependência contém `ativo_id` e `peso`. `Vulnerabilidade` contém CVE, CWE, CVSS, descrição, fonte, data da fonte, impacto, prioridade, tratamento, status e verificação. A coleção em memória usa ID como chave e objetos `Ativo` ou derivados como valores; o arquivo é uma lista JSON. Os tipos concretos estão em `modelos.py`.
+`Ativo` contém `id`, `nome`, `responsavel`, `localizacao`, `tipo`, `criticidade`, lista de `vulnerabilidades`, `historico` e `dependencias`. Cada dependência contém `ativo_id` e `peso`. `Vulnerabilidade` contém CVE, CWE, CVSS, descrição, fonte, data da fonte, impacto, prioridade, tratamento, status e verificação. A coleção em memória usa ID como chave e objetos `Ativo` ou derivados como valores; o arquivo é uma lista JSON. Os tipos concretos estão em `dominio/modelos.py`.
 
 ## Regras e arquitetura
 
@@ -20,7 +20,7 @@ No cálculo, `M` é a incidência ativo × vulnerabilidade, `v` contém severida
 
 ## Rastreabilidade e aceitação
 
-Cada RF da tabela de requisitos aponta para código e um CA. [criterios_aceitacao.md](criterios_aceitacao.md) contém casos de sucesso, erro e borda do CRUD e casos do Trabalho 2. `test_sprint2.py`, `test_risco.py` e `test_servico.py` verificam os caminhos principais. O CI executa testes e estilo. O build Docker e as 24 horas no servidor da disciplina exigem a prova separada em [evidencia-docker-24h.md](evidencia-docker-24h.md).
+Cada RF da tabela de requisitos aponta para código e um CA. [criterios_aceitacao.md](criterios_aceitacao.md) contém casos de sucesso, erro e borda do CRUD e casos do Trabalho 2. `test_inventario.py`, `test_risco.py` e `test_servico.py` verificam os caminhos principais. O CI executa testes e estilo. O build Docker e as 24 horas no servidor da disciplina exigem a prova separada em [evidencia-docker-24h.md](evidencia-docker-24h.md).
 
 ## Histórico da versão
 

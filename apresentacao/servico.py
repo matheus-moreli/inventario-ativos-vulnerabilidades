@@ -5,8 +5,8 @@ import os
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-from persistencia import RepositorioJSON
-from risco import AnalisadorRisco
+from dominio.risco import AnalisadorRisco
+from infraestrutura.persistencia import RepositorioJSON
 
 
 class ServicoInventario:
