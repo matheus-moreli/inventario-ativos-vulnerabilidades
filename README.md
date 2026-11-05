@@ -46,6 +46,10 @@ Para executar o programa, são necessários:
 
 O programa usa somente módulos que já acompanham o Python. Não existe etapa de instalar pacotes com pip.
 
+Para o card de testes da Sprint 4, há uma dependência **opcional**, usada apenas
+por quem quiser rodar a mesma suíte pelo Pytest: `python -m pip install -r
+requirements-dev.txt`. O programa continua funcionando sem ela.
+
 ### Confirmar se o Python está instalado
 
 Abra o PowerShell e execute:
@@ -91,9 +95,12 @@ O programa carrega automaticamente o arquivo dados/inventario.json e mostra a qu
 
 Para encerrar, selecione Sair no menu principal. O programa tenta salvar os dados automaticamente depois de cada cadastro, atualização ou remoção. Ao sair, ele tenta salvar novamente. Caso haja falha de gravação, a tela oferece a escolha entre tentar salvar de novo ou sair conscientemente sem salvar as alterações mais recentes.
 
-## Docker (Trabalho 2)
+## Docker e servidor (não executado nesta etapa)
 
-Com o Docker Desktop instalado e aberto, execute na pasta do projeto:
+Os arquivos de Docker fazem parte do trabalho, mas não foram executados nesta
+etapa. Os servidores da disciplina serão tratados depois. Portanto, os comandos
+abaixo são apenas referência de preparação e não comprovam uma entrega em
+container:
 
 ~~~powershell
 docker build -t inventario-ativos .
@@ -110,7 +117,10 @@ docker run -dit --no-healthcheck --name inventario-ativos-24h --restart unless-s
 
 O volume nomeado guarda os dados e evita conflito de permissões do diretório do servidor. Use `docker attach inventario-ativos-24h` para demonstrar cadastros, consultas, vulnerabilidades e riscos; desprenda-se sem encerrar o programa com `Ctrl+P`, `Ctrl+Q`. Não escolha Sair durante a prova de 24 horas. O modo de serviço HTTP somente leitura continua disponível ao iniciar a imagem sem substituir o comando padrão, mas não é usado como prova de que o CRUD permaneceu ativo.
 
-O workflow do GitHub verifica testes e estilo. O build do Docker e **a prova de 24 horas no servidor da disciplina estão pendentes de execução**. O procedimento e os critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md). Uma execução local curta não substitui a prova de 24 horas.
+O workflow do GitHub verifica testes e estilo. O build do Docker e **a prova de
+24 horas no servidor da disciplina não foram executados**. O procedimento e os
+critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md).
+Uma execução local curta não substitui a prova de 24 horas.
 
 ## Navegação no terminal
 
@@ -128,6 +138,11 @@ O menu principal e todas as listas de opções são controlados pelo teclado.
 As opções padronizadas, como tipo de ativo, importância, prioridade e status, são escolhidas por setas. Não é necessário decorar nem digitar textos como Crítica ou Em tratamento.
 
 Nas telas de remoção, a escolha inicial é sempre Cancelar. Isso evita apagar um registro por pressionar Enter sem conferir o alvo.
+
+Na tela **Gerenciar dependências e consultar riscos**, existe também a opção
+**Simular vulnerabilidade sem salvar**. Ela pede o ativo e uma nota CVSS,
+calcula o risco próprio e efetivo do cenário e mostra o impacto nos ativos
+dependentes. Nenhuma vulnerabilidade é gravada nessa opção.
 
 ## Menu principal, opção por opção
 
@@ -198,6 +213,11 @@ O CVE é a identidade da vulnerabilidade dentro do ativo e não é alterado depo
 
 Na análise de risco, cada CVE ocupa uma coluna de `M`, inclusive quando afeta mais de um ativo. O vetor `v` guarda suas notas CVSS, e `b = Mv` soma o risco próprio de cada ativo. A matriz `A` registra as frações herdadas das dependências; o programa verifica `I - A`, calcula seu número de condição na norma infinita e resolve `(I - A)x = b` por eliminação de Gauss, sem inverter a matriz para obter `x`. Valores de condicionamento acima de `10^8` geram aviso. O fator de exposição `F` mostrado na aula é uma extensão ilustrativa: não há pesos de exposição cadastrados no inventário, portanto ele não altera as notas apresentadas.
 
+O passo a passo, a matemática e um exemplo conferível estão em
+[docs/modelo-de-risco.md](docs/modelo-de-risco.md). As evidências da Sprint 4
+e o limite intencional sobre Docker/servidor estão em
+[docs/sprint-4.md](docs/sprint-4.md).
+
 ## Base demonstrativa
 
 O arquivo dados/inventario.json já contém exemplos seguros para praticar a navegação e os filtros:
@@ -232,9 +252,17 @@ Os testes verificam regras do sistema sem modificar o arquivo real de dados.
 python -m unittest -v
 ~~~
 
-Atualmente, a suíte possui 53 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, dependências salvas no JSON, CVE compartilhada em mais de um ativo, condicionamento numérico, matriz singular, cálculo de risco e as respostas do serviço.
+Atualmente, a suíte possui 55 testes. Ela cobre cadastro e busca, IDs e CVEs repetidos, validações de CVE, CWE, CVSS e data, JSON inválido, atualização sem alteração parcial, navegação por setas, cancelamento, confirmação de remoção, consulta de vulnerabilidades, tratamento de falha ao salvar, tipos de ativos, dependências salvas no JSON, CVE compartilhada em mais de um ativo, condicionamento numérico, matriz singular, cálculo de risco, simulação sem persistência e as respostas do serviço.
 
 Se todos passarem, o final exibirá OK.
+
+Para executar os mesmos testes pelo Pytest, primeiro instale a dependência de
+desenvolvimento e depois execute:
+
+~~~powershell
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+~~~
 
 ## Estrutura do projeto
 
@@ -250,6 +278,9 @@ Se todos passarem, o final exibirá OK.
 | test_sprint2.py | Testes automatizados com unittest. |
 | risco.py | Cálculo do risco próprio e efetivo a partir das dependências cadastradas. |
 | test_risco.py | Testes do modelo de risco, das dependências e dos tipos de ativos. |
+| requirements-dev.txt | Dependência opcional para executar a suíte também com Pytest. |
+| docs/modelo-de-risco.md | Explicação da matriz, do sistema linear e da simulação. |
+| docs/sprint-4.md | Evidências da Sprint 4 e limite atual de infraestrutura. |
 | Dockerfile | Receita simples para executar o programa em um container. |
 | .github/workflows/verificar.yml | Automação que executa testes e verificação de estilo no GitHub. |
 | .flake8 | Regras de estilo usadas na verificação automática. |

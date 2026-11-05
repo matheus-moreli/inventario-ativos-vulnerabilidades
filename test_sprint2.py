@@ -20,6 +20,7 @@ from interface import (
     consultar_vulnerabilidades_tela,
     executar_programa,
     ler_id_para_operacao,
+    ler_texto_para_operacao,
     ler_texto_formulario,
     ler_verificacao_formulario,
     resumo_vulnerabilidade,
@@ -206,6 +207,11 @@ class TesteInventario(unittest.TestCase):
         with patch("interface.ler_inteiro_formulario", return_value=VOLTAR):
             with redirect_stdout(io.StringIO()):
                 self.assertIsNone(ler_id_para_operacao("ID do ativo"))
+
+    def test_seta_esquerda_cancela_texto_em_tela_simples(self):
+        with patch("interface.ler_texto_formulario", return_value=VOLTAR):
+            with redirect_stdout(io.StringIO()):
+                self.assertIsNone(ler_texto_para_operacao("Filtro"))
 
     def test_correcao_exige_verificacao_antes_de_finalizar_formulario(self):
         valores = {"status": "Corrigida"}

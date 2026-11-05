@@ -21,6 +21,7 @@ from inventario import (
 )
 from modelos import CRITICIDADES, SEVERIDADES, STATUS, TipoAtivo
 from persistencia import salvar_ativos
+from risco import simular_vulnerabilidade
 
 # Valor especial usado apenas pela interface para voltar uma etapa do formulário.
 VOLTAR = object()
@@ -218,6 +219,15 @@ def ler_id_para_operacao(mensagem):
         mostrar_aviso("Operação cancelada.")
         return None
     return identificador
+
+
+def ler_texto_para_operacao(mensagem, obrigatorio=True):
+    """Lê uma tela simples e permite desistir com a seta para a esquerda."""
+    texto = ler_texto_formulario(mensagem.rstrip(": "), obrigatorio)
+    if texto is VOLTAR:
+        mostrar_aviso("Operação cancelada.")
+        return None
+    return texto
 
 
 def ler_validado_formulario(mensagem, validador, valor_anterior=None, preenchido=False):
@@ -752,7 +762,9 @@ class InterfaceTerminal:
             else:
                 mostrar_ativo(ativo)
         elif escolha == 1:
-            termo = ler_texto("Nome ou hostname (vazio = todos): ", False)
+            termo = ler_texto_para_operacao("Nome ou hostname (vazio = todos)", False)
+            if termo is None:
+                return
             tipo = (
                 escolher_tipo_ativo()
                 if ler_sim_ou_nao("Deseja filtrar por tipo?")
@@ -1048,8 +1060,11 @@ class InterfaceTerminal:
                 (ativo, vulnerabilidade) for vulnerabilidade in ativo.vulnerabilidades
             ]
         else:
+            cve = ler_texto_para_operacao("CVE exato (vazio = todos)", False)
+            if cve is None:
+                return
             resultado = self.inventario.consultar_vulnerabilidades(
-                ler_texto("CVE exato (vazio = todos): ", False),
+                cve,
                 escolher_item("Prioridade: ", SEVERIDADES, True),
                 escolher_item("Status: ", STATUS, True),
             )
@@ -1238,15 +1253,18 @@ class InterfaceTerminal:
                 "Cadastrar dependência",
                 "Remover dependência",
                 "Consultar riscos",
+                "Simular vulnerabilidade sem salvar",
                 "Retornar ao menu",
             ],
             True,
         )
-        if escolha is None or escolha == 3:
+        if escolha is None or escolha == 4:
             return False
         if escolha == 2:
             self.mostrar_riscos_tela()
             return False
+        if escolha == 3:
+            return self.simular_vulnerabilidade_tela()
 
         identificador = ler_id_para_operacao("ID do ativo")
         if identificador is None:
@@ -1256,7 +1274,9 @@ class InterfaceTerminal:
             return False
         try:
             if escolha == 0:
-                peso = ler_texto("Peso da dependência (ex.: 0,30)")
+                peso = ler_texto_para_operacao("Peso da dependência (ex.: 0,30)")
+                if peso is None:
+                    return False
                 self.inventario.adicionar_dependencia(
                     identificador, ativo_dependente, peso
                 )
@@ -1268,6 +1288,56 @@ class InterfaceTerminal:
         except DadosInvalidosError as erro:
             mostrar_erro(str(erro))
             return False
+
+    def simular_vulnerabilidade_tela(self):
+        """Compara o risco atual a um CVSS hipotético, sem persistir mudanças."""
+        if not self.inventario:
+            mostrar_aviso("Cadastre ao menos um ativo antes de simular.")
+            return False
+
+        mostrar_titulo("Simulação de vulnerabilidade")
+        print("A simulação não cadastra nem salva vulnerabilidade alguma.")
+        identificador = ler_id_para_operacao("ID do ativo que receberá a simulação")
+        if identificador is None:
+            return False
+        if self.inventario.consultar_por_id(identificador) is None:
+            mostrar_erro("Ativo não encontrado.")
+            return False
+
+        cvss = ler_validado_formulario("Nota CVSS simulada (0.0 a 10.0)", validar_cvss)
+        if cvss is VOLTAR:
+            mostrar_aviso("Operação cancelada.")
+            return False
+
+        try:
+            lista, _, _, proprio_atual, _, efetivo_atual = (
+                self.inventario.calcular_riscos()
+            )
+            _, _, _, proprio_simulado, _, efetivo_simulado = simular_vulnerabilidade(
+                self.inventario.ativos, identificador, cvss
+            )
+        except ValueError as erro:
+            mostrar_erro(str(erro))
+            return False
+
+        indice = next(indice for indice, ativo in enumerate(lista) if ativo.id == identificador)
+        ativo = lista[indice]
+        mostrar_sucesso("Cenário calculado. Nenhum dado foi alterado.")
+        print(f"Ativo: {ativo.id} - {ativo.nome}")
+        print(f"Risco próprio: {proprio_atual[indice]:.2f} -> {proprio_simulado[indice]:.2f}")
+        print(f"Risco efetivo: {efetivo_atual[indice]:.2f} -> {efetivo_simulado[indice]:.2f}")
+        print("Impacto nos demais ativos:")
+        houve_impacto = False
+        for outro_indice, outro_ativo in enumerate(lista):
+            if outro_indice == indice:
+                continue
+            diferenca = efetivo_simulado[outro_indice] - efetivo_atual[outro_indice]
+            if abs(diferenca) > 0.000001:
+                houve_impacto = True
+                print(f"  {outro_ativo.id} - {outro_ativo.nome}: +{diferenca:.2f}")
+        if not houve_impacto:
+            print("  Nenhum outro ativo recebe risco desse ativo pelas dependências atuais.")
+        return False
 
     def executar(self):
         mostrar_sucesso(f"Base carregada: {len(self.inventario)} ativo(s).")

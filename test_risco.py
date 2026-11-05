@@ -17,7 +17,12 @@ from inventario import (
 )
 from modelos import Ativo, Equipamento, Notebook, Servidor
 from persistencia import carregar_ativos, salvar_ativos
-from risco import calcular_riscos, numero_condicao_infinito, resolver_sistema
+from risco import (
+    calcular_riscos,
+    numero_condicao_infinito,
+    resolver_sistema,
+    simular_vulnerabilidade,
+)
 from servico import ServicoInventario
 
 
@@ -153,6 +158,18 @@ class TesteRisco(unittest.TestCase):
         self.assertGreater(numero_condicao_infinito(quase_singular), 1e8)
         with self.assertRaisesRegex(ValueError, "não é invertível"):
             resolver_sistema([[1.0, -1.0], [-1.0, 1.0]], [1.0, 1.0])
+
+    def test_simulacao_nao_altera_a_base_e_propagacao_e_conferivel(self):
+        # APP recebe 25% do risco do notebook. Um CVSS 8 no notebook soma 2 ao APP.
+        adicionar_dependencia(self.ativos, 3, 1, 0.25)
+        _, matriz, vetor, proprio, _, efetivo = simular_vulnerabilidade(
+            self.ativos, 1, 8.0
+        )
+        self.assertEqual(matriz, [[1], [0], [0]])
+        self.assertEqual(vetor, [8.0])
+        self.assertEqual(proprio, [8.0, 0, 0])
+        self.assertEqual(efetivo, [8.0, 0.0, 2.0])
+        self.assertEqual(self.ativos[1].vulnerabilidades, [])
 
     def test_interface_usa_a_mesma_instancia_do_inventario(self):
         inventario = Inventario(self.ativos)

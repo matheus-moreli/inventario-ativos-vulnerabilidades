@@ -153,3 +153,29 @@ class AnalisadorRisco:
 def calcular_riscos(ativos):
     """Compatibilidade com as chamadas das Sprints anteriores."""
     return AnalisadorRisco(ativos).calcular()
+
+
+def simular_vulnerabilidade(ativos, identificador, cvss):
+    """Calcula o risco após uma vulnerabilidade hipotética, sem alterar os ativos.
+
+    A simulação acrescenta uma coluna temporária à matriz de incidência. Ela tem
+    valor 1 apenas na linha do ativo escolhido, pois a vulnerabilidade simulada
+    afeta somente esse ativo. Nenhum objeto é gravado ou modificado.
+    """
+    lista, matriz, vetor, _, dependencias, _ = calcular_riscos(ativos)
+    indice_ativo = next(
+        (indice for indice, ativo in enumerate(lista) if ativo.id == identificador),
+        None,
+    )
+    if indice_ativo is None:
+        raise ValueError("Ativo não encontrado para a simulação.")
+
+    matriz_simulada = [
+        linha[:] + [1 if indice == indice_ativo else 0]
+        for indice, linha in enumerate(matriz)
+    ]
+    vetor_simulado = vetor + [cvss]
+    proprio = produto_matriz_vetor(matriz_simulada, vetor_simulado)
+    sistema = identidade_menos(dependencias)
+    efetivo = resolver_sistema(sistema, proprio)
+    return lista, matriz_simulada, vetor_simulado, proprio, dependencias, efetivo
