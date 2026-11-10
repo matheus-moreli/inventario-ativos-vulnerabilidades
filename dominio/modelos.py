@@ -102,6 +102,8 @@ class Equipamento:
         vulnerabilidades=None,
         historico=None,
         dependencias=None,
+        nome_tipo_personalizado=None,
+        campos_extras=None,
     ):
         self.id = identificador
         self.nome = nome
@@ -112,6 +114,8 @@ class Equipamento:
         self.vulnerabilidades = vulnerabilidades if vulnerabilidades is not None else []
         self.historico = historico if historico is not None else []
         self.dependencias = dependencias if dependencias is not None else []
+        self.nome_tipo_personalizado = nome_tipo_personalizado
+        self.campos_extras = dict(campos_extras or {})
 
     def nome_do_tipo(self):
         """Nome exibido pela interface; as subclasses o sobrescrevem."""
@@ -140,6 +144,8 @@ class Equipamento:
             "vulnerabilidades": vulnerabilidades,
             "historico": self.historico,
             "dependencias": self.dependencias,
+            "nome_tipo_personalizado": self.nome_tipo_personalizado,
+            "campos_extras": self.campos_extras,
         }
 
     @classmethod
@@ -158,6 +164,8 @@ class Equipamento:
             vulnerabilidades,
             dados["historico"],
             dados.get("dependencias", []),
+            dados.get("nome_tipo_personalizado"),
+            dados.get("campos_extras", {}),
         )
 
 
@@ -194,6 +202,13 @@ class SoftwareLicenciado(Equipamento):
         return "Software Licenciado"
 
 
+class EquipamentoPersonalizado(Equipamento):
+    """Tipo criado pelo usuário, com código inteiro e nome persistidos."""
+
+    def nome_do_tipo(self):
+        return self.nome_tipo_personalizado or "Tipo personalizado"
+
+
 CLASSES_DE_ATIVO = {
     TipoAtivo.NOTEBOOK.value: Notebook,
     TipoAtivo.SERVIDOR.value: Servidor,
@@ -214,9 +229,15 @@ def criar_ativo(
     vulnerabilidades=None,
     historico=None,
     dependencias=None,
+    nome_tipo_personalizado=None,
+    campos_extras=None,
 ):
-    """Cria o objeto concreto correspondente ao tipo escolhido."""
-    classe = CLASSES_DE_ATIVO[tipo]
+    """Cria a subclasse nativa ou o equipamento personalizado cadastrado."""
+    classe = CLASSES_DE_ATIVO.get(tipo)
+    if classe is None:
+        if type(tipo) is not int or tipo < 100 or not nome_tipo_personalizado:
+            raise ValueError("Tipo de ativo inválido.")
+        classe = EquipamentoPersonalizado
     return classe(
         identificador,
         nome,
@@ -227,4 +248,6 @@ def criar_ativo(
         vulnerabilidades,
         historico,
         dependencias,
+        nome_tipo_personalizado,
+        campos_extras,
     )

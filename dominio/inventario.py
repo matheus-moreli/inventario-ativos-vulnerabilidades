@@ -77,6 +77,34 @@ def validar_data_fonte(data_fonte):
     return texto
 
 
+def validar_campos_extras(campos):
+    """Aceita apenas pares descritivos simples; não altera o cálculo de risco."""
+    if not isinstance(campos, dict) or len(campos) > 30:
+        raise DadosInvalidosError("Campos adicionais devem ser um objeto com até 30 itens.")
+    normalizados = {}
+    for chave, valor in campos.items():
+        if not isinstance(chave, str) or not 1 <= len(chave.strip()) <= 60:
+            raise DadosInvalidosError("Nome do campo adicional deve ter 1 a 60 caracteres.")
+        if not isinstance(valor, str) or len(valor) > 500:
+            raise DadosInvalidosError("Valor adicional deve ser texto com até 500 caracteres.")
+        chave = chave.strip()
+        if chave.lower() in (c.lower() for c in normalizados):
+            raise DadosInvalidosError("Campo adicional duplicado.")
+        normalizados[chave] = valor
+    return normalizados
+
+
+def validar_nome_tipo_personalizado(tipo, nome):
+    if tipo >= 100:
+        nome = validar_texto(nome, "Nome do tipo personalizado")
+        if len(nome) > 60:
+            raise DadosInvalidosError("Tipo personalizado deve ter até 60 caracteres.")
+        return nome
+    if nome is not None:
+        raise DadosInvalidosError("Tipos nativos não aceitam outro nome de categoria.")
+    return None
+
+
 def validar_tipo_ativo(tipo):
     """Confirma que o código pertence ao Enum antes de salvar o ativo."""
     if isinstance(tipo, bool):
@@ -84,6 +112,8 @@ def validar_tipo_ativo(tipo):
     try:
         return TipoAtivo(tipo).value
     except (ValueError, TypeError):
+        if type(tipo) is int and tipo >= 100:
+            return tipo
         raise DadosInvalidosError("Tipo de ativo inválido.")
 
 
@@ -145,7 +175,8 @@ class Inventario:
                 )
 
     def cadastrar_ativo(
-        self, identificador, nome, responsavel, localizacao, tipo, criticidade
+        self, identificador, nome, responsavel, localizacao, tipo, criticidade,
+        nome_tipo_personalizado=None, campos_extras=None,
     ):
         """Cria um ativo completo, sem alterar a base quando os dados forem inválidos."""
         ativos = self._ativos
@@ -155,17 +186,55 @@ class Inventario:
             raise DadosInvalidosError("ID deve ser um número inteiro maior que zero.")
         nome = validar_texto(nome, "Nome ou hostname")
         self.validar_nome_unico(nome)
+        tipo = validar_tipo_ativo(tipo)
+        nome_tipo_personalizado = validar_nome_tipo_personalizado(
+            tipo, nome_tipo_personalizado
+        )
+        for existente in ativos.values():
+            if existente.tipo == tipo and tipo >= 100:
+                if existente.nome_tipo_personalizado != nome_tipo_personalizado:
+                    raise DadosInvalidosError("Código personalizado já usa outro nome.")
         ativo = criar_ativo(
             identificador,
             nome,
             validar_texto(responsavel, "Responsável"),
             validar_texto(localizacao, "Setor ou localização"),
-            validar_tipo_ativo(tipo),
+            tipo,
             validar_opcao(criticidade, CRITICIDADES, "Criticidade"),
+            nome_tipo_personalizado=nome_tipo_personalizado,
+            campos_extras=validar_campos_extras(campos_extras or {}),
         )
         ativo.registrar_historico("Ativo cadastrado.")
         ativos[identificador] = ativo
         return ativo
+
+    def listar_tipos(self):
+        """Tipos nativos e tipos personalizados presentes na base."""
+        tipos = {item.value: item.name.replace("_", " ").title()
+                 for item in TipoAtivo}
+        for ativo in self._ativos.values():
+            if ativo.tipo >= 100:
+                tipos[ativo.tipo] = ativo.nome_tipo_personalizado
+        return dict(sorted(tipos.items()))
+
+    def definir_campo_extra(self, identificador, chave, valor):
+        ativo = self.consultar_por_id(identificador)
+        if ativo is None:
+            raise DadosInvalidosError("Ativo não encontrado.")
+        campos = dict(ativo.campos_extras)
+        campos[chave] = valor
+        campos = validar_campos_extras(campos)
+        ativo.campos_extras = campos
+        ativo.registrar_historico(f"Campo adicional {chave} atualizado.")
+
+    def remover_campo_extra(self, identificador, chave):
+        ativo = self.consultar_por_id(identificador)
+        if ativo is None:
+            raise DadosInvalidosError("Ativo não encontrado.")
+        if chave not in ativo.campos_extras:
+            raise DadosInvalidosError("Campo adicional não encontrado.")
+        del ativo.campos_extras[chave]
+        ativo.registrar_historico(f"Campo adicional {chave} removido.")
 
     def consultar_por_id(self, identificador):
         """Busca direta pela chave do dicionário; retorna None se não existir."""
@@ -194,6 +263,7 @@ class Inventario:
         localizacao=None,
         tipo=None,
         criticidade=None,
+        nome_tipo_personalizado=None,
     ):
         """Altera campos permitidos somente depois de validar todos os novos valores."""
         ativos = self._ativos
@@ -229,6 +299,22 @@ class Inventario:
             alteracoes.append("criticidade")
         else:
             nova_criticidade = ativo.criticidade
+        if novo_tipo >= 100:
+            nome_personalizado = (
+                nome_tipo_personalizado
+                if nome_tipo_personalizado is not None
+                else ativo.nome_tipo_personalizado
+                if novo_tipo == ativo.tipo
+                else next(
+                    (item.nome_tipo_personalizado for item in ativos.values()
+                     if item.tipo == novo_tipo), None
+                )
+            )
+            nome_personalizado = validar_nome_tipo_personalizado(
+                novo_tipo, nome_personalizado
+            )
+        else:
+            nome_personalizado = None
         if alteracoes:
             if novo_tipo != ativo.tipo:
                 ativo_atualizado = criar_ativo(
@@ -241,6 +327,8 @@ class Inventario:
                     ativo.vulnerabilidades,
                     ativo.historico,
                     ativo.dependencias,
+                    nome_personalizado,
+                    ativo.campos_extras,
                 )
                 ativos[identificador] = ativo_atualizado
             else:
@@ -493,6 +581,10 @@ def validar_ativo_carregado(ativo):
     ativo.responsavel = validar_texto(ativo.responsavel, "Responsável")
     ativo.localizacao = validar_texto(ativo.localizacao, "Setor ou localização")
     ativo.tipo = validar_tipo_ativo(ativo.tipo)
+    ativo.nome_tipo_personalizado = validar_nome_tipo_personalizado(
+        ativo.tipo, ativo.nome_tipo_personalizado
+    )
+    ativo.campos_extras = validar_campos_extras(ativo.campos_extras)
     ativo.criticidade = validar_opcao(ativo.criticidade, CRITICIDADES, "Criticidade")
     validar_dependencias(ativo.dependencias)
     if ativo.id in [dependencia["ativo_id"] for dependencia in ativo.dependencias]:

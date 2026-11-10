@@ -16,7 +16,7 @@ class ServicoInventario:
         self.ativos = ativos
         self.caminho_dados = caminho_dados
         self.host = host
-        self.porta = int(porta or os.environ.get("INVENTARIO_PORTA", "8080"))
+        self.porta = int(porta or os.environ.get("INVENTARIO_PORTA", "2217"))
         self.inicio = datetime.now(timezone.utc)
 
     def resposta(self, caminho):
