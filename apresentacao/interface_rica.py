@@ -11,8 +11,7 @@ from rich.prompt import Prompt, IntPrompt, Confirm
 from rich import box
 
 from apresentacao.interface import InterfaceTerminal
-from dominio.inventario import DadosInvalidosError, validar_cvss
-from dominio.modelos import TipoAtivo
+from dominio.inventario import DadosInvalidosError
 from dominio.risco import AnalisadorRisco, montar_matriz_incidencia
 from infraestrutura.persistencia import RepositorioJSON
 
@@ -171,7 +170,7 @@ class InterfaceRica:
             tabela.add_column(coluna)
         for i, ativo in enumerate(lista):
             tabela.add_row(str(ativo.id), ativo.nome, f"{b[i]:.2f}",
-                           f"{x[i]:.2f}", f"{x[i]-b[i]:+.2f}")
+                           f"{x[i]:.2f}", f"{x[i] - b[i]:+.2f}")
         self.console.print(tabela)
         self.console.print(
             f"[green]I-A invertível[/] | número de condição (norma infinito): "
