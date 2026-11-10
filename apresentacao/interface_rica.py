@@ -272,6 +272,7 @@ class InterfaceRica:
 
     def atualizar_ativo(self):
         ativo = self.escolher_ativo()
+
         def preparar(inv):
             while True:
                 atual = inv.consultar_por_id(ativo.id)
