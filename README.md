@@ -1,3 +1,35 @@
+# Inventário de ativos e vulnerabilidades — UFU
+
+> **Instalação atualizada:** [Guia Docker e execução na porta 2217](docs/implantacao-2217.md).
+
+## Executar o painel no terminal
+
+```bash
+python -m pip install -r requirements.txt
+python app.py
+```
+
+O painel Rich mantém o CRUD completo, mostra matrizes M/A, vetores CVSS e riscos,
+e oferece cadastro de tipos personalizados (a partir do código 100) e campos
+descritivos adicionais. A interface mantém seleção por números, inclusive no Linux.
+
+## Testar e executar via Docker
+
+```bash
+python app.py --testes
+docker build -t inventario-ativos-2217:1 .
+docker run -d --name inventario-2217 --restart unless-stopped -p 2217:2217 -e INVENTARIO_PORTA=2217 -v inventario-2217-dados:/app/dados inventario-ativos-2217:1
+curl http://localhost:2217/saude
+docker exec -it inventario-2217 python app.py
+```
+
+O serviço HTTP usa `/saude` e `/riscos`, ambos somente leitura.
+O menu interativo usa o mesmo volume JSON e não deve ser aberto em sessões
+concorrentes de escrita. A entrega exige evidências separadas de 24 horas no
+servidor do docente; testes automáticos não substituem essa comprovação.
+
+---
+
 # Inventário de Ativos e Vulnerabilidades
 
 Projeto acadêmico em Python para registrar ativos de tecnologia e as vulnerabilidades associadas a eles. Ele começou nas Sprints 1 e 2 e foi evoluído para o Trabalho 2 das Sprints 3, 4 e 5. Funciona no terminal, sem bibliotecas externas, internet, banco de dados ou interface gráfica.

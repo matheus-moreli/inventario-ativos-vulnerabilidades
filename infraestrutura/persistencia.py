@@ -36,6 +36,7 @@ class RepositorioJSON:
                     raise ValueError("ID repetido no arquivo de dados.")
                 ativos[ativo.id] = validar_ativo_carregado(ativo)
             nomes = set()
+            categorias = {}
             for ativo in ativos.values():
                 nome = ativo.nome.lower()
                 if nome in nomes:
@@ -43,6 +44,11 @@ class RepositorioJSON:
                         "Nome ou hostname repetido no arquivo de dados."
                     )
                 nomes.add(nome)
+                if ativo.tipo >= 100:
+                    anterior = categorias.get(ativo.tipo)
+                    if anterior is not None and anterior != ativo.nome_tipo_personalizado:
+                        raise DadosInvalidosError("Categoria personalizada inconsistente.")
+                    categorias[ativo.tipo] = ativo.nome_tipo_personalizado
                 for dependencia in ativo.dependencias:
                     if dependencia["ativo_id"] not in ativos:
                         raise DadosInvalidosError(

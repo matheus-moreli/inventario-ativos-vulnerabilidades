@@ -3,7 +3,6 @@
 import os
 import sys
 
-from apresentacao.interface import InterfaceTerminal
 from apresentacao.servico import ServicoInventario
 from dominio.inventario import Inventario
 from infraestrutura.persistencia import RepositorioJSON
@@ -32,7 +31,8 @@ class Aplicacao:
             ServicoInventario(inventario, caminho_dados=self.caminho_dados).executar()
         else:
             try:
-                InterfaceTerminal(inventario, self.caminho_dados).executar()
+                from apresentacao.interface_rica import InterfaceRica
+                InterfaceRica(inventario, self.caminho_dados).executar()
             except EOFError:
                 print("Entrada encerrada. Use um terminal interativo para o menu.")
         return True
@@ -45,4 +45,9 @@ def iniciar(modo_servico=False):
 
 # Assim os testes podem importar funções sem abrir o menu interativo.
 if __name__ == "__main__":
+    if "--testes" in sys.argv[1:]:
+        import unittest
+        suite = unittest.defaultTestLoader.discover(PASTA_DO_PROJETO, "test*.py")
+        resultado = unittest.TextTestRunner(verbosity=2).run(suite)
+        raise SystemExit(0 if resultado.wasSuccessful() else 1)
     raise SystemExit(0 if iniciar("--servico" in sys.argv[1:]) else 1)
