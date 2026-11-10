@@ -3,7 +3,6 @@
 import os
 import sys
 
-from apresentacao.interface import InterfaceTerminal
 from apresentacao.servico import ServicoInventario
 from dominio.inventario import Inventario
 from infraestrutura.persistencia import RepositorioJSON
