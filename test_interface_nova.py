@@ -194,6 +194,42 @@ class TesteInterfaceUnificada(unittest.TestCase):
             ):
                 self.assertIsNone(Navegacao().menu("Ações", ["Primeira"]))
 
+    def test_escape_cancela_campo_de_texto_em_tty(self):
+        from prompt_toolkit.application.current import create_app_session
+        from prompt_toolkit.input.defaults import create_pipe_input
+        from prompt_toolkit.output import DummyOutput
+
+        with create_pipe_input() as entrada:
+            entrada.send_text("\\x1b".encode().decode("unicode_escape"))
+            with create_app_session(input=entrada, output=DummyOutput()):
+                with patch("apresentacao.navegacao.sys.stdin.isatty",
+                           return_value=True):
+                    with self.assertRaises(OperacaoCancelada):
+                        Navegacao().texto("Nome")
+
+    def test_alteracao_de_dependencia_recalcula_risco(self):
+        self.inv.cadastrar_ativo(1, "SRV-01", "TI", "Rack", 2, "Alta")
+        self.inv.cadastrar_ativo(2, "APP-01", "TI", "Rack", 4, "Alta")
+        self.inv.cadastrar_vulnerabilidade(
+            1, "CVE-2026-2222", "CWE-79", 8.0, "Falha", "NVD",
+            "01/01/2026", "Impacto", "Alta", "Corrigir",
+        )
+        self.tela.nav = NavegacaoFalsa(confirmacoes=[True])
+        self.tela.transacao(
+            lambda inv: inv.adicionar_dependencia(2, 1, "0,25")
+        )
+        self.assertEqual(
+            AnalisadorRisco(self.inv.ativos).calcular()[-1],
+            [8.0, 2.0],
+        )
+        self.tela.transacao(
+            lambda inv: inv.remover_dependencia(2, 1), confirmar=False
+        )
+        self.assertEqual(
+            AnalisadorRisco(self.inv.ativos).calcular()[-1],
+            [8.0, 0.0],
+        )
+
     def test_texto_cancelar_por_comando(self):
         nav = Navegacao()
         with patch("apresentacao.navegacao.sys.stdin.isatty",
