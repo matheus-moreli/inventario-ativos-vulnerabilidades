@@ -26,3 +26,27 @@ jobs:
 
       - name: Verificar estilo
         run: python -m flake8
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Construir imagem Docker
+        run: docker build -t inventario-ci:2217 .
+
+      - name: Testar serviço e porta 2217
+        run: |
+          set -e
+          docker run -d --name inventario-ci -p 2217:2217 -e INVENTARIO_PORTA=2217 inventario-ci:2217
+          trap 'docker rm -f inventario-ci || true' EXIT
+          for tentativa in $(seq 1 20); do
+            if curl --fail --silent http://127.0.0.1:2217/saude > /tmp/saude.json; then
+              break
+            fi
+            sleep 1
+          done
+          python3 -c "import json; d=json.load(open('/tmp/saude.json')); assert d['estado']=='ativo'"
+          curl --fail --silent http://127.0.0.1:2217/riscos > /tmp/riscos.json
+          docker exec inventario-ci python -c "from apresentacao.interface_rica import InterfaceRica; print('interface: OK')"
