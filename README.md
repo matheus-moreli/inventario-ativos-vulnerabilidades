@@ -9,9 +9,9 @@ python -m pip install -r requirements.txt
 python app.py
 ```
 
-O painel Rich mantém o CRUD completo, mostra matrizes M/A, vetores CVSS e riscos,
-e oferece cadastro de tipos personalizados (a partir do código 100) e campos
-descritivos adicionais. A interface mantém seleção por números, inclusive no Linux.
+O painel terminal unificado usa setas para selecionar itens e Esc para cancelar, mostra matrizes M/A, vetores CVSS e riscos,
+oferece cadastro de tipos personalizados (a partir do código 100) e campos
+descritivos adicionais. Os formulários só salvam após confirmação; veja [Guia da interface](docs/interface-terminal.md).
 
 ## Testar e executar via Docker
 
