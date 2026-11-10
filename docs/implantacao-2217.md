@@ -72,5 +72,5 @@ Campos adicionais são descritivos e não alteram pesos matemáticos automaticam
 - Inserir um novo *tipo* pelo terminal cria uma instância de uma subclasse
   personalizada genérica; criar nova subclasse com regras específicas exige código.
 - A aplicação recebe CVSS informado pelo usuário e não calcula vetor CVSS oficial.
-- O terminal Rich usa seleção numérica; não há navegação por setas nesta versão.
+- O terminal tem navegação por setas e Esc/0 para voltar; cada formulário pode ser cancelado sem gravação.
 - O modo HTTP oferece apenas /saude e /riscos, não CRUD remoto.
