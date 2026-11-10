@@ -154,6 +154,46 @@ class TesteInterfaceUnificada(unittest.TestCase):
                    return_value=False), patch("builtins.input", return_value="0"):
             self.assertIsNone(nav.menu("Opções", ["Um", "Dois"]))
 
+    def test_setas_para_baixo_e_enter_escolhem_segunda_opcao(self):
+        from prompt_toolkit.application import Application
+        from prompt_toolkit.input.defaults import create_pipe_input
+        from prompt_toolkit.output import DummyOutput
+
+        with create_pipe_input() as entrada:
+            entrada.send_text("\\x1b[B\\r".encode().decode("unicode_escape"))
+
+            def criar_app(*args, **kwargs):
+                return Application(
+                    *args, **kwargs, input=entrada, output=DummyOutput()
+                )
+
+            with patch("apresentacao.navegacao.sys.stdin.isatty",
+                       return_value=True), patch(
+                "apresentacao.navegacao.Application", side_effect=criar_app
+            ):
+                self.assertEqual(
+                    Navegacao().menu("Ações", ["Primeira", "Segunda"]), 1
+                )
+
+    def test_esc_volta_sem_selecionar(self):
+        from prompt_toolkit.application import Application
+        from prompt_toolkit.input.defaults import create_pipe_input
+        from prompt_toolkit.output import DummyOutput
+
+        with create_pipe_input() as entrada:
+            entrada.send_text("\\x1b".encode().decode("unicode_escape"))
+
+            def criar_app(*args, **kwargs):
+                return Application(
+                    *args, **kwargs, input=entrada, output=DummyOutput()
+                )
+
+            with patch("apresentacao.navegacao.sys.stdin.isatty",
+                       return_value=True), patch(
+                "apresentacao.navegacao.Application", side_effect=criar_app
+            ):
+                self.assertIsNone(Navegacao().menu("Ações", ["Primeira"]))
+
     def test_texto_cancelar_por_comando(self):
         nav = Navegacao()
         with patch("apresentacao.navegacao.sys.stdin.isatty",
