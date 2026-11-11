@@ -2,6 +2,17 @@
 
 > **Instalação atualizada:** [Guia Docker e execução na porta 2217](docs/implantacao-2217.md).
 
+## Iniciar no Windows com dois cliques
+
+Abra **`iniciar.bat`** na pasta do projeto. Ele localiza o Python 3,
+verifica `rich` e `prompt_toolkit`, instala o que estiver faltando
+(usando `requirements.txt`) e inicia o menu. Na primeira execução,
+a instalação pode precisar de internet e permissão para gravar no
+ambiente do usuário; **não requer executar como administrador**.
+
+No PowerShell, você também pode iniciar com `./iniciar.bat` ou
+executar os testes com `./iniciar.bat --testes`.
+
 ## Executar o painel no terminal
 
 ```bash
@@ -32,7 +43,7 @@ servidor do docente; testes automáticos não substituem essa comprovação.
 
 # Inventário de Ativos e Vulnerabilidades
 
-Projeto acadêmico em Python para registrar ativos de tecnologia e as vulnerabilidades associadas a eles. Ele começou nas Sprints 1 e 2 e foi evoluído para o Trabalho 2 das Sprints 3, 4 e 5. Funciona no terminal, sem bibliotecas externas, internet, banco de dados ou interface gráfica.
+Projeto acadêmico em Python para registrar ativos de tecnologia e as vulnerabilidades associadas a eles. Ele começou nas Sprints 1 e 2 e foi evoluído para o Trabalho 2 das Sprints 3, 4 e 5. Funciona no terminal, com as bibliotecas Rich e prompt_toolkit; não requer internet após instalar as dependências, banco de dados ou interface gráfica.
 
 O objetivo é demonstrar os fundamentos de Python em um problema realista: saber quais equipamentos e sistemas existem, quem é responsável por eles, qual é sua importância para a segurança e quais falhas precisam de tratamento.
 
