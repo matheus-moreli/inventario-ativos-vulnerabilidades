@@ -67,3 +67,9 @@ jobs:
 
       - name: Testes de regressão no Windows
         run: python -m unittest -v
+
+      - name: Validar BAT incluindo instalacao automatica
+        shell: cmd
+        run: |
+          py -3 -m pip uninstall -y rich prompt-toolkit
+          call iniciar.bat --testes
