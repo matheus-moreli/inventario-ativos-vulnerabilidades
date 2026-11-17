@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 # Rotas-isca de baixo impacto: nunca recebem dados ou senhas reais.
 ROTAS_ISCA = frozenset({"/admin", "/login", "/wp-admin", "/.env", "/painel"})
 
+
 class AuditoriaHTTP:
     """Registros JSONL rotativos, limitados em tamanho e sem rota pública."""
 
