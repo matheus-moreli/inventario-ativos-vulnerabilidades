@@ -39,8 +39,10 @@ jobs:
       - name: Testar serviço e porta 2217
         run: |
           set -e
-          docker run -d --name inventario-ci -p 2217:2217 -e INVENTARIO_PORTA=2217 inventario-ci:2217
-          trap 'docker rm -f inventario-ci || true' EXIT
+          printf '%s' 'senha-dedicada-para-testes' > /tmp/inventario-ci-senha
+          chmod 644 /tmp/inventario-ci-senha
+          docker run -d --name inventario-ci -p 127.0.0.1:2217:2217 -e INVENTARIO_PORTA=2217 -e INVENTARIO_SENHA_ARQUIVO=/run/secrets/senha -v /tmp/inventario-ci-senha:/run/secrets/senha:ro inventario-ci:2217
+          trap 'docker rm -f inventario-ci || true; rm -f /tmp/inventario-ci-senha' EXIT
           for tentativa in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:2217/saude > /tmp/saude.json; then
               break
@@ -48,7 +50,9 @@ jobs:
             sleep 1
           done
           python3 -c "import json; d=json.load(open('/tmp/saude.json')); assert d['estado']=='ativo'"
-          curl --fail --silent http://127.0.0.1:2217/riscos > /tmp/riscos.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:2217/riscos)" = 401
+          curl --fail --silent -H 'Authorization: Bearer senha-dedicada-para-testes' http://127.0.0.1:2217/riscos > /tmp/riscos.json
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:2217/admin)" = 404
           docker exec inventario-ci python -c "from apresentacao.interface_rica import InterfaceRica; print('interface: OK')"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:2217/rota-teste-auditoria)" = 404
           docker exec inventario-ci python -c "import json; p='/app/dados/auditoria-acessos.jsonl'; e=json.loads(open(p, encoding='utf-8').readlines()[-1]); assert e['rota']=='/rota-teste-auditoria' and e['codigo_http']==404"
