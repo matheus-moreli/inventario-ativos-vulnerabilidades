@@ -24,6 +24,10 @@ O painel terminal unificado usa setas para selecionar itens e Esc para cancelar,
 oferece cadastro de tipos personalizados (a partir do código 100) e campos
 descritivos adicionais. Os formulários só salvam após confirmação; veja [Guia da interface](docs/interface-terminal.md).
 
+## Auditoria defensiva de acessos HTTP
+
+A versão mais recente registra rotas solicitadas, respostas HTTP e alertas de erros repetidos em um arquivo JSONL rotativo, dentro do volume de dados. Não monitora SSH nem identifica usuários. Consulte [Guia de auditoria HTTP](docs/auditoria-http.md).
+
 ## Testar e executar via Docker
 
 ```bash
