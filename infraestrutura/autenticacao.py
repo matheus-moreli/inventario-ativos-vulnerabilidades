@@ -1,7 +1,6 @@
 """Autorização para API HTTP com senha lida de arquivo protegido."""
 
 import hmac
-import os
 
 
 class AutenticacaoHTTP:
