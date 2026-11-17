@@ -6,18 +6,28 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from dominio.risco import AnalisadorRisco
+from infraestrutura.auditoria import AuditoriaHTTP
 from infraestrutura.persistencia import RepositorioJSON
 
 
 class ServicoInventario:
-    """Expõe saúde e riscos sem depender da entrada do terminal."""
+    """Expõe saúde e riscos e audita requisições ao próprio serviço."""
 
-    def __init__(self, ativos, host="0.0.0.0", porta=None, caminho_dados=None):
+    def __init__(self, ativos, host="0.0.0.0", porta=None, caminho_dados=None,
+                 caminho_auditoria=None):
         self.ativos = ativos
         self.caminho_dados = caminho_dados
         self.host = host
         self.porta = int(porta or os.environ.get("INVENTARIO_PORTA", "2217"))
         self.inicio = datetime.now(timezone.utc)
+        if caminho_auditoria is None and caminho_dados is not None:
+            caminho_auditoria = os.environ.get("INVENTARIO_AUDITORIA_ARQUIVO")
+            if not caminho_auditoria:
+                caminho_auditoria = os.path.join(
+                    os.path.dirname(os.path.abspath(caminho_dados)),
+                    "auditoria-acessos.jsonl",
+                )
+        self.auditoria = AuditoriaHTTP(caminho_auditoria) if caminho_auditoria else None
 
     def resposta(self, caminho):
         if caminho not in {"/saude", "/riscos"}:
@@ -56,14 +66,46 @@ class ServicoInventario:
         servico = self
 
         class Requisicao(BaseHTTPRequestHandler):
-            def do_GET(self):
-                codigo, corpo = servico.resposta(self.path)
+            def _responder(self, metodo):
+                if metodo == "GET":
+                    codigo, corpo = servico.resposta(self.path)
+                else:
+                    codigo, corpo = 405, {"erro": "Método não permitido."}
+                if servico.auditoria is not None:
+                    servico.auditoria.registrar(
+                        self.client_address[0], metodo, self.path, codigo
+                    )
                 dados = json.dumps(corpo, ensure_ascii=False).encode("utf-8")
                 self.send_response(codigo)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(dados)))
+                self.send_header("Cache-Control", "no-store")
+                if codigo == 405:
+                    self.send_header("Allow", "GET")
                 self.end_headers()
-                self.wfile.write(dados)
+                if metodo != "HEAD":
+                    self.wfile.write(dados)
+
+            def do_GET(self):
+                self._responder("GET")
+
+            def do_HEAD(self):
+                self._responder("HEAD")
+
+            def do_POST(self):
+                self._responder("POST")
+
+            def do_PUT(self):
+                self._responder("PUT")
+
+            def do_PATCH(self):
+                self._responder("PATCH")
+
+            def do_DELETE(self):
+                self._responder("DELETE")
+
+            def do_OPTIONS(self):
+                self._responder("OPTIONS")
 
         with ThreadingHTTPServer((self.host, self.porta), Requisicao) as servidor:
             print(f"Inventário disponível na porta {self.porta}.", flush=True)
