@@ -43,8 +43,7 @@ que abriu o túnel, passando o cabeçalho Authorization. O túnel
 protege a senha em trânsito. **Não** envie a senha por HTTP em
 texto claro diretamente pela rede da faculdade.
 
-**Nota:** senha curta ou previsível, incluindo `Camila123`,
-não é segura; escolha uma senha única e forte. Esta proteção
+**Nota:** senhas curtas ou previsíveis não são seguras; escolha uma senha única e forte. Esta proteção
 se aplica **à API HTTP**, não ao acesso via SSH, `docker exec`
 ou aos administradores do host compartilhado.
 
