@@ -3,3 +3,4 @@ __pycache__/
 .coverage
 
 dados/auditoria-acessos.jsonl*
+dados/senha-acesso

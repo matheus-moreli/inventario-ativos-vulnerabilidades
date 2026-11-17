@@ -1,4 +1,4 @@
-"""Consulta HTTP somente leitura para manter a aplicação verificável em Docker."""
+"""Consulta HTTP somente leitura com auditoria e senha de acesso."""
 
 import json
 import os
@@ -6,15 +6,16 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from dominio.risco import AnalisadorRisco
-from infraestrutura.auditoria import AuditoriaHTTP
+from infraestrutura.auditoria import AuditoriaHTTP, ROTAS_ISCA
+from infraestrutura.autenticacao import AutenticacaoHTTP
 from infraestrutura.persistencia import RepositorioJSON
 
 
 class ServicoInventario:
-    """Expõe saúde e riscos e audita requisições ao próprio serviço."""
+    """Expõe saúde, protege riscos por senha e audita requisições."""
 
     def __init__(self, ativos, host="0.0.0.0", porta=None, caminho_dados=None,
-                 caminho_auditoria=None):
+                 caminho_auditoria=None, caminho_senha=None):
         self.ativos = ativos
         self.caminho_dados = caminho_dados
         self.host = host
@@ -27,7 +28,14 @@ class ServicoInventario:
                     os.path.dirname(os.path.abspath(caminho_dados)),
                     "auditoria-acessos.jsonl",
                 )
+        if caminho_senha is None and caminho_dados is not None:
+            caminho_senha = os.environ.get("INVENTARIO_SENHA_ARQUIVO")
+            if not caminho_senha:
+                caminho_senha = os.path.join(
+                    os.path.dirname(os.path.abspath(caminho_dados)), "senha-acesso"
+                )
         self.auditoria = AuditoriaHTTP(caminho_auditoria) if caminho_auditoria else None
+        self.autenticacao = AutenticacaoHTTP(caminho_senha) if caminho_senha else None
 
     def resposta(self, caminho):
         if caminho not in {"/saude", "/riscos"}:
@@ -62,15 +70,34 @@ class ServicoInventario:
                 "aviso_condicionamento": analisador.numero_condicao > 1e8,
             }
 
+    def atender(self, metodo, caminho, autorizacao=""):
+        """Decide status sem incluir ou registrar a credencial."""
+        rota = caminho.split("?", 1)[0]
+        if metodo != "GET":
+            return 405, {"erro": "Método não permitido."}
+        if rota == "/saude":
+            return self.resposta(rota)
+        if rota in ROTAS_ISCA:
+            return 404, {"erro": "Rota não encontrada."}
+        if rota != "/riscos":
+            return 404, {"erro": "Rota não encontrada."}
+        if self.autenticacao is None or not self.autenticacao.autorizada(autorizacao):
+            return 401, {"erro": "Autorização necessária."}
+        return self.resposta(rota)
+
     def executar(self):
+        if self.autenticacao is None or not self.autenticacao.configurada():
+            raise RuntimeError(
+                "A API requer um arquivo de senha não vazio. "
+                "Configure INVENTARIO_SENHA_ARQUIVO antes de iniciar."
+            )
         servico = self
 
         class Requisicao(BaseHTTPRequestHandler):
             def _responder(self, metodo):
-                if metodo == "GET":
-                    codigo, corpo = servico.resposta(self.path)
-                else:
-                    codigo, corpo = 405, {"erro": "Método não permitido."}
+                codigo, corpo = servico.atender(
+                    metodo, self.path, self.headers.get("Authorization", "")
+                )
                 if servico.auditoria is not None:
                     servico.auditoria.registrar(
                         self.client_address[0], metodo, self.path, codigo
@@ -80,11 +107,17 @@ class ServicoInventario:
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(dados)))
                 self.send_header("Cache-Control", "no-store")
+                if codigo == 401:
+                    self.send_header("WWW-Authenticate", 'Bearer realm="Inventario"')
                 if codigo == 405:
                     self.send_header("Allow", "GET")
                 self.end_headers()
                 if metodo != "HEAD":
                     self.wfile.write(dados)
+
+            def log_message(self, formatacao, *args):
+                # Os eventos sanitizados ficam apenas no JSONL, sem query nos logs.
+                pass
 
             def do_GET(self):
                 self._responder("GET")
