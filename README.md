@@ -1,6 +1,7 @@
 # Inventário de ativos e vulnerabilidades — UFU
 
 > **Instalação atualizada:** [Guia Docker e execução na porta 2217](docs/implantacao-2217.md).
+> **Evidências da entrega:** [Histórico verificado da execução Docker (V1, V2 e V3)](docs/evidencias-docker-2026-11-23.md).
 
 ## Iniciar no Windows com dois cliques
 
