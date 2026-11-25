@@ -143,32 +143,20 @@ O programa carrega automaticamente o arquivo dados/inventario.json e mostra a qu
 
 Para encerrar, selecione Sair no menu principal. O programa tenta salvar os dados automaticamente depois de cada cadastro, atualização ou remoção. Ao sair, ele tenta salvar novamente. Caso haja falha de gravação, a tela oferece a escolha entre tentar salvar de novo ou sair conscientemente sem salvar as alterações mais recentes.
 
-## Docker e servidor (não executado nesta etapa)
+## Docker no servidor da UFU
 
-Os arquivos de Docker fazem parte do trabalho, mas não foram executados nesta
-etapa. Os servidores da disciplina serão tratados depois. Portanto, os comandos
-abaixo são apenas referência de preparação e não comprovam uma entrega em
-container:
+O [registro de 23/11/2026](docs/evidencias-docker-2026-11-23.md) documenta
+a execução de duas versões que superaram 24 horas no servidor da disciplina.
+Na coleta, a V3 estava ativa havia **5 dias, 23 h, 13 min e 55 s**, com
+zero reinícios registrados. A resposta de `/saude` mostrou seis ativos.
+A V1 também superou 24 horas em uma execução separada.
 
-~~~powershell
-docker build -t inventario-ativos .
-docker run -it --rm -v "${PWD}/dados:/app/dados" inventario-ativos python app.py
-~~~
-
-O mesmo programa é aberto dentro do container. O volume `dados` mantém o JSON salvo na pasta do computador.
-
-Para comprovar **o programa completo** em execução contínua no servidor da disciplina, mantenha o menu interativo dentro de um container com terminal persistente:
-
-~~~powershell
-docker run -dit --no-healthcheck --name inventario-ativos-24h --restart unless-stopped -v inventario-dados:/app/dados inventario-ativos python app.py
-~~~
-
-O volume nomeado guarda os dados e evita conflito de permissões do diretório do servidor. Use `docker attach inventario-ativos-24h` para demonstrar cadastros, consultas, vulnerabilidades e riscos; desprenda-se sem encerrar o programa com `Ctrl+P`, `Ctrl+Q`. Não escolha Sair durante a prova de 24 horas. O modo de serviço HTTP somente leitura continua disponível ao iniciar a imagem sem substituir o comando padrão, mas não é usado como prova de que o CRUD permaneceu ativo.
-
-O workflow do GitHub verifica testes e estilo. O build do Docker e **a prova de
-24 horas no servidor da disciplina não foram executados**. O procedimento e os
-critérios de aceite estão em [docs/evidencia-docker-24h.md](docs/evidencia-docker-24h.md).
-Uma execução local curta não substitui a prova de 24 horas.
+O registro comprova a duração das versões identificadas na coleta.
+Na próxima implantação, anote o ID e a imagem do novo contêiner, o
+horário de início, a resposta de `/saude` e a contagem de reinícios.
+Guarde uma nova coleta após 24 horas para comprovar a duração dessa
+instância. O [guia da porta 2217](docs/implantacao-2217.md) descreve a
+implantação e a abertura do menu no contêiner.
 
 ## Navegação no terminal
 
@@ -348,9 +336,7 @@ Os materiais individuais estão disponíveis em:
 
 ## Branches e histórico
 
-A branch principal é a main. Nesta revisão, a melhoria do Trabalho 2 está na branch `melhoria-trabalho-2-completo` e na [Pull Request #3](https://github.com/matheus-moreli/inventario-ativos-vulnerabilidades/pull/3); ainda não foi integrada à `main`. Para conferir os recursos descritos nesta revisão antes do merge, execute essa branch.
-
-As branches de funcionalidade preservam o histórico de aprendizagem e dos Pull Requests realizados durante o desenvolvimento. Depois de aprovada e integrada a PR, a versão final estará na `main`.
+A branch principal é `main`. A [PR #3](https://github.com/matheus-moreli/inventario-ativos-vulnerabilidades/pull/3) integrou a evolução do Trabalho 2 em 16/10/2026. O registro da execução Docker foi integrado em 23/11/2026.
 
 ## Problemas comuns
 

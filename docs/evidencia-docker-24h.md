@@ -1,6 +1,17 @@
-# Evidência do programa completo no container por 24 horas
+# Evidência Docker do Trabalho 2
 
-## Estado atual
+## Registro da UFU — 23/11/2026
+
+A **V3 ficou ativa por 5 dias, 23 h, 13 min e 55 s** até a coleta,
+com zero reinícios registrados. A V1 também superou 24 horas. Os resultados
+de `docker inspect` e `/saude` estão no
+[registro consolidado do servidor](evidencias-docker-2026-11-23.md).
+
+Esse registro atende ao requisito de duração para a versão publicada.
+Uma nova implantação tem a própria medição de tempo e deve ser
+identificada pela imagem e pelo ID do contêiner.
+
+## Histórico dos testes locais de outubro
 
 O workflow `verificar.yml` executa testes Python e flake8. Em 13/10/2026, o Docker Desktop deste PC foi localizado. A imagem final `4e9d6ad` foi construída localmente, executou 53 testes no container (2 testes específicos de Windows foram pulados no Linux), e uma execução temporária respondeu a `/saude` e `/riscos` com seis ativos e chegou ao estado `healthy`. Isso prova build e funcionamento básico, mas não comprova 24 horas. O procedimento abaixo mantém o **menu completo de cadastro, consulta, atualização, remoção, vulnerabilidades e riscos** aberto no container. O modo HTTP somente leitura não é usado como substituto do programa completo.
 
@@ -42,4 +53,4 @@ docker logs inventario-ativos-24h
 
 Guarde as duas saídas completas, horário da coleta, identificação do servidor e um registro da operação de CRUD feita via menu. O critério de aceite é: mesmo container e imagem, início há pelo menos 24 horas, `ativo=true`, `reinicios=0`, menu funcional e dados persistidos. Um reinício durante o período recomeça a contagem. Credenciais e dados privados do servidor não devem aparecer na evidência pública.
 
-**Estado atual:** build, testes, serviço HTTP e menu completo locais verificados; versão final `4e9d6ad` em execução no Docker Desktop. Ainda faltam 24 horas verificadas dessa versão e a hospedagem no servidor do docente. Não há evidência de 24 horas neste repositório.
+**Situação na data dos testes locais de outubro:** a coleta disponível naquela etapa ainda não comprovava 24 horas no servidor. O registro de novembro acima documenta essa execução.
