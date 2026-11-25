@@ -4,13 +4,11 @@ import json
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
 
-from apresentacao.interface import InterfaceTerminal
+import pytest
 from apresentacao.servico import ServicoInventario
 from dominio.inventario import (
     DadosInvalidosError,
-    Inventario,
     adicionar_dependencia,
     atualizar_ativo,
     cadastrar_ativo,
@@ -18,6 +16,8 @@ from dominio.inventario import (
 )
 from dominio.modelos import Ativo, Equipamento, Notebook, Servidor
 from dominio.risco import (
+    AnalisadorRisco,
+    SistemaLinear,
     calcular_riscos,
     numero_condicao_infinito,
     resolver_sistema,
@@ -115,11 +115,21 @@ class TesteRisco(unittest.TestCase):
         adicionar_dependencia(self.ativos, 2, 1, 0.25)
         adicionar_dependencia(self.ativos, 3, 1, 0.2)
         adicionar_dependencia(self.ativos, 3, 2, 0.3)
-        _, _, _, proprio, matriz_a, efetivo = calcular_riscos(self.ativos)
+        analise = AnalisadorRisco(self.ativos)
+        _, _, _, proprio, matriz_a, efetivo = analise.calcular()
         self.assertEqual(proprio, [4.0, 6.0, 0])
         self.assertEqual(matriz_a, [[0.0, 0.5, 0.0], [0.25, 0.0, 0.0], [0.2, 0.3, 0.0]])
         for obtido, esperado in zip(efetivo, [8.0, 8.0, 4.0]):
             self.assertAlmostEqual(obtido, esperado)
+        assert analise.matriz_sistema[0] == [1, -0.5, 0]
+        assert analise.herdado == pytest.approx([4, 2, 4])
+        assert analise.determinante == pytest.approx(0.875)
+        assert analise.maior_soma_pesos == pytest.approx(0.5)
+        assert analise.residuo < 1e-12
+        _, _, _, _, _, simulado = simular_vulnerabilidade(self.ativos, 1, 2)
+        assert [novo - atual for novo, atual in zip(simulado, efetivo)] == pytest.approx(
+            [16 / 7, 4 / 7, 22 / 35]
+        )
 
     def test_cve_compartilhada_ocupa_uma_coluna_com_dois_uns(self):
         # Cenário da aula: V2 atinge Web e Banco com a mesma nota CVSS.
@@ -171,15 +181,21 @@ class TesteRisco(unittest.TestCase):
         self.assertEqual(efetivo, [8.0, 0.0, 2.0])
         self.assertEqual(self.ativos[1].vulnerabilidades, [])
 
-    def test_interface_usa_a_mesma_instancia_do_inventario(self):
-        inventario = Inventario(self.ativos)
-        with tempfile.TemporaryDirectory() as pasta:
-            caminho = os.path.join(pasta, "inventario.json")
-            tela = InterfaceTerminal(inventario, caminho)
-            self.assertIs(tela.inventario, inventario)
-            with patch("apresentacao.interface.mostrar_menu", side_effect=["2", "0"]):
-                tela.executar()
-            self.assertIsInstance(carregar_ativos(caminho)[1], Notebook)
+
+@pytest.mark.parametrize(
+    "matriz, vetor, esperado, determinante",
+    [
+        ([[0, 2], [1, 3]], [4, 7], [1, 2], -2),
+        ([[2, 1], [1, 2]], [3, 0], [2, -1], 3),
+        ([], [], [], 1),
+    ],
+)
+def test_fatoracao_com_pivo_e_determinante(matriz, vetor, esperado, determinante):
+    copia = [linha[:] for linha in matriz]
+    sistema = SistemaLinear(matriz)
+    assert sistema.resolver(vetor) == pytest.approx(esperado)
+    assert sistema.determinante == pytest.approx(determinante)
+    assert matriz == copia
 
 
 if __name__ == "__main__":

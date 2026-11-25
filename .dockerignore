@@ -4,3 +4,9 @@ __pycache__
 *.pdf
 *.tex
 .coverage
+.venv
+.pytest_cache
+dados/senha-acesso
+dados/auditoria-acessos.jsonl*
+.env
+.env.*

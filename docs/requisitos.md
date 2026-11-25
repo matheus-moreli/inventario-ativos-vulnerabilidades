@@ -22,7 +22,7 @@ Base: Trabalho 1 e Trabalho 2 da disciplina. Escopo: inventário local de ativos
 | RF-07 | Consultar, atualizar e excluir vulnerabilidades ligadas ao ativo sem duplicar CVE no mesmo ativo. | `Inventario.consultar_vulnerabilidades` e operações relacionadas | CA-10, CA-11 |
 | RF-08 | Persistir coleção como lista JSON de objetos e reconstituir as subclasses ao carregar; arquivo inválido não é sobrescrito. | `persistencia`, `modelos` | CA-12, CA-13 |
 | RF-09 | Calcular risco próprio `Mv` e risco efetivo `r=(I-A)^-1Mv`, verificando invertibilidade antes da solução. | `risco.calcular_riscos` | CA-14, CA-15 |
-| RF-10 | Executar o menu completo no Docker por pelo menos 24 horas no servidor do docente; oferecer também consultas HTTP auxiliares. | `app.py`, `apresentacao/interface.py`, `Dockerfile`, `ServicoInventario` | CA-16 |
+| RF-10 | Executar o inventário completo no Docker por pelo menos 24 horas no servidor do docente e oferecer consultas HTTP. | `app.py`, `apresentacao/interface_rica.py`, `compose.yaml`, `ServicoInventario` | CA-16 |
 
 ## Requisitos não funcionais
 

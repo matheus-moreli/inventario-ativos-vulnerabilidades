@@ -1,0 +1,15 @@
+name: trab02_2026_2_12621cbs217
+
+services:
+  inventario:
+    build: .
+    image: ${COMPOSE_PROJECT_NAME}:entrega
+    container_name: ${COMPOSE_PROJECT_NAME}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${INVENTARIO_PORTA_EXTERNA:-2217}:2217"
+    volumes:
+      - dados:/app/dados
+
+volumes:
+  dados:

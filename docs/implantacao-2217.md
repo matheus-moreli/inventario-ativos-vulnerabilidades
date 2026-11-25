@@ -5,7 +5,7 @@ A aplicação tem dois modos: HTTP de consulta somente leitura e terminal Rich c
 ## Executar localmente
 
 ```sh
-python -m pip install -r requirements.txt
+python -m pip install -r requirements.txt -r requirements-dev.txt
 python app.py
 python app.py --testes
 ```
@@ -15,48 +15,70 @@ matrizes e simulação. Cada tipo personalizado aparece como objeto da classe
 `EquipamentoPersonalizado` e mantém nome e código no próprio JSON do ativo.
 Categorias não vinculadas a nenhum ativo não são persistidas.
 
-## Implantação no servidor da disciplina
+## Implantação com Docker Compose
 
-Usar apenas os recursos do próprio aluno, nunca `docker system prune`.
-A porta é **2217 no host e 2217 no container**. O arquivo de dados do projeto
-é copiado para o volume na primeira inicialização (quando o volume estiver vazio).
+O projeto Compose, o contêiner e a imagem usam o identificador
+`trab02_2026_2_12621cbs217`. O volume nomeado preserva o JSON em
+`/app/dados`. O serviço publica a porta **2217** no loopback do servidor.
+O acesso remoto segue pelo túnel SSH da disciplina.
+
+Para uma instalação nova, execute na raiz do projeto:
 
 ```sh
-git clone https://github.com/matheus-moreli/inventario-ativos-vulnerabilidades.git
-cd inventario-ativos-vulnerabilidades
-sudo docker build -t inventario-ativos-2217:1 .
-sudo docker run -d --name inventario-2217 --restart unless-stopped \
-  -p 2217:2217 -e INVENTARIO_PORTA=2217 \
-  -v inventario-2217-dados:/app/dados inventario-ativos-2217:1
-sudo docker ps --filter name=inventario-2217
+docker compose config --quiet
+docker compose build
+docker compose run --rm --no-deps inventario python -m infraestrutura.preparar_acesso
+docker compose up -d
+docker compose ps inventario
 curl --fail http://127.0.0.1:2217/saude
-curl --fail http://127.0.0.1:2217/riscos
+docker compose exec inventario python app.py
 ```
 
-Para abrir o **menu completo** sem derrubar o serviço:
+O comando de preparação solicita o segredo da API sem eco e cria o arquivo
+no volume. Execute-o uma vez por volume. O último comando abre o menu de
+CRUD e risco. O serviço HTTP continua atendendo enquanto o menu é usado.
+Use uma sessão de escrita por vez.
+
+Para testar em outra porta, defina `INVENTARIO_PORTA_EXTERNA` e escolha outro
+nome de projeto com `docker compose -p`. Isso cria outro volume e outro
+contêiner. A implantação antiga já registrada usa a porta 2217. Consulte
+a instância existente antes de escolher a porta de uma implantação nova.
+
+## Consultas HTTP
+
+| Rota | Resultado |
+|---|---|
+| `GET /saude` | Estado, tempo de atividade e quantidade de ativos. |
+| `GET /openapi.json` | Contrato OpenAPI para importar em ferramentas de documentação ou testes. |
+| `GET /v1/ativos?busca=srv&pagina=1&limite=10&ordenar=risco` | Página de ativos cujo hostname contém `srv`, por risco efetivo decrescente. |
+| `GET /v1/riscos` | IDs, matrizes, severidades, riscos próprio e efetivo e alerta de condicionamento. |
+
+As rotas da versão 1 exigem `Authorization: Bearer <segredo>`. Erros da
+versão 1 seguem Problem Details. A rota `/riscos` continua atendendo os
+clientes da versão anterior.
+
+## Evidência de funcionamento contínuo
+
+Registre data, hora e ID do contêiner logo após iniciar e novamente depois
+de pelo menos 24 horas. Compare a imagem, o horário de início e o contador
+de reinicializações.
 
 ```sh
-sudo docker exec -it inventario-2217 python app.py
-```
-
-Não executar duas sessões interativas que alterem os mesmos dados simultaneamente:
-cada menu mantém a base em memória, podendo sobrescrever mudanças feitas em outra sessão.
-O serviço HTTP relê o JSON e funciona em paralelo como consulta.
-
-## Evidência das 24 horas
-
-No início e após mais de 24 horas reais, coletar:
-
-```sh
-sudo docker inspect inventario-2217 --format \
-'inicio={{.State.StartedAt}} ativo={{.State.Running}} reinicios={{.RestartCount}} saude={{.State.Health.Status}}'
-sudo docker logs --tail 20 inventario-2217
+docker compose ps inventario
+docker inspect "$(docker compose ps -q inventario)" --format \
+'id={{.Id}} imagem={{.Image}} inicio={{.State.StartedAt}} ativo={{.State.Running}} reinicios={{.RestartCount}} saude={{.State.Health.Status}}'
+docker compose logs --tail 20 inventario
 curl --fail http://127.0.0.1:2217/saude
 ```
 
-Verificar que é **o mesmo container**, com `RestartCount=0`, sem reinícios
-e com tempo superior a 24 horas; guardar evidências com data/hora.
-A publicação na porta 2217 não garante acesso externo: VPN/firewall precisam permitir.
+O registro histórico de V1, V2 e V3 está em
+[evidências Docker de 23/11](evidencias-docker-2026-11-23.md).
+
+## Dados do Trabalho 1
+
+O JSON antigo, com os ativos em um objeto indexado por ID, pode ser lido diretamente.
+Após uma gravação bem-sucedida, os dados ficam no formato atual, uma lista de objetos
+JSON. As dependências começam vazias nos registros antigos.
 
 ## Modelo acadêmico
 
@@ -73,4 +95,4 @@ Campos adicionais são descritivos e não alteram pesos matemáticos automaticam
   personalizada genérica; criar nova subclasse com regras específicas exige código.
 - A aplicação recebe CVSS informado pelo usuário e não calcula vetor CVSS oficial.
 - O terminal tem navegação por setas e Esc/0 para voltar; cada formulário pode ser cancelado sem gravação.
-- O modo HTTP oferece apenas /saude e /riscos, não CRUD remoto.
+- O modo HTTP é somente leitura. O CRUD está no menu de terminal.

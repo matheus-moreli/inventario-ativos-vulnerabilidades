@@ -5,6 +5,7 @@ import os
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from apresentacao.api_v1 import ROTA_ATIVOS, ROTA_RISCOS, especificacao, listar_ativos, problema
 from dominio.risco import AnalisadorRisco
 from infraestrutura.auditoria import AuditoriaHTTP, ROTAS_ISCA
 from infraestrutura.autenticacao import AutenticacaoHTTP
@@ -37,14 +38,18 @@ class ServicoInventario:
         self.auditoria = AuditoriaHTTP(caminho_auditoria) if caminho_auditoria else None
         self.autenticacao = AutenticacaoHTTP(caminho_senha) if caminho_senha else None
 
-    def resposta(self, caminho):
-        if caminho not in {"/saude", "/riscos"}:
+    def resposta(self, caminho, consulta=""):
+        if caminho not in {"/saude", "/riscos", ROTA_ATIVOS}:
             return 404, {"erro": "Rota não encontrada."}
         ativos = self.ativos
         if self.caminho_dados is not None:
             ativos = RepositorioJSON(self.caminho_dados).carregar()
             if ativos is None:
+                if caminho == ROTA_ATIVOS:
+                    return problema(503, "Inventário indisponível", "O arquivo de dados está inválido.")
                 return 503, {"erro": "Arquivo de dados inválido; corrija a base JSON."}
+        if caminho == ROTA_ATIVOS:
+            return listar_ativos(ativos, consulta)
         if caminho == "/saude":
             agora = datetime.now(timezone.utc)
             return 200, {
@@ -72,18 +77,32 @@ class ServicoInventario:
 
     def atender(self, metodo, caminho, autorizacao=""):
         """Decide status sem incluir ou registrar a credencial."""
-        rota = caminho.split("?", 1)[0]
+        rota, _, consulta = caminho.partition("?")
+        versao_um = rota == "/v1" or rota.startswith("/v1/")
         if metodo != "GET":
+            if versao_um:
+                return problema(405, "Método não permitido", "O método disponível é GET.")
             return 405, {"erro": "Método não permitido."}
         if rota == "/saude":
             return self.resposta(rota)
+        if rota == "/openapi.json":
+            return 200, especificacao()
         if rota in ROTAS_ISCA:
             return 404, {"erro": "Rota não encontrada."}
-        if rota != "/riscos":
+        if rota not in {"/riscos", ROTA_ATIVOS, ROTA_RISCOS}:
+            if versao_um:
+                return problema(404, "Rota não encontrada", "Consulte /openapi.json.")
             return 404, {"erro": "Rota não encontrada."}
         if self.autenticacao is None or not self.autenticacao.autorizada(autorizacao):
+            if versao_um:
+                return problema(401, "Autorização necessária", "Informe uma credencial Bearer válida.")
             return 401, {"erro": "Autorização necessária."}
-        return self.resposta(rota)
+        if rota == ROTA_RISCOS:
+            codigo, corpo = self.resposta("/riscos")
+            if codigo != 200:
+                return problema(codigo, "Risco indisponível", corpo["erro"])
+            return codigo, corpo
+        return self.resposta(rota, consulta)
 
     def executar(self):
         if self.autenticacao is None or not self.autenticacao.configurada():
@@ -104,7 +123,8 @@ class ServicoInventario:
                     )
                 dados = json.dumps(corpo, ensure_ascii=False).encode("utf-8")
                 self.send_response(codigo)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
+                tipo = "application/problem+json" if "status" in corpo and "type" in corpo else "application/json"
+                self.send_header("Content-Type", f"{tipo}; charset=utf-8")
                 self.send_header("Content-Length", str(len(dados)))
                 self.send_header("Cache-Control", "no-store")
                 if codigo == 401:

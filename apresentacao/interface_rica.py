@@ -1,11 +1,8 @@
-"""Interface única de terminal, com navegação por setas e operações reversíveis.
-
-Não chama a interface antiga. Valida e persiste cada operação em um rascunho:
-Esc/Ctrl+C em qualquer campo cancela o fluxo sem alterações parciais no JSON.
-"""
-from copy import deepcopy
+"""Interface de terminal com navegação por setas e alterações em rascunho."""
 import os
-import unittest
+import subprocess
+import sys
+from copy import deepcopy
 
 from rich import box
 from rich.console import Console
@@ -19,7 +16,7 @@ from dominio.inventario import (
     validar_cwe, validar_data_fonte,
 )
 from dominio.modelos import CRITICIDADES, SEVERIDADES, STATUS
-from dominio.risco import AnalisadorRisco, montar_matriz_incidencia, simular_vulnerabilidade
+from dominio.risco import AnalisadorRisco, simular_vulnerabilidade
 from infraestrutura.persistencia import RepositorioJSON
 
 
@@ -36,10 +33,12 @@ class InterfaceRica:
         self.caminho_dados = caminho_dados
         self.nav = navegacao or Navegacao()
         self.console = console or Console()
+        self.resumo_risco = None
 
     def cabecalho(self, titulo="Painel geral"):
         c = self.console
-        c.clear()
+        if c.is_terminal:
+            c.clear()
         c.print(Panel(
             Text("INVENTÁRIO DE SEGURANÇA", style="bold bright_cyan")
             + Text("\nAtivos  •  Vulnerabilidades  •  Análise de riscos", style="dim"),
@@ -49,24 +48,22 @@ class InterfaceRica:
         ))
         ativos = list(self.inventario.values())
         qtd_cve = sum(len(ativo.vulnerabilidades) for ativo in ativos)
-        try:
-            analisador = AnalisadorRisco(self.inventario.ativos)
-            _, _, _, proprio, _, efetivo = analisador.calcular()
-            resumo = (
-                f"Índice próprio: {sum(proprio):.2f}  |  "
-                f"Índice efetivo: {sum(efetivo):.2f}"
-            )
-        except (ValueError, KeyError, ZeroDivisionError) as erro:
-            resumo = f"Cálculo indisponível: {erro}"
         c.print(
             f"[bold]{len(ativos)}[/] ativos   |   "
-            f"[bold]{qtd_cve}[/] registros de vulnerabilidade   |   "
-            f"[dim]{resumo}[/]"
+            f"[bold]{qtd_cve}[/] registros de vulnerabilidade"
         )
+        if titulo == "Menu principal":
+            if self.resumo_risco is None:
+                try:
+                    _, _, _, proprio, _, efetivo = AnalisadorRisco(self.inventario.ativos).calcular()
+                    self.resumo_risco = f"Risco próprio total: {sum(proprio):.2f}  |  Risco efetivo total: {sum(efetivo):.2f}"
+                except (ValueError, KeyError, ZeroDivisionError) as erro:
+                    self.resumo_risco = f"Cálculo indisponível: {erro}"
+            c.print(Text(self.resumo_risco, style="dim"))
         c.rule(f"[bold {COR}]{titulo}[/]")
 
     def aviso(self, mensagem, estilo="yellow"):
-        self.console.print(Panel(mensagem, border_style=estilo, expand=False))
+        self.console.print(Panel(Text(str(mensagem)), border_style=estilo, expand=False))
 
     def pausar(self):
         try:
@@ -80,9 +77,10 @@ class InterfaceRica:
             self.cabecalho(titulo)
             indice = self.nav.menu(titulo, [nome for nome, _ in acoes])
             if indice is None:
-                return
+                return False
             try:
-                acoes[indice][1]()
+                if acoes[indice][1]() is False:
+                    continue
             except OperacaoCancelada:
                 self.aviso("Operação cancelada. Nenhuma alteração foi salva.", "yellow")
             except (DadosInvalidosError, ValueError, KeyError, OSError) as erro:
@@ -93,68 +91,65 @@ class InterfaceRica:
         """Só publica no objeto vivo após validar e gravar o rascunho."""
         rascunho = Inventario(deepcopy(self.inventario.ativos))
         modificar(rascunho)
-        # Reconstrói M, v e A com os dados atualizados antes de persistir.
-        AnalisadorRisco(rascunho.ativos).calcular()
         if confirmar and not self.nav.confirmar(
             "Salvar as alterações?", risco=perigosa
         ):
             raise OperacaoCancelada()
+        # Reconstrói M, v e A antes de persistir o rascunho confirmado.
+        _, _, _, proprio, _, efetivo = AnalisadorRisco(rascunho.ativos).calcular()
         if not RepositorioJSON(self.caminho_dados).salvar(rascunho.ativos):
             raise DadosInvalidosError("Falha na gravação: dados anteriores preservados.")
         self.inventario._ativos = rascunho.ativos
+        self.resumo_risco = f"Risco próprio total: {sum(proprio):.2f}  |  Risco efetivo total: {sum(efetivo):.2f}"
         self.aviso(
             "Alteração salva. Matrizes e indicadores de risco recalculados.",
             "green",
         )
 
-    def escolher_ativo(self, inventario=None, mensagem="Selecione o ativo"):
+    def escolher_ativo(self, inventario=None, mensagem="Selecione o ativo", resultados=None):
         """Paginador para inventários maiores que uma tela."""
-        inventario = inventario or self.inventario
-        ativos = sorted(inventario.values(), key=lambda item: item.id)
+        inventario = self.inventario if inventario is None else inventario
+        ativos = sorted(
+            inventario.values() if resultados is None else resultados,
+            key=lambda item: item.id,
+        )
         if not ativos:
             raise DadosInvalidosError("Ainda não há ativos cadastrados.")
-        pagina = 0
-        while True:
-            trecho = ativos[pagina * 10:(pagina + 1) * 10]
-            opcoes = [
-                f"#{ativo.id:<5} {ativo.nome[:32]:<32} {ativo.nome_do_tipo()}"
-                for ativo in trecho
-            ]
-            if pagina > 0:
-                opcoes.append("← Página anterior")
-            if (pagina + 1) * 10 < len(ativos):
-                opcoes.append("→ Próxima página")
-            escolha = self.nav.escolha(mensagem, opcoes)
-            if escolha < len(trecho):
-                return trecho[escolha]
-            if opcoes[escolha].startswith("←"):
-                pagina -= 1
-            else:
-                pagina += 1
+        return self.escolher_em_paginas(
+            mensagem, ativos, lambda ativo: f"#{ativo.id} {ativo.nome} · {ativo.nome_do_tipo()}",
+        )
 
-    def escolher_vulnerabilidade(self, inventario=None):
-        inventario = inventario or self.inventario
-        registros = inventario.consultar_vulnerabilidades()
+    def escolher_vulnerabilidade(self, registros=None):
+        if registros is None:
+            registros = self.inventario.consultar_vulnerabilidades()
         if not registros:
             raise DadosInvalidosError("Nenhuma vulnerabilidade cadastrada.")
+        return self.escolher_em_paginas(
+            "Escolha a vulnerabilidade", registros,
+            lambda item: f"{item[1].cve} · #{item[0].id} {item[0].nome} · CVSS {item[1].cvss:.1f}",
+        )
+
+    def escolher_em_paginas(self, titulo, registros, rotulo):
+        tamanho = max(1, min(10, self.console.height - 12))
+        ultima = (len(registros) - 1) // tamanho
         pagina = 0
         while True:
-            trecho = registros[pagina * 10:(pagina + 1) * 10]
-            opcoes = [
-                f"{v.cve}  |  #{ativo.id} {ativo.nome[:24]}  |  CVSS {v.cvss:.1f}"
-                for ativo, v in trecho
-            ]
-            if pagina > 0:
-                opcoes.append("← Página anterior")
-            if (pagina + 1) * 10 < len(registros):
-                opcoes.append("→ Próxima página")
-            escolha = self.nav.escolha("Escolha a vulnerabilidade", opcoes)
+            trecho = registros[pagina * tamanho:(pagina + 1) * tamanho]
+            passos = self.passos_pagina(pagina, ultima)
+            opcoes = [rotulo(item) for item in trecho] + list(passos)
+            escolha = self.nav.escolha(f"{titulo} · {pagina + 1}/{ultima + 1}", opcoes)
             if escolha < len(trecho):
                 return trecho[escolha]
-            if opcoes[escolha].startswith("←"):
-                pagina -= 1
-            else:
-                pagina += 1
+            pagina += passos[opcoes[escolha]]
+
+    @staticmethod
+    def passos_pagina(pagina, ultima):
+        passos = {}
+        if pagina:
+            passos["← Página anterior"] = -1
+        if pagina < ultima:
+            passos["→ Próxima página"] = 1
+        return passos
 
     def escolher_opcao(self, titulo, valores, atual=None):
         indice = valores.index(atual) if atual in valores else 0
@@ -162,13 +157,13 @@ class InterfaceRica:
 
     def escolher_tipo(self, inventario):
         tipos = inventario.listar_tipos()
-        codigos = list(tipos)
-        escolhas = [f"{codigo:>3}  {tipos[codigo]}" for codigo in codigos]
-        escolhas.append("+ Criar categoria personalizada")
-        indice = self.nav.escolha("Categoria do ativo", escolhas)
-        if indice < len(codigos):
-            tipo = codigos[indice]
-            return tipo, tipos[tipo] if tipo >= 100 else None
+        escolhas = list(tipos.items()) + [(None, "Criar categoria personalizada")]
+        tipo, nome = self.escolher_em_paginas(
+            "Categoria do ativo", escolhas,
+            lambda item: f"{item[0]} · {item[1]}" if item[0] is not None else f"+ {item[1]}",
+        )
+        if tipo is not None:
+            return tipo, nome if tipo >= 100 else None
         codigo = self.nav.inteiro("Novo código de categoria (a partir de 100)")
         if codigo < 100 or codigo in tipos:
             raise DadosInvalidosError(
@@ -178,27 +173,72 @@ class InterfaceRica:
         return codigo, nome
 
     def listar_ativos(self):
-        tabela = Table(box=box.ROUNDED, expand=True, header_style=COR)
-        for titulo in ("ID", "Hostname", "Tipo", "Responsável", "Criticidade", "CVEs"):
-            tabela.add_column(titulo)
-        for ativo in sorted(self.inventario.values(), key=lambda a: a.id):
-            tabela.add_row(
-                str(ativo.id), ativo.nome, ativo.nome_do_tipo(),
-                ativo.responsavel, ativo.criticidade,
-                str(len(ativo.vulnerabilidades)),
-            )
-        self.console.print(tabela)
-        if not len(self.inventario):
+        ativos = sorted(self.inventario.values(), key=lambda ativo: ativo.id)
+        if not ativos:
             self.aviso("Nenhum ativo cadastrado.")
+            return
+        return self.mostrar_ativos(ativos)
 
-    def mostrar_ficha(self):
-        ativo = self.escolher_ativo()
+    def mostrar_ativos(self, ativos):
+        if self.console.width < 74:
+            colunas = ("ID", "Hostname", "CVEs")
+            linhas = [(a.id, a.nome, len(a.vulnerabilidades)) for a in ativos]
+        else:
+            colunas = ("ID", "Hostname", "Tipo", "Responsável", "Criticidade", "CVEs")
+            linhas = [
+                (a.id, a.nome, a.nome_do_tipo(), a.responsavel, a.criticidade, len(a.vulnerabilidades))
+                for a in ativos
+            ]
+        return self.mostrar_lista("Equipamentos", colunas, linhas)
+
+    def mostrar_lista(self, titulo, colunas, linhas):
+        tamanho = max(1, min(12, self.console.height - 12))
+        pagina = 0
+        ultima = (len(linhas) - 1) // tamanho
+        while True:
+            faixa = linhas[pagina * tamanho:(pagina + 1) * tamanho]
+            self.imprimir_tabela(f"{titulo} · {pagina + 1}/{ultima + 1}", colunas, faixa)
+            passos = self.passos_pagina(pagina, ultima)
+            if not passos:
+                return
+            opcoes = list(passos) + ["Voltar"]
+            escolha = self.nav.menu("Páginas", opcoes)
+            if escolha is None or escolha == len(passos):
+                return False
+            pagina += passos[opcoes[escolha]]
+
+    def imprimir_tabela(self, titulo, colunas, linhas):
+        tabela = Table(title=titulo, box=box.ROUNDED, expand=True, header_style=COR)
+        for coluna in colunas:
+            tabela.add_column(coluna)
+        for linha in linhas:
+            tabela.add_row(*(Text(str(celula)) for celula in linha))
+        self.console.print(tabela)
+
+    def buscar_ativo(self):
+        modo = self.nav.escolha("Buscar equipamento", ["Por ID", "Por nome ou hostname"])
+        if modo == 0:
+            ativo = self.inventario.consultar_por_id(self.nav.inteiro("ID do equipamento"))
+            if ativo is None:
+                raise DadosInvalidosError("Equipamento não encontrado.")
+        else:
+            nome = self.nav.texto("Nome ou parte do hostname")
+            resultados = self.inventario.filtrar_ativos(termo=nome)
+            if not resultados:
+                raise DadosInvalidosError("Nenhum equipamento encontrado com esse nome.")
+            ativo = self.escolher_ativo(resultados=resultados) if len(resultados) > 1 else resultados[0]
+        self.mostrar_ficha(ativo)
+
+    def mostrar_ficha(self, ativo=None):
+        if ativo is None:
+            ativo = self.escolher_ativo()
         self.console.print(Panel(
-            f"[bold]{ativo.nome}[/]\n"
-            f"ID: {ativo.id}     Tipo: {ativo.nome_do_tipo()} ({ativo.tipo})\n"
-            f"Responsável: {ativo.responsavel}\n"
-            f"Localização: {ativo.localizacao}\n"
-            f"Criticidade: {ativo.criticidade}",
+            Text(ativo.nome + "\n", style="bold") + Text(
+                f"ID: {ativo.id}     Tipo: {ativo.nome_do_tipo()} ({ativo.tipo})\n"
+                f"Responsável: {ativo.responsavel}\n"
+                f"Localização: {ativo.localizacao}\n"
+                f"Criticidade: {ativo.criticidade}"
+            ),
             title="Identificação do equipamento",
             border_style=COR,
         ))
@@ -207,7 +247,7 @@ class InterfaceRica:
             tabela.add_column("Campo")
             tabela.add_column("Conteúdo")
             for chave, valor in ativo.campos_extras.items():
-                tabela.add_row(chave, valor)
+                tabela.add_row(Text(chave), Text(valor))
             self.console.print(tabela)
         else:
             self.console.print("[dim]Sem campos adicionais.[/]")
@@ -216,8 +256,9 @@ class InterfaceRica:
             tabela.add_column(nome)
         for v in ativo.vulnerabilidades:
             tabela.add_row(v.cve, v.cwe, f"{v.cvss:.1f}", v.status, v.prioridade)
-        self.console.print(tabela)
-        if not ativo.vulnerabilidades:
+        if ativo.vulnerabilidades:
+            self.console.print(tabela)
+        else:
             self.console.print("[green]Nenhuma vulnerabilidade registrada.[/]")
         if ativo.dependencias:
             self.console.print("[bold]Dependências:[/]")
@@ -227,7 +268,7 @@ class InterfaceRica:
                 )
         self.console.print("[bold]Histórico:[/]")
         for linha in ativo.historico[-8:]:
-            self.console.print(f"  [dim]{linha}[/]")
+            self.console.print(Text(f"  {linha}", style="dim"))
 
     def coletar_vulnerabilidade(self, inv, id_ativo):
         """Formulário único para a inclusão inicial ou posterior da CVE."""
@@ -334,7 +375,7 @@ class InterfaceRica:
         tabela.add_column("Código", justify="right")
         tabela.add_column("Categoria")
         for codigo, nome in self.inventario.listar_tipos().items():
-            tabela.add_row(str(codigo), nome)
+            tabela.add_row(str(codigo), Text(nome))
         self.console.print(tabela)
         self.console.print(
             "[dim]Novas categorias podem ser criadas no cadastro de ativos. "
@@ -342,20 +383,48 @@ class InterfaceRica:
         )
 
     def listar_vulnerabilidades(self):
-        tabela = Table(box=box.ROUNDED, expand=True, header_style=COR)
-        for titulo in ("Ativo", "CVE", "CWE", "CVSS", "Prioridade", "Status"):
-            tabela.add_column(titulo)
-        for ativo, vul in self.inventario.consultar_vulnerabilidades():
-            tabela.add_row(
-                ativo.nome, vul.cve, vul.cwe, f"{vul.cvss:.1f}",
-                vul.prioridade, vul.status,
-            )
-        self.console.print(tabela)
-        if not self.inventario.consultar_vulnerabilidades():
+        registros = self.inventario.consultar_vulnerabilidades()
+        if not registros:
             self.aviso("Nenhuma vulnerabilidade cadastrada.")
+            return
+        if self.console.width < 74:
+            colunas = ("ID", "CVE", "CVSS", "Status")
+            linhas = [(ativo.id, vul.cve, f"{vul.cvss:.1f}", vul.status) for ativo, vul in registros]
+        else:
+            colunas = ("Ativo", "CVE", "CWE", "CVSS", "Prioridade", "Status")
+            linhas = [
+                (ativo.nome, vul.cve, vul.cwe, f"{vul.cvss:.1f}", vul.prioridade, vul.status)
+                for ativo, vul in registros
+            ]
+        return self.mostrar_lista("Vulnerabilidades", colunas, linhas)
 
     def ficha_vulnerabilidade(self):
         ativo, vul = self.escolher_vulnerabilidade()
+        self.mostrar_vulnerabilidade(ativo, vul)
+
+    def buscar_vulnerabilidade(self):
+        modo = self.nav.escolha(
+            "Buscar vulnerabilidade", ["Por CVE", "Por equipamento", "Por situação", "Por prioridade"],
+        )
+        if modo == 0:
+            cve = self.nav.texto("Código CVE", conversor=validar_cve)
+            registros = self.inventario.consultar_vulnerabilidades(cve=cve)
+        elif modo == 1:
+            ativo = self.escolher_ativo()
+            registros = [(ativo, vulnerabilidade) for vulnerabilidade in ativo.vulnerabilidades]
+        elif modo == 2:
+            status = self.escolher_opcao("Situação", STATUS)
+            registros = self.inventario.consultar_vulnerabilidades(status=status)
+        else:
+            prioridade = self.escolher_opcao("Prioridade", SEVERIDADES)
+            registros = self.inventario.consultar_vulnerabilidades(prioridade=prioridade)
+        if not registros:
+            self.aviso("Nenhuma vulnerabilidade corresponde à busca.")
+            return
+        ativo, vul = registros[0] if len(registros) == 1 else self.escolher_vulnerabilidade(registros)
+        self.mostrar_vulnerabilidade(ativo, vul)
+
+    def mostrar_vulnerabilidade(self, ativo, vul):
         tabela = Table(box=box.SIMPLE, show_header=False)
         tabela.add_column("Campo", style="bold cyan")
         tabela.add_column("Valor")
@@ -368,7 +437,7 @@ class InterfaceRica:
             ("Status", vul.status), ("Verificação", vul.verificacao),
         ]
         for campo, valor in campos:
-            tabela.add_row(campo, valor)
+            tabela.add_row(campo, Text(str(valor)))
         self.console.print(Panel(tabela, title="Ficha da vulnerabilidade"))
 
     def nova_vulnerabilidade(self):
@@ -439,29 +508,41 @@ class InterfaceRica:
         )
 
     def listar_dependencias(self):
-        tabela = Table(box=box.ROUNDED)
-        for titulo in ("Ativo dependente", "Depende de", "Peso"):
-            tabela.add_column(titulo)
+        linhas = []
         for ativo in self.inventario.values():
             for dep in ativo.dependencias:
                 origem = self.inventario.consultar_por_id(dep["ativo_id"])
-                tabela.add_row(
+                linhas.append((
                     f"#{ativo.id} {ativo.nome}",
                     f"#{origem.id} {origem.nome}" if origem else "Referência inválida",
                     f"{dep['peso']:.2f}",
-                )
-        self.console.print(tabela)
+                ))
+        if not linhas:
+            self.aviso("Não há dependências cadastradas.")
+            return
+        self.mostrar_lista("Dependências", ("Ativo dependente", "Depende de", "Peso"), linhas)
         self.console.print(
             "[dim]O ativo da primeira coluna herda uma fração do risco "
             "efetivo do ativo da segunda coluna.[/]"
         )
 
     def nova_dependencia(self):
+        if len(self.inventario) < 2:
+            self.aviso("Cadastre pelo menos dois equipamentos para criar uma dependência.")
+            return
         destino = self.escolher_ativo(
             mensagem="Qual ativo RECEBE o risco herdado?"
         )
+        ja_vinculados = {item["ativo_id"] for item in destino.dependencias}
+        candidatos = [
+            ativo for ativo in self.inventario.values()
+            if ativo.id != destino.id and ativo.id not in ja_vinculados
+        ]
+        if not candidatos:
+            self.aviso("Todos os outros equipamentos já são dependências deste ativo.")
+            return
         origem = self.escolher_ativo(
-            mensagem="De qual ativo ele DEPENDE?"
+            mensagem="De qual ativo ele DEPENDE?", resultados=candidatos,
         )
         peso = self.nav.texto(
             "Fração de risco transmitida (ex.: 0,25)"
@@ -470,19 +551,31 @@ class InterfaceRica:
             lambda inv: inv.adicionar_dependencia(destino.id, origem.id, peso)
         )
 
-    def remover_dependencia(self):
+    def escolher_dependencia(self, titulo):
         pares = [
             (ativo, dep) for ativo in self.inventario.values()
             for dep in ativo.dependencias
         ]
         if not pares:
             raise DadosInvalidosError("Não há dependências cadastradas.")
-        indice = self.nav.escolha(
-            "Selecione a dependência a remover",
-            [f"#{a.id} {a.nome} recebe do #{d['ativo_id']} ({d['peso']:.2f})"
-             for a, d in pares],
+        return self.escolher_em_paginas(
+            titulo, pares,
+            lambda item: f"#{item[0].id} {item[0].nome} recebe do #{item[1]['ativo_id']} ({item[1]['peso']:.2f})",
         )
-        ativo, dep = pares[indice]
+
+    def editar_dependencia(self):
+        ativo, dep = self.escolher_dependencia("Selecione a dependência a atualizar")
+        origem = dep["ativo_id"]
+        peso = self.nav.texto("Novo peso (fração entre 0 e 1)", padrao=dep["peso"])
+
+        def preparar(inv):
+            inv.remover_dependencia(ativo.id, origem)
+            inv.adicionar_dependencia(ativo.id, origem, peso)
+
+        self.transacao(preparar)
+
+    def remover_dependencia(self):
+        ativo, dep = self.escolher_dependencia("Selecione a dependência a remover")
         if not self.nav.confirmar("Excluir essa dependência?", risco=True):
             raise OperacaoCancelada()
         self.transacao(
@@ -491,17 +584,19 @@ class InterfaceRica:
         )
 
     def analise(self):
-        lista, m, v, b, a, x = AnalisadorRisco(self.inventario.ativos).calcular()
-        _, cves, _ = montar_matriz_incidencia(self.inventario.ativos)
-        tabela = Table(title="Risco por equipamento", box=box.ROUNDED, expand=True)
-        for campo in ("ID", "Equipamento", "Próprio (b)", "Herdado", "Efetivo (x)"):
-            tabela.add_column(campo)
-        for i, ativo in enumerate(lista):
-            tabela.add_row(
-                str(ativo.id), ativo.nome, f"{b[i]:.2f}",
-                f"{x[i] - b[i]:+.2f}", f"{x[i]:.2f}",
-            )
-        self.console.print(tabela)
+        if not self.inventario:
+            self.aviso("Ainda não há ativos cadastrados.")
+            return
+        analisador = AnalisadorRisco(self.inventario.ativos)
+        lista, m, v, b, a, x = analisador.calcular()
+        linhas = []
+        for i in sorted(range(len(lista)), key=lambda pos: (-x[pos], lista[pos].id)):
+            ativo = lista[i]
+            linhas.append((
+                f"#{ativo.id} {ativo.nome}", f"{b[i]:.2f}", f"{analisador.herdado[i]:+.2f}", f"{x[i]:.2f}",
+            ))
+        if self.mostrar_lista("Equipamentos por risco efetivo", ("Equipamento", "Próprio", "Herdado", "Efetivo"), linhas) is False:
+            return False
         self.console.print(Panel(
             "b = Mv    |    x = b + Ax    |    (I-A)x = b\n"
             "M: incidência de CVE por ativo. v: notas CVSS. A: dependências.\n"
@@ -511,45 +606,80 @@ class InterfaceRica:
         ))
         escolha = self.nav.escolha(
             "Detalhamento do modelo",
-            ["Exibir matrizes M e A + vetor v", "Simular nova vulnerabilidade",
-             "Voltar"],
+            ["Matrizes, vetores e verificação", "Explicar a conta de um equipamento",
+             "Simular nova vulnerabilidade", "Voltar"],
         )
         if escolha == 0:
-            if not lista:
-                self.aviso("Ainda não há ativos cadastrados.")
-                return
-            incidencia = Table(
-                title=f"M — {len(lista)} × {len(cves)}",
-                box=box.SIMPLE,
+            ids = [f"#{ativo.id}" for ativo in lista]
+            cves = [vul.cve for vul in analisador.vulnerabilidades]
+            for titulo, colunas, matriz in (
+                ("M · incidência", cves, m),
+                ("A · dependências", ids, a),
+                ("S = I − A · sistema", ids, analisador.matriz_sistema),
+            ):
+                if self.exibir_matriz(titulo, ids, colunas, matriz) is False:
+                    return False
+            vetores = "\n".join(
+                f"{rotulo} = ({', '.join(f'{valor:.6g}' for valor in valores)})"
+                for rotulo, valores in (("v", v), ("b", b), ("Ax", analisador.herdado), ("x", x))
             )
-            incidencia.add_column("Ativo")
-            for vul in cves:
-                incidencia.add_column(vul.cve)
-            for ativo, linha in zip(lista, m):
-                incidencia.add_row(
-                    f"#{ativo.id}", *(str(valor) for valor in linha)
-                )
-            self.console.print(incidencia)
-            self.console.print(f"[bold]v (CVSS):[/] {v}")
-            deps = Table(
-                title=f"A — {len(lista)} × {len(lista)}", box=box.SIMPLE
+            diagnostico = (
+                f"det(I − A) = {analisador.determinante:.6g}\n"
+                f"κ∞(I − A) = {analisador.numero_condicao:.6g}\n"
+                f"Maior soma de pesos de uma linha de A = {analisador.maior_soma_pesos:.8g}\n"
+                f"Resíduo ||(I − A)x − b||∞ = {analisador.residuo:.3e}"
             )
-            deps.add_column("Ativo")
-            for ativo in lista:
-                deps.add_column(str(ativo.id))
-            for ativo, linha in zip(lista, a):
-                deps.add_row(
-                    str(ativo.id), *(f"{peso:.2f}" for peso in linha)
-                )
-            self.console.print(deps)
-            analisador = AnalisadorRisco(self.inventario.ativos)
-            analisador.calcular()
-            self.console.print(
-                "[green]I-A invertível[/]  |  "
-                f"condicionamento ∞: {analisador.numero_condicao:.3e}"
-            )
+            self.console.print(Panel(vetores + "\n\n" + diagnostico, title="Solução e verificação"))
         elif escolha == 1:
-            self.simulacao()
+            ativo = self.escolher_ativo()
+            i = lista.index(ativo)
+            proprios = " + ".join(f"1 × {nota:.6g}" for incide, nota in zip(m[i], v) if incide)
+            herdados = " + ".join(
+                f"{peso:.6g} × {x[j]:.6g} (#{origem.id})"
+                for j, (origem, peso) in enumerate(zip(lista, a[i])) if peso
+            )
+            conta = (
+                f"b = Mv = {proprios or '0'} = {b[i]:.6g}\n"
+                f"Ax = {herdados or '0'} = {analisador.herdado[i]:.6g}\n"
+                f"x = b + Ax = {b[i]:.6g} + {analisador.herdado[i]:.6g} = {x[i]:.6g}"
+            )
+            self.console.print(Panel(
+                conta, title=Text(f"Conta de #{ativo.id} · {ativo.nome}"),
+            ))
+        elif escolha == 2:
+            return self.simulacao()
+        else:
+            return False
+
+    def exibir_matriz(self, titulo, ids, colunas, matriz):
+        if not colunas:
+            self.aviso(f"{titulo} ({len(ids)} × 0). Sem vulnerabilidades cadastradas.")
+            return
+        largura = max(12, max(map(len, colunas)) + 3)
+        por_bloco = max(1, (self.console.width - 10) // largura)
+        ultima = (len(colunas) - 1) // por_bloco
+        bloco = 0
+        while True:
+            inicio = bloco * por_bloco
+            fim = min(inicio + por_bloco, len(colunas))
+            linhas = [
+                (identificador, *(f"{valor:.6g}" for valor in linha[inicio:fim]))
+                for identificador, linha in zip(ids, matriz)
+            ]
+            dimensoes = f"{len(ids)} × {len(colunas)}"
+            legenda = f"{titulo} ({dimensoes}) · colunas {inicio + 1}–{fim}"
+            if self.mostrar_lista(legenda, ["Ativo", *colunas[inicio:fim]], linhas) is False:
+                return False
+            passos = self.passos_pagina(bloco, ultima)
+            if not passos:
+                return
+            opcoes = list(passos) + ["Próxima matriz"]
+            escolha = self.nav.menu("Colunas da matriz", opcoes)
+            if escolha is None:
+                return False
+            if escolha == len(passos):
+                return
+            bloco += passos[opcoes[escolha]]
 
     def simulacao(self):
         ativo = self.escolher_ativo()
@@ -562,40 +692,28 @@ class InterfaceRica:
         _, _, _, proprio_novo, _, efetivo_novo = simular_vulnerabilidade(
             self.inventario.ativos, ativo.id, cvss,
         )
-        tabela = Table(
-            title="Cenário hipotético — NENHUM dado será salvo", box=box.ROUNDED
+        linhas = [
+            (item.nome, f"{proprio_antigo[i]:.2f} → {proprio_novo[i]:.2f}",
+             f"{efetivo_antigo[i]:.2f} → {efetivo_novo[i]:.2f}",
+             f"{efetivo_novo[i] - efetivo_antigo[i]:+.2f}")
+            for i, item in enumerate(lista)
+        ]
+        return self.mostrar_lista(
+            "Simulação temporária", ("Ativo", "Próprio", "Efetivo", "Variação"), linhas,
         )
-        for col in ("Ativo", "Próprio atual", "Próprio simulado",
-                    "Efetivo atual", "Efetivo simulado"):
-            tabela.add_column(col)
-        for i, item in enumerate(lista):
-            tabela.add_row(
-                item.nome, f"{proprio_antigo[i]:.2f}",
-                f"{proprio_novo[i]:.2f}", f"{efetivo_antigo[i]:.2f}",
-                f"{efetivo_novo[i]:.2f}",
-            )
-        self.console.print(tabela)
 
     def diagnostico(self):
-        self.console.print("[cyan]Executando testes isolados...[/]")
         pasta = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        testes = unittest.defaultTestLoader.discover(pasta, pattern="test*.py")
-        resultado = unittest.TextTestRunner(verbosity=1).run(testes)
-        cor = "green" if resultado.wasSuccessful() else "red"
-        self.aviso(
-            f"Testes: {resultado.testsRun}  |  "
-            f"Falhas: {len(resultado.failures)}  |  "
-            f"Erros: {len(resultado.errors)}  |  "
-            f"Ignorados: {len(resultado.skipped)}",
-            cor,
+        resultado = subprocess.run(
+            [sys.executable, "app.py", "--testes"], cwd=pasta, check=False,
         )
-        self.console.print(
-            "[dim]24 horas no Docker exigem uma evidência separada no servidor.[/]"
-        )
+        if resultado.returncode:
+            self.aviso("O Pytest não concluiu com sucesso. Veja a saída acima.", "red")
 
     def menu_ativos(self):
-        self.executar_tela("Equipamentos", [
+        return self.executar_tela("Equipamentos", [
             ("Listar equipamentos", self.listar_ativos),
+            ("Buscar por ID ou hostname", self.buscar_ativo),
             ("Consultar ficha completa", self.mostrar_ficha),
             ("Cadastrar equipamento", self.novo_ativo),
             ("Atualizar equipamento", self.atualizar_ativo),
@@ -605,8 +723,9 @@ class InterfaceRica:
         ])
 
     def menu_vulnerabilidades(self):
-        self.executar_tela("Vulnerabilidades", [
+        return self.executar_tela("Vulnerabilidades", [
             ("Listar vulnerabilidades", self.listar_vulnerabilidades),
+            ("Buscar por CVE, equipamento, situação ou prioridade", self.buscar_vulnerabilidade),
             ("Consultar ficha", self.ficha_vulnerabilidade),
             ("Cadastrar vulnerabilidade", self.nova_vulnerabilidade),
             ("Atualizar vulnerabilidade", self.atualizar_vulnerabilidade),
@@ -614,9 +733,10 @@ class InterfaceRica:
         ])
 
     def menu_dependencias(self):
-        self.executar_tela("Dependências", [
+        return self.executar_tela("Dependências", [
             ("Listar dependências", self.listar_dependencias),
             ("Adicionar dependência", self.nova_dependencia),
+            ("Alterar peso de uma dependência", self.editar_dependencia),
             ("Remover dependência", self.remover_dependencia),
         ])
 

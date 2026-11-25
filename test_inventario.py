@@ -1,6 +1,6 @@
 """Testes automatizados das regras de negócio da Sprint 2.
 
-Execute com: python -m unittest -v test_inventario.py
+Execute com: python -m pytest -q test_inventario.py
 Cada teste cria dados próprios e não usa dados/inventario.json.
 """
 
@@ -12,20 +12,6 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-import apresentacao.interface as interface
-from apresentacao.interface import (
-    VOLTAR,
-    atualizar_ativo_tela,
-    confirmar_remocao,
-    consultar_vulnerabilidades_tela,
-    executar_programa,
-    ler_id_para_operacao,
-    ler_texto_para_operacao,
-    ler_texto_formulario,
-    ler_verificacao_formulario,
-    resumo_vulnerabilidade,
-    salvar_com_aviso,
-)
 from dominio.inventario import (
     DadosInvalidosError,
     atualizar_ativo,
@@ -137,145 +123,6 @@ class TesteInventario(unittest.TestCase):
         self.assertEqual(vulnerabilidade.cvss, 7.5)
         resultado = consultar_vulnerabilidades(self.ativos, cve="CVE-2024-1234")
         self.assertEqual(len(resultado), 1)
-
-    def test_resumo_da_vulnerabilidade_identifica_registro_sem_decorar_cve(self):
-        vulnerabilidade = self.cadastrar_vulnerabilidade_de_exemplo()
-        resumo = resumo_vulnerabilidade(self.ativos[10], vulnerabilidade)
-        self.assertIn("CVE-2024-1234", resumo)
-        self.assertIn("CVSS 7.5", resumo)
-        self.assertIn("Alta", resumo)
-        self.assertIn("SRV-ARQUIVOS", resumo)
-
-    def test_consulta_por_lista_abre_vulnerabilidade_sem_digitar_filtros(self):
-        self.cadastrar_vulnerabilidade_de_exemplo()
-        tela = io.StringIO()
-        # Simula: ver todas, abrir a primeira e voltar para a lista.
-        with patch("apresentacao.interface.escolher_com_setas", side_effect=[0, 0, None]), patch(
-            "apresentacao.interface.aguardar_retorno_lista"
-        ):
-            with redirect_stdout(tela):
-                consultar_vulnerabilidades_tela(self.ativos)
-        self.assertIn("CVE-2024-1234", tela.getvalue())
-        self.assertIn("SRV-ARQUIVOS", tela.getvalue())
-
-    def test_consulta_por_id_mostra_apenas_vulnerabilidades_do_ativo(self):
-        self.cadastrar_vulnerabilidade_de_exemplo()
-        cadastrar_ativo(self.ativos, 20, "NOTEBOOK-ANA", "Ana", "Sala 2", 1, "Média")
-        cadastrar_vulnerabilidade(
-            self.ativos,
-            20,
-            "CVE-2025-4321",
-            "CWE-89",
-            "6.0",
-            "Outro teste",
-            "Fonte",
-            "02/01/2026",
-            "Impacto",
-            "Média",
-            "Tratar",
-        )
-        tela = io.StringIO()
-        # Simula: consultar por ID 10, abrir a vulnerabilidade e voltar.
-        with patch("apresentacao.interface.ler_id_para_operacao", return_value=10):
-            with patch("apresentacao.interface.escolher_com_setas", side_effect=[1, 0, None]), patch(
-                "apresentacao.interface.aguardar_retorno_lista"
-            ):
-                with redirect_stdout(tela):
-                    consultar_vulnerabilidades_tela(self.ativos)
-        self.assertIn("CVE-2024-1234", tela.getvalue())
-        self.assertNotIn("CVE-2025-4321", tela.getvalue())
-
-    @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
-    def test_letra_a_com_crase_nao_e_tratada_como_seta(self):
-        with patch("apresentacao.interface.msvcrt.getwch", side_effect=["à", "\r"]), patch(
-            "apresentacao.interface.msvcrt.kbhit", return_value=False
-        ):
-            with redirect_stdout(io.StringIO()):
-                texto = ler_texto_formulario("Localização")
-        self.assertEqual(texto, "à")
-
-    @unittest.skipIf(interface.msvcrt is None, "Teste exclusivo do teclado Windows.")
-    def test_letra_a_com_crase_em_texto_colado_e_preservada(self):
-        with patch("apresentacao.interface.msvcrt.getwch", side_effect=["à", " ", "r", "\r"]), patch(
-            "apresentacao.interface.msvcrt.kbhit", return_value=True
-        ):
-            with redirect_stdout(io.StringIO()):
-                texto = ler_texto_formulario("Localização")
-        self.assertEqual(texto, "à r")
-
-    def test_seta_esquerda_cancela_id_em_tela_simples(self):
-        with patch("apresentacao.interface.ler_inteiro_formulario", return_value=VOLTAR):
-            with redirect_stdout(io.StringIO()):
-                self.assertIsNone(ler_id_para_operacao("ID do ativo"))
-
-    def test_seta_esquerda_cancela_texto_em_tela_simples(self):
-        with patch("apresentacao.interface.ler_texto_formulario", return_value=VOLTAR):
-            with redirect_stdout(io.StringIO()):
-                self.assertIsNone(ler_texto_para_operacao("Filtro"))
-
-    def test_correcao_exige_verificacao_antes_de_finalizar_formulario(self):
-        valores = {"status": "Corrigida"}
-        with patch(
-            "apresentacao.interface.ler_texto_formulario", side_effect=["Pendente", "Teste aplicado"]
-        ):
-            with redirect_stdout(io.StringIO()):
-                verificacao = ler_verificacao_formulario(
-                    valores, "Verificação", obrigatorio=False
-                )
-        self.assertEqual(verificacao, "Teste aplicado")
-
-    def test_correcao_mantem_verificacao_atual_que_ja_e_valida(self):
-        valores = {"status": "Corrigida"}
-        with patch("apresentacao.interface.ler_texto_formulario", return_value=""):
-            with redirect_stdout(io.StringIO()):
-                verificacao = ler_verificacao_formulario(
-                    valores,
-                    "Verificação",
-                    obrigatorio=False,
-                    verificacao_atual="Teste da atualização aplicado",
-                )
-        self.assertEqual(verificacao, "")
-
-    def test_confirmacao_de_remocao_inicia_em_cancelar(self):
-        with patch("apresentacao.interface.escolher_com_setas", return_value=1) as escolha:
-            self.assertFalse(confirmar_remocao())
-        self.assertEqual(escolha.call_args.args[3], 1)
-
-    def test_falha_ao_salvar_e_informada_pela_interface(self):
-        with patch("apresentacao.interface.salvar_ativos", return_value=False):
-            with redirect_stdout(io.StringIO()) as tela:
-                self.assertFalse(salvar_com_aviso(self.ativos, "dados/inventario.json"))
-        self.assertIn("Não foi possível salvar", tela.getvalue())
-
-    def test_saida_pode_ser_confirmada_sem_salvar(self):
-        with patch("apresentacao.interface.mostrar_menu", return_value="0"), patch(
-            "apresentacao.interface.salvar_ativos", return_value=False
-        ), patch("apresentacao.interface.ler_sim_ou_nao", return_value=True):
-            with redirect_stdout(io.StringIO()) as tela:
-                executar_programa(self.ativos, "dados/inventario.json")
-        self.assertIn("sem salvar", tela.getvalue())
-
-    def test_troca_de_id_na_atualizacao_nao_reaproveita_outro_ativo(self):
-        cadastrar_ativo(self.ativos, 20, "NOTEBOOK-ANA", "Ana", "Sala 2", 1, "Média")
-        respostas_de_texto = ["Nome temporário", VOLTAR, VOLTAR, "", "", ""]
-        chamadas_de_texto = []
-
-        def texto_controlado(mensagem, obrigatorio, anterior, preenchido):
-            chamadas_de_texto.append((mensagem, anterior, preenchido))
-            return respostas_de_texto.pop(0)
-
-        with patch("apresentacao.interface.ler_inteiro_formulario", side_effect=[10, 20]), patch(
-            "apresentacao.interface.ler_texto_formulario", side_effect=texto_controlado
-        ), patch("apresentacao.interface.escolher_tipo_atualizacao", return_value=None), patch(
-            "apresentacao.interface.escolher_item_atualizacao", return_value=None
-        ):
-            with redirect_stdout(io.StringIO()):
-                atualizar_ativo_tela(self.ativos)
-
-        self.assertEqual(self.ativos[20].nome, "NOTEBOOK-ANA")
-        self.assertIn(
-            ("Nome ou hostname [NOTEBOOK-ANA]", None, False), chamadas_de_texto
-        )
 
     def test_cvss_com_virgula_e_aceito(self):
         vulnerabilidade = cadastrar_vulnerabilidade(
@@ -480,6 +327,25 @@ class TesteInventario(unittest.TestCase):
                 self.assertEqual(arquivo.read(), anterior)
             self.assertEqual(os.listdir(pasta), ["inventario.json"])
 
+    def test_json_do_trabalho_1_e_lido_e_gravado_como_lista(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            caminho = os.path.join(pasta, "inventario.json")
+            registro = self.ativos[10].para_dicionario()
+            for campo in ("dependencias", "nome_tipo_personalizado", "campos_extras"):
+                registro.pop(campo)
+            with open(caminho, "w", encoding="utf-8") as arquivo:
+                json.dump({"10": registro}, arquivo)
+
+            ativos = carregar_ativos(caminho)
+            self.assertEqual(ativos[10].nome, registro["nome"])
+            self.assertEqual(ativos[10].dependencias, [])
+            self.assertTrue(salvar_ativos(ativos, caminho))
+
+            with open(caminho, encoding="utf-8") as arquivo:
+                dados = json.load(arquivo)
+            self.assertIsInstance(dados, list)
+            self.assertEqual(dados[0]["id"], 10)
+
     def test_json_com_id_inconsistente_e_rejeitado(self):
         with tempfile.TemporaryDirectory() as pasta:
             caminho = os.path.join(pasta, "inventario.json")
@@ -519,6 +385,22 @@ class TesteInventario(unittest.TestCase):
                 json.dump(dados, arquivo)
             with redirect_stdout(io.StringIO()):
                 self.assertIsNone(carregar_ativos(caminho))
+
+
+def test_persistencia_atomica_rejeita_valor_nao_finito(tmp_path):
+    caminho = tmp_path / "inventario.json"
+    repositorio = RepositorioJSON(caminho)
+    ativos = {}
+    ativo = cadastrar_ativo(ativos, 7, "SRV-07", "TI", "Sala", 2, "Alta")
+    assert repositorio.salvar(ativos)
+    original = caminho.read_bytes()
+    registro = ativo.para_dicionario()
+    registro["campos_extras"] = {"entrada inválida": float("nan")}
+    with patch.object(ativo, "para_dicionario", return_value=registro):
+        assert not repositorio.salvar(ativos)
+    assert caminho.read_bytes() == original
+    assert list(tmp_path.iterdir()) == [caminho]
+    assert repositorio.carregar()[7].nome == "SRV-07"
 
 
 if __name__ == "__main__":

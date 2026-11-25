@@ -1,6 +1,8 @@
 __pycache__/
 *.pyc
 .coverage
+.venv/
+.pytest_cache/
 
 dados/auditoria-acessos.jsonl*
 dados/senha-acesso

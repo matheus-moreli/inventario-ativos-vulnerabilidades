@@ -20,18 +20,23 @@ class RepositorioJSON:
 
     def carregar(self):
         """Devolve objetos indexados por ID; None representa arquivo inválido."""
-        if not os.path.exists(self.caminho):
-            return {}
         try:
             with open(self.caminho, "r", encoding="utf-8") as arquivo:
                 dados = json.load(arquivo)
-            if not isinstance(dados, list):
-                raise DadosInvalidosError("A base deve conter uma lista de ativos.")
+            if isinstance(dados, list):
+                registros = ((None, item) for item in dados)
+            elif isinstance(dados, dict):
+                # A primeira entrega gravava os ativos em um objeto indexado por ID.
+                registros = dados.items()
+            else:
+                raise DadosInvalidosError("Formato inválido para a base de ativos.")
             ativos = {}
-            for dados_ativo in dados:
+            for chave, dados_ativo in registros:
                 if not isinstance(dados_ativo, dict):
                     raise ValueError("Ativo inválido no arquivo de dados.")
                 ativo = Ativo.de_dicionario(dados_ativo)
+                if chave is not None and ativo.id != int(chave):
+                    raise ValueError("ID do ativo não corresponde à chave do arquivo.")
                 if ativo.id in ativos:
                     raise ValueError("ID repetido no arquivo de dados.")
                 ativos[ativo.id] = validar_ativo_carregado(ativo)
@@ -56,9 +61,10 @@ class RepositorioJSON:
                         )
             validar_cvss_compartilhado(ativos)
             return ativos
+        except FileNotFoundError:
+            return {}
         except (
             OSError,
-            json.JSONDecodeError,
             ValueError,
             KeyError,
             TypeError,
@@ -86,12 +92,12 @@ class RepositorioJSON:
                 delete=False,
             ) as arquivo:
                 temporario = arquivo.name
-                json.dump(dados, arquivo, ensure_ascii=False, indent=2)
+                json.dump(dados, arquivo, ensure_ascii=False, indent=2, allow_nan=False)
                 arquivo.flush()
                 os.fsync(arquivo.fileno())
             os.replace(temporario, self.caminho)
             return True
-        except OSError:
+        except (OSError, ValueError, TypeError):
             print("Erro ao salvar os dados no arquivo.")
             return False
         finally:

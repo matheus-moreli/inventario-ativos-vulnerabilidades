@@ -1,0 +1,373 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Inventário de Ativos e Vulnerabilidades",
+    "version": "1.0.0",
+    "description": "API de consulta do inventário. O cadastro e as alterações são feitos no terminal."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "Acesso": []
+    }
+  ],
+  "paths": {
+    "/saude": {
+      "get": {
+        "summary": "Consultar a saúde do serviço",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Serviço ativo",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Saude"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Base inválida",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "erro"
+                  ],
+                  "properties": {
+                    "erro": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/ativos": {
+      "get": {
+        "summary": "Consultar equipamentos",
+        "description": "A ordem por risco efetivo é decrescente. O ID desempata valores iguais.",
+        "parameters": [
+          {
+            "name": "busca",
+            "in": "query",
+            "description": "Parte do nome ou hostname, ignorando maiúsculas e minúsculas",
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "pagina",
+            "in": "query",
+            "description": "Página a partir de 1",
+            "schema": {
+              "type": "integer",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 1000000
+            }
+          },
+          {
+            "name": "limite",
+            "in": "query",
+            "description": "Número máximo de equipamentos por página",
+            "schema": {
+              "type": "integer",
+              "default": 20,
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "ordenar",
+            "in": "query",
+            "description": "Ordem por ID ou risco efetivo",
+            "schema": {
+              "type": "string",
+              "default": "id",
+              "enum": [
+                "id",
+                "risco"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Página de equipamentos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginaAtivos"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente ou inválida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Consulta inválida ou risco indisponível",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Base inválida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/riscos": {
+      "get": {
+        "summary": "Consultar matrizes e riscos",
+        "description": "Os vetores e as linhas das matrizes seguem a ordem dos IDs retornados.",
+        "responses": {
+          "200": {
+            "description": "Cálculo de risco",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Riscos"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credencial ausente ou inválida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Risco indisponível",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Base inválida",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problema"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "Acesso": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Segredo configurado na instalação."
+      }
+    },
+    "schemas": {
+      "Saude": {
+        "type": "object",
+        "required": [
+          "estado",
+          "inicio_utc",
+          "tempo_ativo_segundos",
+          "ativos"
+        ],
+        "properties": {
+          "estado": {
+            "type": "string",
+            "const": "ativo"
+          },
+          "inicio_utc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tempo_ativo_segundos": {
+            "type": "integer"
+          },
+          "ativos": {
+            "type": "integer"
+          }
+        }
+      },
+      "Ativo": {
+        "type": "object",
+        "required": [
+          "id",
+          "nome",
+          "tipo",
+          "criticidade",
+          "vulnerabilidades"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "nome": {
+            "type": "string"
+          },
+          "tipo": {
+            "type": "string"
+          },
+          "criticidade": {
+            "type": "string"
+          },
+          "vulnerabilidades": {
+            "type": "integer"
+          }
+        }
+      },
+      "PaginaAtivos": {
+        "type": "object",
+        "required": [
+          "pagina",
+          "limite",
+          "total",
+          "itens"
+        ],
+        "properties": {
+          "pagina": {
+            "type": "integer"
+          },
+          "limite": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "itens": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Ativo"
+            }
+          }
+        }
+      },
+      "Problema": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "detail": {
+            "type": "string"
+          }
+        }
+      },
+      "Riscos": {
+        "type": "object",
+        "required": [
+          "ids",
+          "matriz_incidencia",
+          "severidades",
+          "risco_proprio",
+          "matriz_dependencias",
+          "risco_efetivo",
+          "numero_condicao_infinito",
+          "aviso_condicionamento"
+        ],
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "matriz_incidencia": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          },
+          "severidades": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "risco_proprio": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "matriz_dependencias": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "risco_efetivo": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "numero_condicao_infinito": {
+            "type": "number"
+          },
+          "aviso_condicionamento": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

@@ -45,9 +45,11 @@ def iniciar(modo_servico=False):
 
 # Assim os testes podem importar funções sem abrir o menu interativo.
 if __name__ == "__main__":
-    if "--testes" in sys.argv[1:]:
-        import unittest
-        suite = unittest.defaultTestLoader.discover(PASTA_DO_PROJETO, "test*.py")
-        resultado = unittest.TextTestRunner(verbosity=2).run(suite)
-        raise SystemExit(0 if resultado.wasSuccessful() else 1)
+    if sys.argv[1:2] == ["--testes"]:
+        try:
+            import pytest
+        except ModuleNotFoundError:
+            print("Instale o Pytest com: python -m pip install -r requirements-dev.txt")
+            raise SystemExit(1) from None
+        raise SystemExit(pytest.main(["-q", PASTA_DO_PROJETO, *sys.argv[2:]]))
     raise SystemExit(0 if iniciar("--servico" in sys.argv[1:]) else 1)

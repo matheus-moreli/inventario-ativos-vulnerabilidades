@@ -1,70 +1,69 @@
-# Modelo de risco e simulação
+# Cálculo de risco
 
-## O que é calculado
+| Símbolo | Dimensão | Significado |
+|---|---|---|
+| `M` | ativos × CVEs | `M[i,j] = 1` se o ativo i tem a CVE j. Uma CVE compartilhada ocupa uma só coluna. |
+| `v` | CVEs | Notas CVSS na mesma ordem das colunas de `M`. |
+| `b = Mv` | ativos | Risco próprio de cada ativo. |
+| `A` | ativos × ativos | `A[i,j]` é a fração do risco de j herdada por i. A diagonal é zero. |
+| `x` | ativos | Risco efetivo, dado por `x = b + Ax`, ou `(I − A)x = b`. |
 
-Cada ativo recebe dois valores. O **risco próprio** é a soma das notas CVSS das
-vulnerabilidades cadastradas nele. O **risco efetivo** inclui também a parcela
-de risco recebida dos ativos dos quais ele depende.
+O índice de risco pode passar de 10 porque soma contribuições. Cada CVSS
+continua entre 0 e 10. Os pesos de dependência são registrados separadamente.
 
-Não existe nota inventada pela interface. A aplicação usa as vulnerabilidades,
-os pesos de dependência e operações básicas de álgebra linear para chegar ao
-resultado.
+## Exemplo conferido com três equipamentos
 
-## Matrizes e vetores
-
-Os ativos ocupam as linhas da matriz de incidência `M`. Cada CVE ocupa uma
-coluna. O elemento `M[i][j]` vale 1 quando o ativo `i` é afetado pelo CVE `j` e
-0 quando não é. O vetor `v` guarda a nota CVSS de cada CVE.
-
-O risco próprio é:
+Assuma três equipamentos e duas vulnerabilidades, de severidades 4 e 6:
 
 ```text
-b = Mv
+   [1 0]      [4]          [4]
+M =[0 1]  v = [6]  b = Mv =[6]
+   [0 0]                  [0]
 ```
 
-Exemplo: se um notebook tem CVSS 4 e um servidor tem CVSS 6, então `b = [4, 6]`.
-Se os dois ativos compartilhassem o mesmo CVE de nota 5, a mesma coluna teria
-dois valores 1, pois a falha atinge os dois.
-
-## Dependências
-
-A matriz `A` guarda os pesos cadastrados no painel. `A[i][j] = 0,25` significa
-que o ativo da linha `i` recebe 25% do risco efetivo do ativo da coluna `j`.
-
-O sistema resolvido é:
+O ativo 1 herda 50% do ativo 2. O ativo 2 herda 25% do ativo 1.
+O ativo 3 herda 20% do ativo 1 e 30% do ativo 2.
 
 ```text
-x = b + Ax
-(I - A)x = b
+    [ 0     0,50  0 ]           [ 1    -0,50  0 ]
+A = [ 0,25  0     0 ]   I − A = [-0,25  1     0 ]
+    [ 0,20  0,30  0 ]           [-0,20 -0,30  1 ]
 ```
 
-`I` é a matriz identidade e `x` é o vetor de risco efetivo. O programa resolve
-esse sistema por eliminação de Gauss. Ele não calcula uma inversa para obter o
-resultado. Antes disso, verifica se `I - A` é invertível e mede o número de
-condição na norma infinita. Um valor muito alto avisa que pequenas mudanças nos
-pesos podem gerar grande variação no resultado.
+1. `x₁ = 4 + 0,5 x₂`.
+2. `x₂ = 6 + 0,25 x₁`.
+3. Substituindo a segunda equação na primeira, `x₁ = 7 + 0,125 x₁`.
+   Logo, `0,875 x₁ = 7` e `x₁ = 8`.
+4. `x₂ = 6 + 0,25 × 8 = 8`.
+5. `x₃ = 0,20 × 8 + 0,30 × 8 = 4`. O ativo 3 tem risco próprio zero e herda quatro pontos.
 
-### Exemplo conferível
+| Vetor | Resultado |
+|---|---|
+| `b = Mv` | (4, 6, 0) |
+| `Ax` | (4, 2, 4) |
+| `x = b + Ax` | (8, 8, 4) |
+| `(I − A)x − b` | (0, 0, 0) |
 
-Se o ativo 3 recebe 25% do risco do ativo 1 e o ativo 1 tem risco próprio 8:
+## Por que a solução existe e como é conferida
 
-```text
-b = [8, 0, 0]
-x1 = 8
-x2 = 0
-x3 = 0 + 0,25 * 8 = 2
-```
+- **Soma dos pesos.** O cadastro exige soma menor que 1 em cada linha de
+  `A`. A diagonal de `I − A` é 1, superior à soma dos módulos fora da
+  diagonal. Essa dominância diagonal garante a invertibilidade.
+- **Pivoteamento.** A eliminação troca linhas para usar o maior pivô em
+  módulo na coluna. A fatoração `P(I − A) = LU` guarda essas operações
+  para resolver o sistema por duas substituições.
+- **Determinante e condicionamento.** O produto dos pivôs, corrigido
+  pelo sinal das trocas, dá o determinante. No exemplo ele é 0,875.
+  O número de condição informa a sensibilidade a perturbações. O programa
+  reaproveita a mesma fatoração para obtê-lo.
+- **Resíduo.** `‖(I − A)x − b‖∞` mede a maior diferença ao
+  substituir a solução nas equações. Em ponto flutuante, um valor pequeno
+  é esperado.
+- **Simulação.** Com os mesmos pesos, acrescentar uma vulnerabilidade
+  muda `b`. A variação efetiva obedece a `(I − A)Δx = Δb`.
+  No exemplo, adicionar 2 ao próprio do ativo 1 resulta em
+  `Δx = (16/7, 4/7, 22/35)`. A simulação preserva o JSON.
 
-Logo, `x = [8, 0, 2]`. Este mesmo cenário é coberto pelo teste automático
-`test_simulacao_nao_altera_a_base_e_propagacao_e_conferivel`.
-
-## Simulação no painel
-
-Em **Gerenciar dependências e consultar riscos**, escolha **Simular
-vulnerabilidade sem salvar**. Informe o ID do ativo e uma nota CVSS. A aplicação
-acrescenta uma coluna temporária à matriz `M`, calcula os novos vetores e mostra
-a diferença no ativo e nos demais que recebem risco por dependência.
-
-A vulnerabilidade hipotética não é criada no inventário e o arquivo JSON não é
-alterado. A seta para a esquerda cancela a operação; a seta para a direita só
-avança após uma nota válida, inclusive aceitando `9,8` ou `9.8`.
+No menu de análise, **Matrizes, vetores e verificação** mostra os dados do
+sistema. **Explicar a conta de um equipamento** mostra a soma CVSS, a
+contribuição de cada dependência e o risco efetivo.

@@ -71,61 +71,68 @@ def identidade_menos(matriz):
     ]
 
 
+class SistemaLinear:
+    """Fatora P S = L U uma vez por Gauss com pivoteamento parcial."""
+
+    def __init__(self, matriz):
+        tamanho = len(matriz)
+        self.lu = [list(linha) for linha in matriz]
+        self.ordem = list(range(tamanho))
+        sinal = 1
+        for coluna in range(tamanho):
+            pivo = max(range(coluna, tamanho), key=lambda i: abs(self.lu[i][coluna]))
+            if abs(self.lu[pivo][coluna]) < EPSILON:
+                raise ValueError("Não é possível calcular o risco: I - A não é invertível.")
+            if pivo != coluna:
+                self.lu[coluna], self.lu[pivo] = self.lu[pivo], self.lu[coluna]
+                self.ordem[coluna], self.ordem[pivo] = self.ordem[pivo], self.ordem[coluna]
+                sinal = -sinal
+            for linha in range(coluna + 1, tamanho):
+                fator = self.lu[linha][coluna] / self.lu[coluna][coluna]
+                self.lu[linha][coluna] = fator
+                for item in range(coluna + 1, tamanho):
+                    self.lu[linha][item] -= fator * self.lu[coluna][item]
+        self.determinante = sinal * math.prod(self.lu[i][i] for i in range(tamanho))
+        self.norma = max((sum(map(abs, linha)) for linha in matriz), default=0.0)
+
+    def resolver(self, vetor):
+        """Resolve L y = P b e U x = y por substituição."""
+        tamanho = len(self.ordem)
+        solucao = [vetor[i] for i in self.ordem]
+        for i in range(tamanho):
+            solucao[i] -= sum(self.lu[i][j] * solucao[j] for j in range(i))
+        for i in range(tamanho - 1, -1, -1):
+            soma = sum(self.lu[i][j] * solucao[j] for j in range(i + 1, tamanho))
+            solucao[i] = (solucao[i] - soma) / self.lu[i][i]
+        return solucao
+
+    def condicionamento(self):
+        """Obtém ||S⁻¹||∞ resolvendo S z = eⱼ para cada vetor da base."""
+        tamanho = len(self.ordem)
+        if not tamanho:
+            return 1.0
+        somas = [0.0] * tamanho
+        for j in range(tamanho):
+            coluna = self.resolver([float(i == j) for i in range(tamanho)])
+            for i, valor in enumerate(coluna):
+                somas[i] += abs(valor)
+        return self.norma * max(somas)
+
+
 def sistema_e_invertivel(matriz):
-    """Usa eliminação de Gauss para verificar se a matriz possui pivô em cada coluna."""
-    copia = [linha[:] for linha in matriz]
-    tamanho = len(copia)
-    for coluna in range(tamanho):
-        pivo = max(range(coluna, tamanho), key=lambda linha: abs(copia[linha][coluna]))
-        if abs(copia[pivo][coluna]) < EPSILON:
-            return False
-        copia[coluna], copia[pivo] = copia[pivo], copia[coluna]
-        for linha in range(coluna + 1, tamanho):
-            fator = copia[linha][coluna] / copia[coluna][coluna]
-            for item in range(coluna, tamanho):
-                copia[linha][item] -= fator * copia[coluna][item]
+    try:
+        SistemaLinear(matriz)
+    except ValueError:
+        return False
     return True
 
 
 def resolver_sistema(matriz, vetor):
-    """Resolve Ax=b por eliminação de Gauss, sem calcular a inversa da matriz."""
-    if not sistema_e_invertivel(matriz):
-        raise ValueError("Não é possível calcular o risco: I - A não é invertível.")
-    tamanho = len(matriz)
-    aumentado = [matriz[linha][:] + [vetor[linha]] for linha in range(tamanho)]
-    for coluna in range(tamanho):
-        pivo = max(
-            range(coluna, tamanho), key=lambda linha: abs(aumentado[linha][coluna])
-        )
-        aumentado[coluna], aumentado[pivo] = aumentado[pivo], aumentado[coluna]
-        for linha in range(coluna + 1, tamanho):
-            fator = aumentado[linha][coluna] / aumentado[coluna][coluna]
-            for item in range(coluna, tamanho + 1):
-                aumentado[linha][item] -= fator * aumentado[coluna][item]
-
-    resultado = [0.0] * tamanho
-    for linha in range(tamanho - 1, -1, -1):
-        soma = sum(
-            aumentado[linha][coluna] * resultado[coluna]
-            for coluna in range(linha + 1, tamanho)
-        )
-        resultado[linha] = (aumentado[linha][-1] - soma) / aumentado[linha][linha]
-    return resultado
+    return SistemaLinear(matriz).resolver(vetor)
 
 
 def numero_condicao_infinito(matriz):
-    """Calcula κ∞ = ||S||∞ ||S⁻¹||∞ sem usar a inversa para resolver o risco."""
-    tamanho = len(matriz)
-    if tamanho == 0:
-        return 1.0
-    norma = max(sum(abs(valor) for valor in linha) for linha in matriz)
-    somas_inversa = [0.0] * tamanho
-    for coluna in range(tamanho):
-        base = [1.0 if indice == coluna else 0.0 for indice in range(tamanho)]
-        solucao = resolver_sistema(matriz, base)
-        for linha, valor in enumerate(solucao):
-            somas_inversa[linha] += abs(valor)
-    return norma * max(somas_inversa)
+    return SistemaLinear(matriz).condicionamento()
 
 
 class AnalisadorRisco:
@@ -136,17 +143,23 @@ class AnalisadorRisco:
 
     def calcular(self):
         """Devolve M, v, A e riscos próprios e efetivos na ordem dos IDs."""
-        lista, vulnerabilidades, matriz = montar_matriz_incidencia(self.ativos)
-        vetor = [vulnerabilidade.cvss for vulnerabilidade in vulnerabilidades]
+        lista, self.vulnerabilidades, matriz = montar_matriz_incidencia(self.ativos)
+        vetor = [vulnerabilidade.cvss for vulnerabilidade in self.vulnerabilidades]
         proprio = produto_matriz_vetor(matriz, vetor)
         dependencias = montar_matriz_dependencias(lista)
-        sistema = identidade_menos(dependencias)
-        self.numero_condicao = numero_condicao_infinito(sistema)
+        self.matriz_sistema = identidade_menos(dependencias)
+        sistema = SistemaLinear(self.matriz_sistema)
+        self.determinante = sistema.determinante
+        self.numero_condicao = sistema.condicionamento()
         if self.numero_condicao > 1 / sys.float_info.epsilon:
             raise ValueError(
                 "I - A é singular ou quase singular; revise as dependências."
             )
-        efetivo = resolver_sistema(sistema, proprio)
+        efetivo = sistema.resolver(proprio)
+        self.herdado = produto_matriz_vetor(dependencias, efetivo)
+        calculado = produto_matriz_vetor(self.matriz_sistema, efetivo)
+        self.residuo = max((abs(real - esperado) for real, esperado in zip(calculado, proprio)), default=0.0)
+        self.maior_soma_pesos = max(map(sum, dependencias), default=0.0)
         return lista, matriz, vetor, proprio, dependencias, efetivo
 
 
