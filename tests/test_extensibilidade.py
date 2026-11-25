@@ -1,10 +1,12 @@
 """Regressões de tipos dinâmicos, metadados, matrizes e porta oficial."""
+
 import json
 import os
 import tempfile
 import unittest
 
-from dominio.inventario import Inventario, DadosInvalidosError
+from dominio.inventario import Inventario
+from dominio.validacoes import DadosInvalidosError
 from dominio.modelos import EquipamentoPersonalizado
 from dominio.risco import AnalisadorRisco
 from infraestrutura.persistencia import RepositorioJSON
@@ -14,8 +16,9 @@ from apresentacao.servico import ServicoInventario
 class TesteExtensibilidade(unittest.TestCase):
     def test_tipo_personalizado_e_metadados_persistem(self):
         inv = Inventario()
-        inv.cadastrar_ativo(1, "FW-01", "Equipe", "Rack", 100, "Alta",
-                           nome_tipo_personalizado="Firewall")
+        inv.cadastrar_ativo(
+            1, "FW-01", "Equipe", "Rack", 100, "Alta", nome_tipo_personalizado="Firewall"
+        )
         inv.definir_campo_extra(1, "IP", "192.0.2.1")
         with tempfile.TemporaryDirectory() as pasta:
             caminho = os.path.join(pasta, "inventario.json")
@@ -39,8 +42,18 @@ class TesteExtensibilidade(unittest.TestCase):
         inv = Inventario()
         for i in range(1, 8):
             inv.cadastrar_ativo(i, f"A-{i}", "TI", "Sala", 1, "Alta")
-        argumentos = (1, "CVE-2026-99999", "CWE-79", 9.8, "Teste", "Fonte",
-                      "01/01/2026", "Impacto", "Alta", "Tratar")
+        argumentos = (
+            1,
+            "CVE-2026-99999",
+            "CWE-79",
+            9.8,
+            "Teste",
+            "Fonte",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Tratar",
+        )
         inv.cadastrar_vulnerabilidade(*argumentos)
         resultado = AnalisadorRisco(inv.ativos).calcular()
         self.assertEqual(len(resultado[0]), 7)

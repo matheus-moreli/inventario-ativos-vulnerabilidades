@@ -1,7 +1,6 @@
 """Regras de negócio do CRUD. Este arquivo não usa input nem print."""
 
 import math
-from datetime import datetime
 
 from dominio.modelos import (
     CRITICIDADES,
@@ -11,110 +10,19 @@ from dominio.modelos import (
     Vulnerabilidade,
     criar_ativo,
 )
-
-
-class DadosInvalidosError(Exception):
-    """Indica que uma regra do inventário não foi respeitada."""
-
-
-def validar_texto(valor, campo):
-    """Impede que campos obrigatórios recebam texto vazio."""
-    if not isinstance(valor, str) or not valor.strip():
-        raise DadosInvalidosError(f"{campo} é obrigatório.")
-    return valor.strip()
-
-
-def validar_opcao(valor, opcoes, campo):
-    """Aceita somente uma das opções padronizadas e devolve sua forma oficial."""
-    for opcao in opcoes:
-        if isinstance(valor, str) and valor.lower() == opcao.lower():
-            return opcao
-    raise DadosInvalidosError(f"{campo} inválida. Escolha uma opção permitida.")
-
-
-def validar_cve(cve):
-    """Valida o formato básico CVE-AAAA-NÚMERO sem exigir bibliotecas extras."""
-    partes = cve.strip().upper().split("-") if isinstance(cve, str) else []
-    if len(partes) != 3 or partes[0] != "CVE":
-        raise DadosInvalidosError("CVE inválido. Use o formato CVE-AAAA-NÚMERO.")
-    if not partes[1].isdigit() or len(partes[1]) != 4 or not partes[2].isdigit():
-        raise DadosInvalidosError("CVE inválido. Use o formato CVE-AAAA-NÚMERO.")
-    return "-".join(partes)
-
-
-def validar_cvss(cvss):
-    """Converte a nota CVSS e garante o intervalo oficial de 0.0 a 10.0."""
-    try:
-        # No Brasil, é comum escrever 9,8. O float do Python usa ponto,
-        # então aceitamos as duas formas antes de converter para número.
-        if isinstance(cvss, str):
-            cvss = cvss.strip().replace(",", ".")
-        nota = float(cvss)
-    except (TypeError, ValueError):
-        raise DadosInvalidosError("CVSS deve ser um número entre 0.0 e 10.0.")
-    # Esta forma também rejeita "nan", que não é uma nota válida.
-    if not 0.0 <= nota <= 10.0:
-        raise DadosInvalidosError("CVSS deve estar entre 0.0 e 10.0.")
-    return nota
-
-
-def validar_cwe(cwe):
-    """Aceita a identificação simples de uma categoria de fraqueza."""
-    texto = validar_texto(cwe, "CWE").upper()
-    partes = texto.split("-")
-    if len(partes) != 2 or partes[0] != "CWE" or not partes[1].isdigit():
-        raise DadosInvalidosError("CWE inválido. Use o formato CWE-NÚMERO.")
-    return texto
-
-
-def validar_data_fonte(data_fonte):
-    """Exige a data no formato dd/mm/aaaa informado pela própria tela."""
-    texto = validar_texto(data_fonte, "Data da fonte")
-    try:
-        datetime.strptime(texto, "%d/%m/%Y")
-    except ValueError:
-        raise DadosInvalidosError("Data inválida. Use o formato dd/mm/aaaa.")
-    return texto
-
-
-def validar_campos_extras(campos):
-    """Aceita apenas pares descritivos simples; não altera o cálculo de risco."""
-    if not isinstance(campos, dict) or len(campos) > 30:
-        raise DadosInvalidosError("Campos adicionais devem ser um objeto com até 30 itens.")
-    normalizados = {}
-    for chave, valor in campos.items():
-        if not isinstance(chave, str) or not 1 <= len(chave.strip()) <= 60:
-            raise DadosInvalidosError("Nome do campo adicional deve ter 1 a 60 caracteres.")
-        if not isinstance(valor, str) or len(valor) > 500:
-            raise DadosInvalidosError("Valor adicional deve ser texto com até 500 caracteres.")
-        chave = chave.strip()
-        if chave.lower() in (c.lower() for c in normalizados):
-            raise DadosInvalidosError("Campo adicional duplicado.")
-        normalizados[chave] = valor
-    return normalizados
-
-
-def validar_nome_tipo_personalizado(tipo, nome):
-    if tipo >= 100:
-        nome = validar_texto(nome, "Nome do tipo personalizado")
-        if len(nome) > 60:
-            raise DadosInvalidosError("Tipo personalizado deve ter até 60 caracteres.")
-        return nome
-    if nome is not None:
-        raise DadosInvalidosError("Tipos nativos não aceitam outro nome de categoria.")
-    return None
-
-
-def validar_tipo_ativo(tipo):
-    """Confirma que o código pertence ao Enum antes de salvar o ativo."""
-    if isinstance(tipo, bool):
-        raise DadosInvalidosError("Tipo de ativo inválido.")
-    try:
-        return TipoAtivo(tipo).value
-    except (ValueError, TypeError):
-        if type(tipo) is int and tipo >= 100:
-            return tipo
-        raise DadosInvalidosError("Tipo de ativo inválido.")
+from dominio.validacoes import (
+    DadosInvalidosError,
+    validar_campos_extras,
+    validar_cve,
+    validar_cvss,
+    validar_cwe,
+    validar_data_fonte,
+    validar_dependencias,
+    validar_nome_tipo_personalizado,
+    validar_opcao,
+    validar_texto,
+    validar_tipo_ativo,
+)
 
 
 class Inventario:
@@ -170,13 +78,18 @@ class Inventario:
                 ativo.id != identificador_ignorado
                 and ativo.nome.strip().lower() == nome_normalizado
             ):
-                raise DadosInvalidosError(
-                    "Já existe um ativo com esse nome ou hostname."
-                )
+                raise DadosInvalidosError("Já existe um ativo com esse nome ou hostname.")
 
     def cadastrar_ativo(
-        self, identificador, nome, responsavel, localizacao, tipo, criticidade,
-        nome_tipo_personalizado=None, campos_extras=None,
+        self,
+        identificador,
+        nome,
+        responsavel,
+        localizacao,
+        tipo,
+        criticidade,
+        nome_tipo_personalizado=None,
+        campos_extras=None,
     ):
         """Cria um ativo completo, sem alterar a base quando os dados forem inválidos."""
         ativos = self._ativos
@@ -187,9 +100,7 @@ class Inventario:
         nome = validar_texto(nome, "Nome ou hostname")
         self.validar_nome_unico(nome)
         tipo = validar_tipo_ativo(tipo)
-        nome_tipo_personalizado = validar_nome_tipo_personalizado(
-            tipo, nome_tipo_personalizado
-        )
+        nome_tipo_personalizado = validar_nome_tipo_personalizado(tipo, nome_tipo_personalizado)
         for existente in ativos.values():
             if existente.tipo == tipo and tipo >= 100:
                 if existente.nome_tipo_personalizado != nome_tipo_personalizado:
@@ -210,8 +121,7 @@ class Inventario:
 
     def listar_tipos(self):
         """Tipos nativos e tipos personalizados presentes na base."""
-        tipos = {item.value: item.name.replace("_", " ").title()
-                 for item in TipoAtivo}
+        tipos = {item.value: item.name.replace("_", " ").title() for item in TipoAtivo}
         for ativo in self._ativos.values():
             if ativo.tipo >= 100:
                 tipos[ativo.tipo] = ativo.nome_tipo_personalizado
@@ -303,16 +213,20 @@ class Inventario:
             nome_personalizado = (
                 nome_tipo_personalizado
                 if nome_tipo_personalizado is not None
-                else ativo.nome_tipo_personalizado
-                if novo_tipo == ativo.tipo
-                else next(
-                    (item.nome_tipo_personalizado for item in ativos.values()
-                     if item.tipo == novo_tipo), None
+                else (
+                    ativo.nome_tipo_personalizado
+                    if novo_tipo == ativo.tipo
+                    else next(
+                        (
+                            item.nome_tipo_personalizado
+                            for item in ativos.values()
+                            if item.tipo == novo_tipo
+                        ),
+                        None,
+                    )
                 )
             )
-            nome_personalizado = validar_nome_tipo_personalizado(
-                novo_tipo, nome_personalizado
-            )
+            nome_personalizado = validar_nome_tipo_personalizado(novo_tipo, nome_personalizado)
         else:
             nome_personalizado = None
         if alteracoes:
@@ -337,9 +251,7 @@ class Inventario:
                 ativo.responsavel = novo_responsavel
                 ativo.localizacao = nova_localizacao
                 ativo.criticidade = nova_criticidade
-            ativo_atualizado.registrar_historico(
-                "Campos alterados: " + ", ".join(alteracoes) + "."
-            )
+            ativo_atualizado.registrar_historico("Campos alterados: " + ", ".join(alteracoes) + ".")
             return ativo_atualizado
         return ativo
 
@@ -378,14 +290,10 @@ class Inventario:
             peso = float(str(peso).replace(",", "."))
         except ValueError:
             raise DadosInvalidosError("Peso deve ser um número entre 0 e 1.")
-        novas_dependencias = ativo.dependencias + [
-            {"ativo_id": ativo_dependente, "peso": peso}
-        ]
+        novas_dependencias = ativo.dependencias + [{"ativo_id": ativo_dependente, "peso": peso}]
         validar_dependencias(novas_dependencias)
         ativo.dependencias = novas_dependencias
-        ativo.registrar_historico(
-            f"Dependência do ativo {ativo_dependente} cadastrada."
-        )
+        ativo.registrar_historico(f"Dependência do ativo {ativo_dependente} cadastrada.")
 
     def remover_dependencia(self, identificador, ativo_dependente):
         """Remove uma dependência existente sem alterar os demais dados do ativo."""
@@ -421,9 +329,7 @@ class Inventario:
             raise DadosInvalidosError("Ativo não encontrado.")
         cve = validar_cve(cve)
         if ativo.buscar_vulnerabilidade(cve) is not None:
-            raise DadosInvalidosError(
-                "Esta vulnerabilidade já foi cadastrada para o ativo."
-            )
+            raise DadosInvalidosError("Esta vulnerabilidade já foi cadastrada para o ativo.")
         cwe = validar_cwe(cwe)
         cvss = validar_cvss(cvss)
         for outro_ativo in self._ativos.values():
@@ -443,9 +349,7 @@ class Inventario:
         status = validar_opcao(status, STATUS, "Status")
         verificacao = validar_texto(verificacao, "Verificação")
         if status == "Corrigida" and verificacao.lower() == "pendente":
-            raise DadosInvalidosError(
-                "Informe como a correção foi verificada antes de concluir."
-            )
+            raise DadosInvalidosError("Informe como a correção foi verificada antes de concluir.")
         vulnerabilidade = Vulnerabilidade(
             cve,
             cwe,
@@ -505,9 +409,7 @@ class Inventario:
             novo_status = validar_opcao(status, STATUS, "Status")
             alteracoes.append("status")
         if novo_status == "Corrigida" and nova_verificacao.lower() == "pendente":
-            raise DadosInvalidosError(
-                "Informe como a correção foi verificada antes de concluir."
-            )
+            raise DadosInvalidosError("Informe como a correção foi verificada antes de concluir.")
         if alteracoes:
             vulnerabilidade.descricao = nova_descricao
             vulnerabilidade.prioridade = nova_prioridade
@@ -548,164 +450,3 @@ class Inventario:
                     continue
                 resultado.append((ativo, vulnerabilidade))
         return resultado
-
-
-def validar_dependencias(dependencias):
-    """Confere a estrutura simples usada para guardar risco herdado."""
-    if not isinstance(dependencias, list):
-        raise DadosInvalidosError("Dependências inválidas no arquivo de dados.")
-    ids_encontrados = set()
-    soma_pesos = 0
-    for dependencia in dependencias:
-        if not isinstance(dependencia, dict):
-            raise DadosInvalidosError("Dependência inválida no arquivo de dados.")
-        ativo_id = dependencia.get("ativo_id")
-        peso = dependencia.get("peso")
-        if type(ativo_id) is not int or ativo_id <= 0 or ativo_id in ids_encontrados:
-            raise DadosInvalidosError("Dependência inválida no arquivo de dados.")
-        if type(peso) not in (int, float) or not 0 <= peso < 1:
-            raise DadosInvalidosError("Peso de dependência deve estar entre 0 e 1.")
-        ids_encontrados.add(ativo_id)
-        soma_pesos += peso
-    if soma_pesos >= 1:
-        raise DadosInvalidosError(
-            "A soma dos pesos de dependência deve ser menor que 1."
-        )
-
-
-def validar_ativo_carregado(ativo):
-    """Confere o JSON carregado antes de permitir que ele seja usado no menu."""
-    if type(ativo.id) is not int or ativo.id <= 0:
-        raise DadosInvalidosError("ID inválido no arquivo de dados.")
-    ativo.nome = validar_texto(ativo.nome, "Nome ou hostname")
-    ativo.responsavel = validar_texto(ativo.responsavel, "Responsável")
-    ativo.localizacao = validar_texto(ativo.localizacao, "Setor ou localização")
-    ativo.tipo = validar_tipo_ativo(ativo.tipo)
-    ativo.nome_tipo_personalizado = validar_nome_tipo_personalizado(
-        ativo.tipo, ativo.nome_tipo_personalizado
-    )
-    ativo.campos_extras = validar_campos_extras(ativo.campos_extras)
-    ativo.criticidade = validar_opcao(ativo.criticidade, CRITICIDADES, "Criticidade")
-    validar_dependencias(ativo.dependencias)
-    if ativo.id in [dependencia["ativo_id"] for dependencia in ativo.dependencias]:
-        raise DadosInvalidosError("Um ativo não pode depender de si mesmo.")
-    if not isinstance(ativo.historico, list):
-        raise DadosInvalidosError("Histórico inválido no arquivo de dados.")
-
-    if not isinstance(ativo.vulnerabilidades, list):
-        raise DadosInvalidosError("Vulnerabilidades inválidas no arquivo de dados.")
-
-    cves_encontrados = set()
-    for vulnerabilidade in ativo.vulnerabilidades:
-        vulnerabilidade.cve = validar_cve(vulnerabilidade.cve)
-        if vulnerabilidade.cve in cves_encontrados:
-            raise DadosInvalidosError("CVE repetido no arquivo de dados.")
-        cves_encontrados.add(vulnerabilidade.cve)
-        vulnerabilidade.cwe = validar_cwe(vulnerabilidade.cwe)
-        vulnerabilidade.cvss = validar_cvss(vulnerabilidade.cvss)
-        vulnerabilidade.descricao = validar_texto(
-            vulnerabilidade.descricao, "Descrição"
-        )
-        vulnerabilidade.fonte = validar_texto(vulnerabilidade.fonte, "Fonte")
-        vulnerabilidade.data_fonte = validar_data_fonte(vulnerabilidade.data_fonte)
-        vulnerabilidade.impacto = validar_texto(vulnerabilidade.impacto, "Impacto")
-        vulnerabilidade.prioridade = validar_opcao(
-            vulnerabilidade.prioridade, SEVERIDADES, "Prioridade"
-        )
-        vulnerabilidade.tratamento = validar_texto(
-            vulnerabilidade.tratamento, "Tratamento"
-        )
-        vulnerabilidade.status = validar_opcao(vulnerabilidade.status, STATUS, "Status")
-        vulnerabilidade.verificacao = validar_texto(
-            vulnerabilidade.verificacao, "Verificação"
-        )
-        if (
-            vulnerabilidade.status == "Corrigida"
-            and vulnerabilidade.verificacao.lower() == "pendente"
-        ):
-            raise DadosInvalidosError("Correção sem verificação no arquivo de dados.")
-    return ativo
-
-
-def validar_cvss_compartilhado(ativos):
-    """Garante um único valor de severidade para cada coluna CVE de M."""
-    notas = {}
-    for ativo in ativos.values():
-        for vulnerabilidade in ativo.vulnerabilidades:
-            anterior = notas.get(vulnerabilidade.cve)
-            if anterior is not None and not math.isclose(
-                anterior, vulnerabilidade.cvss, rel_tol=0, abs_tol=1e-9
-            ):
-                raise DadosInvalidosError(
-                    f"CVE {vulnerabilidade.cve} tem notas CVSS diferentes no JSON."
-                )
-            notas[vulnerabilidade.cve] = vulnerabilidade.cvss
-
-
-def buscar_vulnerabilidade(ativo, cve):
-    """Procura uma vulnerabilidade pelo CVE dentro de um ativo."""
-    return ativo.buscar_vulnerabilidade(cve)
-
-
-def _como_inventario(ativos):
-    return ativos if isinstance(ativos, Inventario) else Inventario(ativos)
-
-
-def validar_nome_unico(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).validar_nome_unico(*args, **kwargs)
-
-
-def cadastrar_ativo(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).cadastrar_ativo(*args, **kwargs)
-
-
-def consultar_por_id(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).consultar_por_id(*args, **kwargs)
-
-
-def filtrar_ativos(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).filtrar_ativos(*args, **kwargs)
-
-
-def atualizar_ativo(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).atualizar_ativo(*args, **kwargs)
-
-
-def excluir_ativo(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).excluir_ativo(*args, **kwargs)
-
-
-def adicionar_dependencia(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).adicionar_dependencia(*args, **kwargs)
-
-
-def remover_dependencia(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).remover_dependencia(*args, **kwargs)
-
-
-def cadastrar_vulnerabilidade(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).cadastrar_vulnerabilidade(*args, **kwargs)
-
-
-def atualizar_vulnerabilidade(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).atualizar_vulnerabilidade(*args, **kwargs)
-
-
-def excluir_vulnerabilidade(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).excluir_vulnerabilidade(*args, **kwargs)
-
-
-def consultar_vulnerabilidades(ativos, *args, **kwargs):
-    """Compatibilidade com as chamadas das Sprints 1 e 2."""
-    return _como_inventario(ativos).consultar_vulnerabilidades(*args, **kwargs)

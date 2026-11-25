@@ -28,23 +28,18 @@ class TesteBarreirasHTTP(unittest.TestCase):
 
     def test_credencial_correta_e_incorreta(self):
         self.assertTrue(
-            AutenticacaoHTTP(self.senha).autorizada(
-                "Bearer senha-dedicada-para-testes"
-            )
+            AutenticacaoHTTP(self.senha).autorizada("Bearer senha-dedicada-para-testes")
         )
-        self.assertFalse(AutenticacaoHTTP(self.senha).autorizada(
-            "Bearer senha-dedicada-para-teste"))
+        self.assertFalse(
+            AutenticacaoHTTP(self.senha).autorizada("Bearer senha-dedicada-para-teste")
+        )
         self.assertFalse(AutenticacaoHTTP(self.senha).autorizada("Basic abc"))
 
     def test_riscos_exige_senha(self):
         self.assertEqual(self.servico.atender("GET", "/riscos")[0], 401)
+        self.assertEqual(self.servico.atender("GET", "/riscos", "Bearer senha-errada")[0], 401)
         self.assertEqual(
-            self.servico.atender("GET", "/riscos", "Bearer senha-errada")[0], 401
-        )
-        self.assertEqual(
-            self.servico.atender(
-                "GET", "/riscos", "Bearer senha-dedicada-para-testes"
-            )[0], 200
+            self.servico.atender("GET", "/riscos", "Bearer senha-dedicada-para-testes")[0], 200
         )
 
     def test_saude_continua_publica_para_healthcheck(self):
@@ -53,9 +48,7 @@ class TesteBarreirasHTTP(unittest.TestCase):
     def test_rota_isca_registrada_sem_credenciais(self):
         self.assertEqual(self.servico.atender("GET", "/admin")[0], 404)
         log = os.path.join(self.tmp.name, "auditoria.jsonl")
-        AuditoriaHTTP(log).registrar(
-            "192.0.2.15", "GET", "/admin?senha=nao-registrar", 404
-        )
+        AuditoriaHTTP(log).registrar("192.0.2.15", "GET", "/admin?senha=nao-registrar", 404)
         with open(log, encoding="utf-8") as arquivo:
             linha = arquivo.read()
         self.assertIn("alerta_rota_isca", linha)
@@ -63,9 +56,7 @@ class TesteBarreirasHTTP(unittest.TestCase):
 
     def test_metodo_nao_permitido(self):
         self.assertEqual(
-            self.servico.atender(
-                "POST", "/riscos", "Bearer senha-dedicada-para-testes"
-            )[0], 405
+            self.servico.atender("POST", "/riscos", "Bearer senha-dedicada-para-testes")[0], 405
         )
 
 

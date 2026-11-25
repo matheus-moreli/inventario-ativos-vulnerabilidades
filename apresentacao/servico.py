@@ -15,8 +15,15 @@ from infraestrutura.persistencia import RepositorioJSON
 class ServicoInventario:
     """Expõe saúde, protege riscos por senha e audita requisições."""
 
-    def __init__(self, ativos, host="0.0.0.0", porta=None, caminho_dados=None,
-                 caminho_auditoria=None, caminho_senha=None):
+    def __init__(
+        self,
+        ativos,
+        host="0.0.0.0",
+        porta=None,
+        caminho_dados=None,
+        caminho_auditoria=None,
+        caminho_senha=None,
+    ):
         self.ativos = ativos
         self.caminho_dados = caminho_dados
         self.host = host
@@ -46,7 +53,9 @@ class ServicoInventario:
             ativos = RepositorioJSON(self.caminho_dados).carregar()
             if ativos is None:
                 if caminho == ROTA_ATIVOS:
-                    return problema(503, "Inventário indisponível", "O arquivo de dados está inválido.")
+                    return problema(
+                        503, "Inventário indisponível", "O arquivo de dados está inválido."
+                    )
                 return 503, {"erro": "Arquivo de dados inválido; corrija a base JSON."}
         if caminho == ROTA_ATIVOS:
             return listar_ativos(ativos, consulta)
@@ -95,7 +104,9 @@ class ServicoInventario:
             return 404, {"erro": "Rota não encontrada."}
         if self.autenticacao is None or not self.autenticacao.autorizada(autorizacao):
             if versao_um:
-                return problema(401, "Autorização necessária", "Informe uma credencial Bearer válida.")
+                return problema(
+                    401, "Autorização necessária", "Informe uma credencial Bearer válida."
+                )
             return 401, {"erro": "Autorização necessária."}
         if rota == ROTA_RISCOS:
             codigo, corpo = self.resposta("/riscos")
@@ -118,12 +129,14 @@ class ServicoInventario:
                     metodo, self.path, self.headers.get("Authorization", "")
                 )
                 if servico.auditoria is not None:
-                    servico.auditoria.registrar(
-                        self.client_address[0], metodo, self.path, codigo
-                    )
+                    servico.auditoria.registrar(self.client_address[0], metodo, self.path, codigo)
                 dados = json.dumps(corpo, ensure_ascii=False).encode("utf-8")
                 self.send_response(codigo)
-                tipo = "application/problem+json" if "status" in corpo and "type" in corpo else "application/json"
+                tipo = (
+                    "application/problem+json"
+                    if "status" in corpo and "type" in corpo
+                    else "application/json"
+                )
                 self.send_header("Content-Type", f"{tipo}; charset=utf-8")
                 self.send_header("Content-Length", str(len(dados)))
                 self.send_header("Cache-Control", "no-store")

@@ -27,8 +27,8 @@ python app.py --testes
 
 | Bloco | O que explicar |
 |---|---|
-| [Entrada e telas](app.py) | `app.py` escolhe terminal ou serviço. `apresentacao/interface_rica.py` liga os menus às operações e `navegacao.py` trata as teclas e os formulários. |
-| [Equipamentos e regras](dominio/inventario.py) | `modelos.py` define equipamentos e vulnerabilidades. `Inventario` localiza, valida e aplica as alterações. |
+| [Entrada e telas](app.py) | `app.py` escolhe terminal ou serviço. `apresentacao/interface_rica.py` liga os menus de ativos às operações. As telas de vulnerabilidades, dependências e risco ficam em `telas_*.py`, e `navegacao.py` trata as teclas e os formulários. |
+| [Equipamentos e regras](dominio/inventario.py) | `modelos.py` define equipamentos e vulnerabilidades. `validacoes.py` concentra as regras de cada campo. `Inventario` localiza e aplica as alterações. |
 | [Persistência](infraestrutura/persistencia.py) | Reconstrói objetos do JSON e salva uma lista de registros em arquivo temporário antes da troca atômica. O menu publica a alteração em memória depois da gravação. A base do Trabalho 1 pode ser lida diretamente. |
 | [Álgebra linear](dominio/risco.py) | Monta M, v e A, calcula b = F·Mv (F é o fator de exposição de cada tipo, definido por polimorfismo) e resolve (I − A)x = b. A fatoração é reutilizada e a solução é conferida pelo resíduo. |
 

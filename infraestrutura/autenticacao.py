@@ -24,12 +24,10 @@ class AutenticacaoHTTP:
     def autorizada(self, cabecalho):
         if not isinstance(cabecalho, str) or not cabecalho.startswith("Bearer "):
             return False
-        credencial = cabecalho[len("Bearer "):]
+        credencial = cabecalho[len("Bearer ") :]
         if not credencial or len(credencial) > 512:
             return False
         senha = self._senha()
         if senha is None:
             return False
-        return hmac.compare_digest(
-            credencial.encode("utf-8"), senha.encode("utf-8")
-        )
+        return hmac.compare_digest(credencial.encode("utf-8"), senha.encode("utf-8"))

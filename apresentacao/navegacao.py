@@ -3,6 +3,7 @@
 Menus têm setas e Esc; campos aceitam Esc/Ctrl+C e /cancelar.
 Nenhum formulário grava dados antes de confirmação.
 """
+
 import os
 import sys
 
@@ -14,8 +15,7 @@ from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.shortcuts import PromptSession
 from prompt_toolkit.styles import Style
 
-from dominio.inventario import DadosInvalidosError
-
+from dominio.validacoes import DadosInvalidosError
 
 ERROS_TERMINAL = (OSError,)
 if sys.platform == "win32":
@@ -28,12 +28,14 @@ class OperacaoCancelada(Exception):
     """Usuário interrompeu o fluxo: nenhum rascunho deve ser confirmado."""
 
 
-ESTILO = Style.from_dict({
-    "titulo": "bold #7dd3fc",
-    "opcao": "#d1d5db",
-    "selecionada": "bold #0b1220 bg:#7dd3fc",
-    "instrucao": "#9ca3af",
-})
+ESTILO = Style.from_dict(
+    {
+        "titulo": "bold #7dd3fc",
+        "opcao": "#d1d5db",
+        "selecionada": "bold #0b1220 bg:#7dd3fc",
+        "instrucao": "#9ca3af",
+    }
+)
 
 
 class Navegacao:
@@ -42,7 +44,8 @@ class Navegacao:
     def usar_setas(self):
         return (
             os.environ.get("INVENTARIO_MENU") != "simples"
-            and sys.stdin.isatty() and sys.stdout.isatty()
+            and sys.stdin.isatty()
+            and sys.stdout.isatty()
         )
 
     def menu(self, titulo, opcoes, indice_inicial=0):
@@ -90,7 +93,8 @@ class Navegacao:
             event.app.exit(result=None)
 
         controle = FormattedTextControl(
-            text=desenhar, focusable=True,
+            text=desenhar,
+            focusable=True,
             get_cursor_position=lambda: Point(x=0, y=indice + 2),
         )
         janela = Window(
@@ -101,7 +105,9 @@ class Navegacao:
         )
         try:
             return Application(
-                layout=Layout(janela), key_bindings=teclas, style=ESTILO,
+                layout=Layout(janela),
+                key_bindings=teclas,
+                style=ESTILO,
             ).run()
         except (EOFError, KeyboardInterrupt):
             return None
@@ -120,7 +126,11 @@ class Navegacao:
                 return None
             if resposta in ("0", "/cancelar", "/voltar", "/sair", ""):
                 return None
-            if resposta.isascii() and resposta.isdecimal() and len(resposta) <= len(str(len(opcoes))):
+            if (
+                resposta.isascii()
+                and resposta.isdecimal()
+                and len(resposta) <= len(str(len(opcoes)))
+            ):
                 indice = int(resposta)
                 if 1 <= indice <= len(opcoes):
                     return indice - 1
@@ -158,9 +168,7 @@ class Navegacao:
                 setas = False
                 continue
 
-            if resposta is None or resposta.strip().lower() in (
-                "/cancelar", "/voltar", "/sair"
-            ):
+            if resposta is None or resposta.strip().lower() in ("/cancelar", "/voltar", "/sair"):
                 raise OperacaoCancelada()
             resposta = resposta.strip()
             if obrigatorio and not resposta:
@@ -180,6 +188,7 @@ class Navegacao:
             if numero <= 0:
                 raise ValueError("Informe um inteiro positivo.")
             return numero
+
         return self.texto(rotulo, padrao, conversor=converter)
 
     def escolha(self, titulo, opcoes, indice_inicial=0):

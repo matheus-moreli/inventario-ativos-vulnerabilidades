@@ -12,19 +12,21 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from dominio.inventario import (
-    DadosInvalidosError,
+from dominio.validacoes import DadosInvalidosError
+from infraestrutura.persistencia import RepositorioJSON
+from tests.ajudantes import (
     atualizar_ativo,
     atualizar_vulnerabilidade,
     cadastrar_ativo,
     cadastrar_vulnerabilidade,
+    carregar_ativos,
     consultar_por_id,
     consultar_vulnerabilidades,
     excluir_ativo,
     excluir_vulnerabilidade,
     filtrar_ativos,
+    salvar_ativos,
 )
-from infraestrutura.persistencia import RepositorioJSON, carregar_ativos, salvar_ativos
 
 
 class TesteInventario(unittest.TestCase):
@@ -32,9 +34,7 @@ class TesteInventario(unittest.TestCase):
 
     def setUp(self):
         self.ativos = {}
-        cadastrar_ativo(
-            self.ativos, 10, "SRV-ARQUIVOS", "Equipe TI", "Datacenter", 2, "Alta"
-        )
+        cadastrar_ativo(self.ativos, 10, "SRV-ARQUIVOS", "Equipe TI", "Datacenter", 2, "Alta")
 
     def cadastrar_vulnerabilidade_de_exemplo(self):
         """Evita repetir os mesmos dados válidos em vários testes."""
@@ -67,9 +67,7 @@ class TesteInventario(unittest.TestCase):
     def test_nome_duplicado_e_rejeitado(self):
         """Hostname repetido não pode identificar dois ativos diferentes."""
         with self.assertRaises(DadosInvalidosError):
-            cadastrar_ativo(
-                self.ativos, 20, " srv-arquivos ", "TI", "Sala 1", 1, "Baixa"
-            )
+            cadastrar_ativo(self.ativos, 20, " srv-arquivos ", "TI", "Sala 1", 1, "Baixa")
         self.assertNotIn(20, self.ativos)
 
     def test_atualizacao_nao_permite_nome_de_outro_ativo(self):
@@ -247,9 +245,7 @@ class TesteInventario(unittest.TestCase):
 
     def test_remocao_de_vulnerabilidade_exige_confirmacao(self):
         self.cadastrar_vulnerabilidade_de_exemplo()
-        self.assertFalse(
-            excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", False)
-        )
+        self.assertFalse(excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", False))
         self.assertEqual(len(self.ativos[10].vulnerabilidades), 1)
         self.assertTrue(excluir_vulnerabilidade(self.ativos, 10, "CVE-2024-1234", True))
         self.assertEqual(len(self.ativos[10].vulnerabilidades), 0)
@@ -270,9 +266,7 @@ class TesteInventario(unittest.TestCase):
             "Tratar",
         )
         with self.assertRaises(DadosInvalidosError):
-            atualizar_vulnerabilidade(
-                self.ativos, 10, "CVE-2024-5678", status="Corrigida"
-            )
+            atualizar_vulnerabilidade(self.ativos, 10, "CVE-2024-5678", status="Corrigida")
 
     def test_cadastro_corrigido_exige_verificacao(self):
         with self.assertRaises(DadosInvalidosError):

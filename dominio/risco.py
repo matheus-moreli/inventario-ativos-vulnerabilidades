@@ -22,9 +22,7 @@ def montar_matriz_incidencia(ativos):
             if anterior is None:
                 por_cve[vulnerabilidade.cve] = vulnerabilidade
                 vulnerabilidades.append(vulnerabilidade)
-            elif not math.isclose(
-                anterior.cvss, vulnerabilidade.cvss, rel_tol=0, abs_tol=1e-9
-            ):
+            elif not math.isclose(anterior.cvss, vulnerabilidade.cvss, rel_tol=0, abs_tol=1e-9):
                 raise ValueError(
                     f"CVE {vulnerabilidade.cve} tem notas CVSS diferentes entre ativos."
                 )
@@ -32,9 +30,7 @@ def montar_matriz_incidencia(ativos):
     matriz = []
     for ativo in lista_ativos:
         cves_do_ativo = {item.cve for item in ativo.vulnerabilidades}
-        matriz.append(
-            [1 if item.cve in cves_do_ativo else 0 for item in vulnerabilidades]
-        )
+        matriz.append([1 if item.cve in cves_do_ativo else 0 for item in vulnerabilidades])
     return lista_ativos, vulnerabilidades, matriz
 
 
@@ -51,10 +47,7 @@ def produto_matriz_vetor(matriz, vetor):
 
 def aplicar_exposicao(lista_ativos, proprio):
     """Pondera cada risco próprio pelo fator do tipo; o tipo decide o valor."""
-    return [
-        ativo.fator_exposicao() * risco
-        for ativo, risco in zip(lista_ativos, proprio)
-    ]
+    return [ativo.fator_exposicao() * risco for ativo, risco in zip(lista_ativos, proprio)]
 
 
 def montar_matriz_dependencias(lista_ativos):
@@ -71,10 +64,7 @@ def identidade_menos(matriz):
     """Monta I - A, sistema usado para calcular o risco efetivo."""
     tamanho = len(matriz)
     return [
-        [
-            (1.0 if linha == coluna else 0.0) - matriz[linha][coluna]
-            for coluna in range(tamanho)
-        ]
+        [(1.0 if linha == coluna else 0.0) - matriz[linha][coluna] for coluna in range(tamanho)]
         for linha in range(tamanho)
     ]
 
@@ -127,22 +117,6 @@ class SistemaLinear:
         return self.norma * max(somas)
 
 
-def sistema_e_invertivel(matriz):
-    try:
-        SistemaLinear(matriz)
-    except ValueError:
-        return False
-    return True
-
-
-def resolver_sistema(matriz, vetor):
-    return SistemaLinear(matriz).resolver(vetor)
-
-
-def numero_condicao_infinito(matriz):
-    return SistemaLinear(matriz).condicionamento()
-
-
 class AnalisadorRisco:
     """Calcula o risco dos objetos Ativo recebidos do inventário."""
 
@@ -166,20 +140,15 @@ class AnalisadorRisco:
         self.determinante = sistema.determinante
         self.numero_condicao = sistema.condicionamento()
         if self.numero_condicao > 1 / sys.float_info.epsilon:
-            raise ValueError(
-                "I - A é singular ou quase singular; revise as dependências."
-            )
+            raise ValueError("I - A é singular ou quase singular; revise as dependências.")
         efetivo = sistema.resolver(proprio)
         self.herdado = produto_matriz_vetor(dependencias, efetivo)
         calculado = produto_matriz_vetor(self.matriz_sistema, efetivo)
-        self.residuo = max((abs(real - esperado) for real, esperado in zip(calculado, proprio)), default=0.0)
+        self.residuo = max(
+            (abs(real - esperado) for real, esperado in zip(calculado, proprio)), default=0.0
+        )
         self.maior_soma_pesos = max(map(sum, dependencias), default=0.0)
         return lista, matriz, vetor, proprio, dependencias, efetivo
-
-
-def calcular_riscos(ativos):
-    """Compatibilidade com as chamadas das Sprints anteriores."""
-    return AnalisadorRisco(ativos).calcular()
 
 
 def simular_vulnerabilidade(ativos, identificador, cvss):
@@ -189,7 +158,7 @@ def simular_vulnerabilidade(ativos, identificador, cvss):
     valor 1 apenas na linha do ativo escolhido, pois a vulnerabilidade simulada
     afeta somente esse ativo. Nenhum objeto é gravado ou modificado.
     """
-    lista, matriz, vetor, _, dependencias, _ = calcular_riscos(ativos)
+    lista, matriz, vetor, _, dependencias, _ = AnalisadorRisco(ativos).calcular()
     indice_ativo = next(
         (indice for indice, ativo in enumerate(lista) if ativo.id == identificador),
         None,
@@ -198,13 +167,10 @@ def simular_vulnerabilidade(ativos, identificador, cvss):
         raise ValueError("Ativo não encontrado para a simulação.")
 
     matriz_simulada = [
-        linha[:] + [1 if indice == indice_ativo else 0]
-        for indice, linha in enumerate(matriz)
+        linha[:] + [1 if indice == indice_ativo else 0] for indice, linha in enumerate(matriz)
     ]
     vetor_simulado = vetor + [cvss]
-    proprio = aplicar_exposicao(
-        lista, produto_matriz_vetor(matriz_simulada, vetor_simulado)
-    )
+    proprio = aplicar_exposicao(lista, produto_matriz_vetor(matriz_simulada, vetor_simulado))
     sistema = identidade_menos(dependencias)
-    efetivo = resolver_sistema(sistema, proprio)
+    efetivo = SistemaLinear(sistema).resolver(proprio)
     return lista, matriz_simulada, vetor_simulado, proprio, dependencias, efetivo

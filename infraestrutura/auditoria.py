@@ -15,8 +15,9 @@ ROTAS_ISCA = frozenset({"/admin", "/login", "/wp-admin", "/.env", "/painel"})
 class AuditoriaHTTP:
     """Registros JSONL rotativos, limitados em tamanho e sem rota pública."""
 
-    def __init__(self, caminho, limite_falhas=5, janela_segundos=60,
-                 tamanho_maximo=524288, backups=3):
+    def __init__(
+        self, caminho, limite_falhas=5, janela_segundos=60, tamanho_maximo=524288, backups=3
+    ):
         self.caminho = caminho
         self.limite_falhas = limite_falhas
         self.janela_segundos = janela_segundos
@@ -33,8 +34,7 @@ class AuditoriaHTTP:
         metodo = str(metodo)[:16]
         # Não registrar queries, fragmentos, cabeçalhos ou corpos.
         rota = str(alvo).split("?", 1)[0].split("#", 1)[0][:160] or "/"
-        if (ip in {"127.0.0.1", "::1"} and metodo == "GET"
-                and rota == "/saude" and codigo == 200):
+        if ip in {"127.0.0.1", "::1"} and metodo == "GET" and rota == "/saude" and codigo == 200:
             return
 
         agora = time.monotonic()
@@ -49,9 +49,10 @@ class AuditoriaHTTP:
                 while tentativas and agora - tentativas[0] > self.janela_segundos:
                     tentativas.popleft()
                 tentativas.append(agora)
-                if (len(tentativas) >= self.limite_falhas
-                        and agora - self._ultimo_alerta.get(ip, float("-inf"))
-                        >= self.janela_segundos):
+                if (
+                    len(tentativas) >= self.limite_falhas
+                    and agora - self._ultimo_alerta.get(ip, float("-inf")) >= self.janela_segundos
+                ):
                     classe = "alerta_falhas_repetidas"
                     self._ultimo_alerta[ip] = agora
             if rota in ROTAS_ISCA:
@@ -70,16 +71,17 @@ class AuditoriaHTTP:
             except OSError:
                 # Sem quebrar o inventário se faltar espaço para a auditoria.
                 if not self._aviso_gravacao:
-                    print("[AUDITORIA] Falha na escrita do log.",
-                          file=sys.stderr, flush=True)
+                    print("[AUDITORIA] Falha na escrita do log.", file=sys.stderr, flush=True)
                     self._aviso_gravacao = True
 
     def _gravar(self, evento):
         pasta = os.path.dirname(os.path.abspath(self.caminho))
         os.makedirs(pasta, exist_ok=True)
         linha = (json.dumps(evento, ensure_ascii=False) + "\n").encode("utf-8")
-        if (os.path.exists(self.caminho)
-                and os.path.getsize(self.caminho) + len(linha) > self.tamanho_maximo):
+        if (
+            os.path.exists(self.caminho)
+            and os.path.getsize(self.caminho) + len(linha) > self.tamanho_maximo
+        ):
             if self.backups:
                 mais_antigo = f"{self.caminho}.{self.backups}"
                 if os.path.exists(mais_antigo):
@@ -91,8 +93,6 @@ class AuditoriaHTTP:
                 os.replace(self.caminho, f"{self.caminho}.1")
             else:
                 os.remove(self.caminho)
-        descritor = os.open(
-            self.caminho, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600
-        )
+        descritor = os.open(self.caminho, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
         with os.fdopen(descritor, "ab") as arquivo:
             arquivo.write(linha)

@@ -1,4 +1,5 @@
 """Testes da interface nova: transações, cancelamentos e risco atualizado."""
+
 import io
 import os
 import tempfile
@@ -9,7 +10,8 @@ from rich.console import Console
 
 from apresentacao.interface_rica import InterfaceRica
 from apresentacao.navegacao import Navegacao, OperacaoCancelada
-from dominio.inventario import DadosInvalidosError, Inventario
+from dominio.inventario import Inventario
+from dominio.validacoes import DadosInvalidosError
 from dominio.risco import AnalisadorRisco
 from infraestrutura.persistencia import RepositorioJSON
 
@@ -57,7 +59,8 @@ class TesteInterfaceUnificada(unittest.TestCase):
         self.caminho = os.path.join(self.temp.name, "inventario.json")
         self.inv = Inventario()
         self.tela = InterfaceRica(
-            self.inv, self.caminho,
+            self.inv,
+            self.caminho,
             navegacao=NavegacaoFalsa(),
             console=Console(file=io.StringIO(), force_terminal=False),
         )
@@ -65,7 +68,12 @@ class TesteInterfaceUnificada(unittest.TestCase):
     def test_listagem_pagina_e_preserva_texto_literal_em_terminal_estreito(self):
         for identificador in range(1, 10):
             self.inv.cadastrar_ativo(
-                identificador, f"SRV-{identificador:02d}[/]", "TI", "Sala", 2, "Alta",
+                identificador,
+                f"SRV-{identificador:02d}[/]",
+                "TI",
+                "Sala",
+                2,
+                "Alta",
             )
         saida = io.StringIO()
         self.tela.console = Console(file=saida, force_terminal=False, width=42, height=18)
@@ -81,8 +89,16 @@ class TesteInterfaceUnificada(unittest.TestCase):
         for identificador in (7, 8):
             self.inv.cadastrar_ativo(identificador, f"SRV-{identificador}", "TI", "Sala", 2, "Alta")
             self.inv.cadastrar_vulnerabilidade(
-                identificador, f"CVE-2026-123{identificador}", "CWE-79", 8, "Falha [/] registrada",
-                "NVD", "01/01/2026", "Impacto", "Alta", "Tratar",
+                identificador,
+                f"CVE-2026-123{identificador}",
+                "CWE-79",
+                8,
+                "Falha [/] registrada",
+                "NVD",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
             )
         self.tela.nav = NavegacaoFalsa(escolhas=[0], textos=["CVE-2026-1238"])
         self.tela.buscar_vulnerabilidade()
@@ -92,7 +108,9 @@ class TesteInterfaceUnificada(unittest.TestCase):
         self.assertNotIn("CVE-2026-1237", tela)
 
     def test_menu_principal_reutiliza_resumo_e_submenus_nao_recalculam(self):
-        with patch.object(AnalisadorRisco, "calcular", return_value=([], [], [], [], [], [])) as calcular:
+        with patch.object(
+            AnalisadorRisco, "calcular", return_value=([], [], [], [], [], [])
+        ) as calcular:
             self.tela.cabecalho("Menu principal")
             self.tela.cabecalho("Equipamentos")
             self.tela.cabecalho("Menu principal")
@@ -100,9 +118,11 @@ class TesteInterfaceUnificada(unittest.TestCase):
 
     def test_menu_recupera_falha_de_renderizacao_com_modo_numerico(self):
         nav = Navegacao()
-        with patch.object(nav, "usar_setas", return_value=True), patch(
-            "apresentacao.navegacao.Application", side_effect=OSError
-        ), patch("builtins.input", side_effect=["²", "2"]):
+        with (
+            patch.object(nav, "usar_setas", return_value=True),
+            patch("apresentacao.navegacao.Application", side_effect=OSError),
+            patch("builtins.input", side_effect=["²", "2"]),
+        ):
             self.assertEqual(nav.menu("Opções", ["Primeiro", "Segundo"]), 1)
 
     def test_edicao_de_peso_preserva_dependencia_se_novo_valor_for_invalido(self):
@@ -174,10 +194,20 @@ class TesteInterfaceUnificada(unittest.TestCase):
         self.inv.cadastrar_ativo(1, "SRV-01", "TI", "Sala", 2, "Alta")
         self.assertEqual(AnalisadorRisco(self.inv.ativos).calcular()[-1], [0.0])
         self.tela.nav = NavegacaoFalsa(confirmacoes=[True])
-        self.tela.transacao(lambda inv: inv.cadastrar_vulnerabilidade(
-            1, "CVE-2026-1234", "CWE-79", 9.8, "Falha", "NVD",
-            "01/01/2026", "Impacto", "Alta", "Corrigir",
-        ))
+        self.tela.transacao(
+            lambda inv: inv.cadastrar_vulnerabilidade(
+                1,
+                "CVE-2026-1234",
+                "CWE-79",
+                9.8,
+                "Falha",
+                "NVD",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Corrigir",
+            )
+        )
         self.assertEqual(AnalisadorRisco(self.inv.ativos).calcular()[-1], [9.8])
         self.tela.transacao(
             lambda inv: inv.excluir_vulnerabilidade(1, "CVE-2026-1234", True),
@@ -199,49 +229,45 @@ class TesteInterfaceUnificada(unittest.TestCase):
         with self.assertRaises(OperacaoCancelada):
             self.tela.atualizar_ativo()
         self.assertEqual(self.inv[1].nome, "SRV-01")
-        self.assertEqual(
-            RepositorioJSON(self.caminho).carregar()[1].nome, "SRV-01"
-        )
+        self.assertEqual(RepositorioJSON(self.caminho).carregar()[1].nome, "SRV-01")
 
     def test_cancelar_na_confirmacao_nao_persiste(self):
         self.tela.nav = NavegacaoFalsa(confirmacoes=[False])
         with self.assertRaises(OperacaoCancelada):
-            self.tela.transacao(
-                lambda inv: inv.cadastrar_ativo(
-                    1, "SRV", "TI", "Sala", 2, "Alta"
-                )
-            )
+            self.tela.transacao(lambda inv: inv.cadastrar_ativo(1, "SRV", "TI", "Sala", 2, "Alta"))
         self.assertEqual(len(self.inv), 0)
 
     def test_falha_na_gravacao_nao_publica_rascunho(self):
         self.tela.nav = NavegacaoFalsa(confirmacoes=[True])
-        with patch("apresentacao.interface_rica.RepositorioJSON.salvar",
-                   return_value=False):
+        with patch("apresentacao.interface_rica.RepositorioJSON.salvar", return_value=False):
             with self.assertRaisesRegex(Exception, "Falha na gravação"):
                 self.tela.transacao(
-                    lambda inv: inv.cadastrar_ativo(
-                        1, "SRV", "TI", "Sala", 2, "Alta"
-                    )
+                    lambda inv: inv.cadastrar_ativo(1, "SRV", "TI", "Sala", 2, "Alta")
                 )
         self.assertEqual(len(self.inv), 0)
 
     def test_menu_fallback_com_zero_cancela(self):
         nav = Navegacao()
-        with patch("apresentacao.navegacao.sys.stdin.isatty",
-                   return_value=False), patch("builtins.input", return_value="0"):
+        with (
+            patch("apresentacao.navegacao.sys.stdin.isatty", return_value=False),
+            patch("builtins.input", return_value="0"),
+        ):
             self.assertIsNone(nav.menu("Opções", ["Um", "Dois"]))
 
     def test_setas_e_escape_nos_menus(self):
         from prompt_toolkit.keys import Keys
 
-        with patch.object(Navegacao, "usar_setas", return_value=True), patch(
-            "apresentacao.navegacao.Application"
-        ) as aplicativo:
+        with (
+            patch.object(Navegacao, "usar_setas", return_value=True),
+            patch("apresentacao.navegacao.Application") as aplicativo,
+        ):
             app = aplicativo.return_value
 
             def executar_escolha(teclas):
                 for tecla in teclas:
-                    vinculo = aplicativo.call_args.kwargs["key_bindings"].get_bindings_for_keys((tecla,))[0]
+                    vinculo = aplicativo.call_args.kwargs["key_bindings"].get_bindings_for_keys(
+                        (tecla,)
+                    )[0]
                     vinculo.handler(Mock(app=app))
                 return app.exit.call_args.kwargs["result"]
 
@@ -253,9 +279,11 @@ class TesteInterfaceUnificada(unittest.TestCase):
     def test_escape_cancela_campo_de_texto_em_tty(self):
         from prompt_toolkit.keys import Keys
 
-        with patch.object(Navegacao, "usar_setas", return_value=True), patch(
-            "apresentacao.navegacao.PromptSession"
-        ) as sessao:
+        with (
+            patch.object(Navegacao, "usar_setas", return_value=True),
+            patch("apresentacao.navegacao.PromptSession") as sessao,
+        ):
+
             def digitar_escape(*_args, **_kwargs):
                 app = Mock()
                 teclas = sessao.call_args.kwargs["key_bindings"]
@@ -267,9 +295,10 @@ class TesteInterfaceUnificada(unittest.TestCase):
                 Navegacao().texto("Nome")
 
     def test_texto_preserva_caracteres_acentuados(self):
-        with patch.object(Navegacao, "usar_setas", return_value=True), patch(
-            "apresentacao.navegacao.PromptSession"
-        ) as sessao:
+        with (
+            patch.object(Navegacao, "usar_setas", return_value=True),
+            patch("apresentacao.navegacao.PromptSession") as sessao,
+        ):
             sessao.return_value.prompt.return_value = "Sala à direita"
             self.assertEqual(Navegacao().texto("Localização"), "Sala à direita")
 
@@ -286,8 +315,16 @@ class TesteInterfaceUnificada(unittest.TestCase):
         for identificador, cve in [(7, "CVE-2026-1234"), (8, "CVE-2026-1235")]:
             self.inv.cadastrar_ativo(identificador, f"SRV-{identificador}", "TI", "Sala", 2, "Alta")
             self.inv.cadastrar_vulnerabilidade(
-                identificador, cve, "CWE-79", 8, "Caso didático",
-                "NVD", "01/01/2026", "Impacto", "Alta", "Tratar",
+                identificador,
+                cve,
+                "CWE-79",
+                8,
+                "Caso didático",
+                "NVD",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
             )
         self.tela.nav = NavegacaoFalsa(escolhas=[0], inteiros=[7])
         self.tela.buscar_ativo()
@@ -300,20 +337,24 @@ class TesteInterfaceUnificada(unittest.TestCase):
         self.inv.cadastrar_ativo(1, "SRV-01", "TI", "Rack", 2, "Alta")
         self.inv.cadastrar_ativo(2, "APP-01", "TI", "Rack", 4, "Alta")
         self.inv.cadastrar_vulnerabilidade(
-            1, "CVE-2026-2222", "CWE-79", 8.0, "Falha", "NVD",
-            "01/01/2026", "Impacto", "Alta", "Corrigir",
+            1,
+            "CVE-2026-2222",
+            "CWE-79",
+            8.0,
+            "Falha",
+            "NVD",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Corrigir",
         )
         self.tela.nav = NavegacaoFalsa(confirmacoes=[True])
-        self.tela.transacao(
-            lambda inv: inv.adicionar_dependencia(2, 1, "0,25")
-        )
+        self.tela.transacao(lambda inv: inv.adicionar_dependencia(2, 1, "0,25"))
         self.assertEqual(
             AnalisadorRisco(self.inv.ativos).calcular()[-1],
             [8.0, 2.0],
         )
-        self.tela.transacao(
-            lambda inv: inv.remover_dependencia(2, 1), confirmar=False
-        )
+        self.tela.transacao(lambda inv: inv.remover_dependencia(2, 1), confirmar=False)
         self.assertEqual(
             AnalisadorRisco(self.inv.ativos).calcular()[-1],
             [8.0, 0.0],
@@ -321,9 +362,10 @@ class TesteInterfaceUnificada(unittest.TestCase):
 
     def test_texto_cancelar_por_comando(self):
         nav = Navegacao()
-        with patch("apresentacao.navegacao.sys.stdin.isatty",
-                   return_value=False), patch("builtins.input",
-                   return_value="/cancelar"):
+        with (
+            patch("apresentacao.navegacao.sys.stdin.isatty", return_value=False),
+            patch("builtins.input", return_value="/cancelar"),
+        ):
             with self.assertRaises(OperacaoCancelada):
                 nav.texto("Hostname")
 

@@ -8,33 +8,28 @@ from unittest import mock
 
 import pytest
 from apresentacao.servico import ServicoInventario
-from dominio.inventario import (
-    DadosInvalidosError,
-    adicionar_dependencia,
-    atualizar_ativo,
-    cadastrar_ativo,
-    cadastrar_vulnerabilidade,
-)
+from dominio.validacoes import DadosInvalidosError
 from dominio.modelos import (
-    CLASSES_DE_ATIVO,
-    Ativo,
     BancoDeDados,
+    CLASSES_DE_ATIVO,
     Equipamento,
     EquipamentoPersonalizado,
     Notebook,
     Roteador,
     Servidor,
 )
-from dominio.risco import (
-    AnalisadorRisco,
-    SistemaLinear,
+from dominio.risco import AnalisadorRisco, SistemaLinear, simular_vulnerabilidade
+from tests.ajudantes import (
+    adicionar_dependencia,
+    atualizar_ativo,
+    cadastrar_ativo,
+    cadastrar_vulnerabilidade,
     calcular_riscos,
+    carregar_ativos,
     numero_condicao_infinito,
     resolver_sistema,
-    simular_vulnerabilidade,
+    salvar_ativos,
 )
-from infraestrutura.persistencia import carregar_ativos, salvar_ativos
-
 
 TODAS_AS_CLASSES = (Equipamento, EquipamentoPersonalizado, *CLASSES_DE_ATIVO.values())
 
@@ -68,7 +63,6 @@ class TesteRisco(unittest.TestCase):
         )
 
     def test_cada_tipo_gera_o_objeto_correspondente(self):
-        self.assertIs(Ativo, Equipamento)
         self.assertTrue(issubclass(Servidor, Equipamento))
         self.assertIsInstance(self.ativos[1], Notebook)
         self.assertIsInstance(self.ativos[2], Servidor)
@@ -95,9 +89,7 @@ class TesteRisco(unittest.TestCase):
         adicionar_dependencia(self.ativos, 3, 1, "0,25")
         adicionar_dependencia(self.ativos, 3, 2, "0.50")
 
-        ativos, matriz, vetor, proprio, dependencias, efetivo = calcular_riscos(
-            self.ativos
-        )
+        ativos, matriz, vetor, proprio, dependencias, efetivo = calcular_riscos(self.ativos)
 
         self.assertEqual([ativo.id for ativo in ativos], [1, 2, 3])
         self.assertEqual(matriz, [[1, 0], [0, 1], [0, 0]])
@@ -191,9 +183,7 @@ class TesteRisco(unittest.TestCase):
     def test_simulacao_nao_altera_a_base_e_propagacao_e_conferivel(self):
         # APP recebe 25% do risco do notebook. Um CVSS 8 no notebook soma 2 ao APP.
         adicionar_dependencia(self.ativos, 3, 1, 0.25)
-        _, matriz, vetor, proprio, _, efetivo = simular_vulnerabilidade(
-            self.ativos, 1, 8.0
-        )
+        _, matriz, vetor, proprio, _, efetivo = simular_vulnerabilidade(self.ativos, 1, 8.0)
         self.assertEqual(matriz, [[1], [0], [0]])
         self.assertEqual(vetor, [8.0])
         self.assertEqual(proprio, [8.0, 0, 0])
@@ -211,8 +201,17 @@ class TesteFatorExposicao(unittest.TestCase):
         cadastrar_ativo(self.ativos, 3, "DB-01", "TI", "Datacenter", 5, "Alta")
         for identificador, cve, nota in ((1, "CVE-2026-0001", 5), (2, "CVE-2026-0002", 4)):
             cadastrar_vulnerabilidade(
-                self.ativos, identificador, cve, "CWE-79", nota, "Teste", "Fonte",
-                "01/01/2026", "Impacto", "Alta", "Tratar",
+                self.ativos,
+                identificador,
+                cve,
+                "CWE-79",
+                nota,
+                "Teste",
+                "Fonte",
+                "01/01/2026",
+                "Impacto",
+                "Alta",
+                "Tratar",
             )
 
     def test_cada_tipo_responde_com_o_seu_fator(self):

@@ -173,9 +173,6 @@ class Equipamento:
         )
 
 
-Ativo = Equipamento  # Nome mantido para compatibilidade com o Trabalho 1.
-
-
 class Notebook(Equipamento):
     def nome_do_tipo(self):
         return "Notebook"

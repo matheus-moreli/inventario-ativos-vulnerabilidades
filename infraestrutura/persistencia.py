@@ -4,12 +4,12 @@ import json
 import os
 import tempfile
 
-from dominio.inventario import (
+from dominio.modelos import Equipamento
+from dominio.validacoes import (
     DadosInvalidosError,
     validar_ativo_carregado,
     validar_cvss_compartilhado,
 )
-from dominio.modelos import Ativo
 
 
 class RepositorioJSON:
@@ -34,7 +34,7 @@ class RepositorioJSON:
             for chave, dados_ativo in registros:
                 if not isinstance(dados_ativo, dict):
                     raise ValueError("Ativo inválido no arquivo de dados.")
-                ativo = Ativo.de_dicionario(dados_ativo)
+                ativo = Equipamento.de_dicionario(dados_ativo)
                 if chave is not None and ativo.id != int(chave):
                     raise ValueError("ID do ativo não corresponde à chave do arquivo.")
                 if ativo.id in ativos:
@@ -45,9 +45,7 @@ class RepositorioJSON:
             for ativo in ativos.values():
                 nome = ativo.nome.lower()
                 if nome in nomes:
-                    raise DadosInvalidosError(
-                        "Nome ou hostname repetido no arquivo de dados."
-                    )
+                    raise DadosInvalidosError("Nome ou hostname repetido no arquivo de dados.")
                 nomes.add(nome)
                 if ativo.tipo >= 100:
                     anterior = categorias.get(ativo.tipo)
@@ -56,9 +54,7 @@ class RepositorioJSON:
                     categorias[ativo.tipo] = ativo.nome_tipo_personalizado
                 for dependencia in ativo.dependencias:
                     if dependencia["ativo_id"] not in ativos:
-                        raise DadosInvalidosError(
-                            "Dependência aponta para ativo inexistente."
-                        )
+                        raise DadosInvalidosError("Dependência aponta para ativo inexistente.")
             validar_cvss_compartilhado(ativos)
             return ativos
         except FileNotFoundError:
@@ -76,9 +72,7 @@ class RepositorioJSON:
 
     def salvar(self, ativos):
         """Grava em arquivo temporário antes de substituir a versão anterior."""
-        dados = [
-            ativos[identificador].para_dicionario() for identificador in sorted(ativos)
-        ]
+        dados = [ativos[identificador].para_dicionario() for identificador in sorted(ativos)]
         temporario = None
         try:
             pasta = os.path.dirname(os.path.abspath(self.caminho))
@@ -106,13 +100,3 @@ class RepositorioJSON:
                     os.unlink(temporario)
                 except OSError:
                     pass
-
-
-def carregar_ativos(caminho):
-    """Compatibilidade com chamadas das Sprints 1 e 2."""
-    return RepositorioJSON(caminho).carregar()
-
-
-def salvar_ativos(ativos, caminho):
-    """Compatibilidade com chamadas das Sprints 1 e 2."""
-    return RepositorioJSON(caminho).salvar(ativos)

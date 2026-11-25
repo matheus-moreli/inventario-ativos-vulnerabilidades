@@ -8,9 +8,9 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from apresentacao.servico import ServicoInventario
-from dominio.inventario import Inventario, cadastrar_ativo
+from dominio.inventario import Inventario
 from dominio.modelos import TipoAtivo
-from infraestrutura.persistencia import salvar_ativos
+from tests.ajudantes import cadastrar_ativo, salvar_ativos
 
 
 class TesteServico(unittest.TestCase):
@@ -38,8 +38,16 @@ class TesteServico(unittest.TestCase):
         inv.cadastrar_ativo(2, "SRV-02", "Equipe", "Sala", 2, "Alta")
         inv.cadastrar_ativo(3, "NB-01", "Equipe", "Sala", 1, "Alta")
         inv.cadastrar_vulnerabilidade(
-            2, "CVE-2026-1234", "CWE-79", 8, "Caso didático", "NVD",
-            "01/01/2026", "Impacto", "Alta", "Corrigir",
+            2,
+            "CVE-2026-1234",
+            "CWE-79",
+            8,
+            "Caso didático",
+            "NVD",
+            "01/01/2026",
+            "Impacto",
+            "Alta",
+            "Corrigir",
         )
         with tempfile.TemporaryDirectory() as pasta:
             senha = Path(pasta) / "segredo"
@@ -55,8 +63,10 @@ class TesteServico(unittest.TestCase):
             self.assertEqual([ativo["id"] for ativo in pagina["itens"]], [1])
             _, pagina = servico.atender("GET", rota + "&pagina=3", bearer)
             self.assertEqual(pagina["itens"], [])
-            self.assertEqual(servico.atender("GET", "/v1/riscos", bearer),
-                             servico.atender("GET", "/riscos", bearer))
+            self.assertEqual(
+                servico.atender("GET", "/v1/riscos", bearer),
+                servico.atender("GET", "/riscos", bearer),
+            )
 
     def test_api_v1_nega_acesso_e_documenta_validacao(self):
         with tempfile.TemporaryDirectory() as pasta:
@@ -65,10 +75,17 @@ class TesteServico(unittest.TestCase):
             servico = ServicoInventario({}, caminho_senha=senha)
             bearer = "Bearer segredo-local-de-teste"
             codigo, resposta = servico.atender("GET", "/v1/ativos")
-            self.assertEqual((codigo, resposta["status"], resposta["type"]),
-                             (401, 401, "about:blank"))
-            for consulta in ("limite=101", "pagina=0", "pagina=1&pagina=2",
-                             "ordenar=nome", "inexistente=1", "limite="):
+            self.assertEqual(
+                (codigo, resposta["status"], resposta["type"]), (401, 401, "about:blank")
+            )
+            for consulta in (
+                "limite=101",
+                "pagina=0",
+                "pagina=1&pagina=2",
+                "ordenar=nome",
+                "inexistente=1",
+                "limite=",
+            ):
                 with self.subTest(consulta=consulta):
                     codigo, resposta = servico.atender("GET", "/v1/ativos?" + consulta, bearer)
                     self.assertEqual((codigo, resposta["status"]), (422, 422))

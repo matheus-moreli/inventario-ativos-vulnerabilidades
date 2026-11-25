@@ -1,6 +1,8 @@
 # Interface de terminal unificada
 
-A interface fica em `apresentacao/interface_rica.py`. Os menus e formulários
+A interface fica em `apresentacao/interface_rica.py`, com as telas de vulnerabilidades,
+dependências e risco em `telas_vulnerabilidades.py`, `telas_dependencias.py` e `telas_risco.py`.
+Os menus e formulários
 usam `apresentacao/navegacao.py` para tratar teclas, entradas e cancelamento.
 
 ## Atalhos

@@ -7,7 +7,6 @@ from urllib.parse import parse_qs
 from dominio.inventario import Inventario
 from dominio.risco import AnalisadorRisco
 
-
 ROTA_ATIVOS = "/v1/ativos"
 ROTA_RISCOS = "/v1/riscos"
 
@@ -72,6 +71,6 @@ def listar_ativos(ativos, consulta):
                 "criticidade": ativo.criticidade,
                 "vulnerabilidades": len(ativo.vulnerabilidades),
             }
-            for ativo in encontrados[inicio:inicio + limite]
+            for ativo in encontrados[inicio : inicio + limite]
         ],
     }
