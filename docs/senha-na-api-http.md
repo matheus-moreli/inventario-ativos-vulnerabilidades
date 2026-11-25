@@ -1,10 +1,7 @@
-# Duas camadas: rotas-isca e senha na API
+# Senha na API HTTP
 
 Implementação **restrita à aplicação HTTP própria na porta 2217**.
 Não intercepta SSH, conexões de outros alunos ou dados de outras portas.
-As rotas-isca `/admin`, `/login`, `/wp-admin`, `/painel` e `/.env`
-retornam 404 e geram `alerta_rota_isca` no JSONL, sem pedir
-ou armazenar credenciais. **Honeypot é um alerta, não um bloqueio.**
 
 A rota `/riscos` exige um cabeçalho `Authorization: Bearer <senha>`.
 Sem a senha correta, responde 401; `/saude` permanece acessível

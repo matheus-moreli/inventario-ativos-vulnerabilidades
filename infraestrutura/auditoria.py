@@ -8,9 +8,6 @@ import time
 from collections import deque
 from datetime import datetime, timezone
 
-# Rotas-isca de baixo impacto: nunca recebem dados ou senhas reais.
-ROTAS_ISCA = frozenset({"/admin", "/login", "/wp-admin", "/.env", "/painel"})
-
 
 class AuditoriaHTTP:
     """Registros JSONL rotativos, limitados em tamanho e sem rota pública."""
@@ -55,8 +52,6 @@ class AuditoriaHTTP:
                 ):
                     classe = "alerta_falhas_repetidas"
                     self._ultimo_alerta[ip] = agora
-            if rota in ROTAS_ISCA:
-                classe = "alerta_rota_isca"
             evento = {
                 "data_utc": datetime.now(timezone.utc).isoformat(),
                 "ip_observado": ip,

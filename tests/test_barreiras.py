@@ -1,4 +1,4 @@
-"""Barreiras do próprio HTTP: rota-isca e senha (sem capturar credenciais)."""
+"""Barreira de senha do HTTP e auditoria sem captura de credenciais."""
 
 import os
 import tempfile
@@ -45,13 +45,13 @@ class TesteBarreirasHTTP(unittest.TestCase):
     def test_saude_continua_publica_para_healthcheck(self):
         self.assertEqual(self.servico.atender("GET", "/saude")[0], 200)
 
-    def test_rota_isca_registrada_sem_credenciais(self):
+    def test_rota_inexistente_registrada_sem_credenciais(self):
         self.assertEqual(self.servico.atender("GET", "/admin")[0], 404)
         log = os.path.join(self.tmp.name, "auditoria.jsonl")
         AuditoriaHTTP(log).registrar("192.0.2.15", "GET", "/admin?senha=nao-registrar", 404)
         with open(log, encoding="utf-8") as arquivo:
             linha = arquivo.read()
-        self.assertIn("alerta_rota_isca", linha)
+        self.assertIn("requisicao_recusada", linha)
         self.assertNotIn("nao-registrar", linha)
 
     def test_metodo_nao_permitido(self):

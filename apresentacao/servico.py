@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from apresentacao.api_v1 import ROTA_ATIVOS, ROTA_RISCOS, especificacao, listar_ativos, problema
 from dominio.risco import AnalisadorRisco
-from infraestrutura.auditoria import AuditoriaHTTP, ROTAS_ISCA
+from infraestrutura.auditoria import AuditoriaHTTP
 from infraestrutura.autenticacao import AutenticacaoHTTP
 from infraestrutura.persistencia import RepositorioJSON
 
@@ -96,8 +96,6 @@ class ServicoInventario:
             return self.resposta(rota)
         if rota == "/openapi.json":
             return 200, especificacao()
-        if rota in ROTAS_ISCA:
-            return 404, {"erro": "Rota não encontrada."}
         if rota not in {"/riscos", ROTA_ATIVOS, ROTA_RISCOS}:
             if versao_um:
                 return problema(404, "Rota não encontrada", "Consulte /openapi.json.")

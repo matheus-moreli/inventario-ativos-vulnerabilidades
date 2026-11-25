@@ -61,7 +61,6 @@ jobs:
           python3 -c "import json; d=json.load(open('/tmp/ativos-v1.json', encoding='utf8')); assert len(d['itens']) == 2 and d['total'] >= 2"
           curl --fail --silent http://127.0.0.1:2217/openapi.json > /tmp/openapi.json
           python3 -c "import json; d=json.load(open('/tmp/openapi.json', encoding='utf8')); assert '/v1/ativos' in d['paths']"
-          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:2217/admin)" = 404
           docker exec inventario-ci python -c "from apresentacao.interface_rica import InterfaceRica; print('interface: OK')"
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:2217/rota-teste-auditoria)" = 404
           docker exec inventario-ci python -c "import json; p='/app/dados/auditoria-acessos.jsonl'; e=json.loads(open(p, encoding='utf-8').readlines()[-1]); assert e['rota']=='/rota-teste-auditoria' and e['codigo_http']==404"

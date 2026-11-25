@@ -44,7 +44,7 @@ Na listagem `docker ps -a` de 23/11, a V3 aparecia como `Up 5 days (healthy)`, p
 - O serviço informou **6 ativos** na base persistente.
 - A V3 passou **83 testes**, com **2 ignorados** por serem específicos do Windows (85 testes no total).
 - `/riscos` retornou `HTTP 401` sem a credencial e `HTTP 200` com credencial correta.
-- A rota-isca `/admin` retornou `HTTP 404` e produziu `alerta_rota_isca` no registro de auditoria.
+- A rota-isca `/admin` retornou `HTTP 404` e produziu `alerta_rota_isca` no registro de auditoria (recurso removido nas versões seguintes).
 - `inventario.json` e `auditoria-acessos.jsonl` foram verificados com permissões `600` durante a V2.
 - As versões antigas foram preservadas como `inventario-2217-v1` e `inventario-2217-v2` para consulta histórica.
 

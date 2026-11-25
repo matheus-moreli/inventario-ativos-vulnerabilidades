@@ -41,5 +41,5 @@ Preserve o volume `inventario-2217-dados` e registre uma nova evidência
 da execução se o container for recriado; essa ação reinicia a contagem
 de tempo da instância, mas não invalida evidências anteriores.
 
-Antes de colocar monitoramento adicional ou um honeypot na rede do
+Antes de colocar monitoramento adicional na rede do
 servidor compartilhado, obtenha autorização da administração.
