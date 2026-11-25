@@ -16,7 +16,7 @@ Entrada do menu: ID, nome, responsável, localização, tipo `TipoAtivo`, critic
 
 Os requisitos RF-01 a RF-10 e RNF-01 a RNF-04 estão em [requisitos.md](requisitos.md). A matriz de entrada, tratamento e mensagens está em [matriz-validacoes.md](matriz-validacoes.md). O modelo de domínio é orientado a objetos: `Inventario` concentra operações, `Ativo` e subclasses representam os equipamentos, `Vulnerabilidade` representa o achado, `RepositorioJSON` preserva os objetos, `AnalisadorRisco` calcula riscos e `Aplicacao` coordena a execução. As funções dos módulos de inventário, risco e persistência preservam compatibilidade com as entregas anteriores. O terminal mantém helpers de entrada e apresentação; não armazena regras de negócio.
 
-No cálculo, `M` é a incidência ativo × vulnerabilidade, `v` contém severidades CVSS e `p=Mv` é o risco próprio. A matriz `A` guarda a fração de risco transmitida por dependências. Se `I-A` é invertível, resolve-se `(I-A)r=p` por eliminação de Gauss. Matriz singular gera erro em vez de número incorreto.
+No cálculo, `M` é a incidência ativo × vulnerabilidade, `v` contém severidades CVSS e `F` é a diagonal dos fatores de exposição de cada tipo de equipamento e `p=F·Mv` é o risco próprio. A matriz `A` guarda a fração de risco transmitida por dependências. Se `I-A` é invertível, resolve-se `(I-A)r=p` por eliminação de Gauss. Matriz singular gera erro em vez de número incorreto.
 
 ## Rastreabilidade e aceitação
 

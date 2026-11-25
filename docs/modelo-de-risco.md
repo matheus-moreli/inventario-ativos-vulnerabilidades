@@ -4,14 +4,34 @@
 |---|---|---|
 | `M` | ativos × CVEs | `M[i,j] = 1` se o ativo i tem a CVE j. Uma CVE compartilhada ocupa uma só coluna. |
 | `v` | CVEs | Notas CVSS na mesma ordem das colunas de `M`. |
-| `b = Mv` | ativos | Risco próprio de cada ativo. |
+| `F` | ativos × ativos | Diagonal com o fator de exposição de cada tipo de equipamento. |
+| `b = F·Mv` | ativos | Risco próprio de cada ativo, já ponderado pela exposição. |
 | `A` | ativos × ativos | `A[i,j]` é a fração do risco de j herdada por i. A diagonal é zero. |
 | `x` | ativos | Risco efetivo, dado por `x = b + Ax`, ou `(I − A)x = b`. |
 
 O índice de risco pode passar de 10 porque soma contribuições. Cada CVSS
 continua entre 0 e 10. Os pesos de dependência são registrados separadamente.
 
+## Fator de exposição por tipo (polimorfismo)
+
+Cada classe de equipamento sobrescreve `fator_exposicao()`. O valor pondera o risco
+próprio: `b = F·Mv`. A classe base devolve 1,0, que não altera o risco.
+
+| Tipo | Fator | Motivo |
+|---|---|---|
+| Servidor, Roteador, Aplicação Web | 1,0 | Expostos a muitos acessos ou à borda da rede. |
+| Banco de Dados | 0,8 | Normalmente atrás de firewall. |
+| Software Licenciado | 0,7 | Roda em máquinas já protegidas. |
+| Notebook | 0,6 | Rede interna e uso individual. |
+| Tipo personalizado | 1,0 | Sem hipótese sobre a exposição. |
+
+O fator não é gravado no JSON: o tipo do objeto o define. O restante do modelo não muda,
+pois `(I − A)x = b` usa o `b` já ponderado. Os valores são hipóteses de ensino.
+
 ## Exemplo conferido com três equipamentos
+
+Os exemplos abaixo e os testes de `TesteRisco` usam fator 1,0 em todos os tipos, como na aula.
+Os testes de `TesteFatorExposicao` conferem à mão o caso com fatores diferentes.
 
 Assuma três equipamentos e duas vulnerabilidades, de severidades 4 e 6:
 

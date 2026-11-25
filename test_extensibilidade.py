@@ -47,7 +47,8 @@ class TesteExtensibilidade(unittest.TestCase):
         self.assertEqual(len(resultado[1]), 7)
         self.assertEqual(len(resultado[1][0]), 1)
         self.assertEqual(len(resultado[4]), 7)
-        self.assertEqual(resultado[3][0], 9.8)
+        # Notebook tem fator de exposição 0,6.
+        self.assertAlmostEqual(resultado[3][0], 9.8 * 0.6)
 
     def test_campos_extras_nao_mudam_calculo(self):
         inv = Inventario()

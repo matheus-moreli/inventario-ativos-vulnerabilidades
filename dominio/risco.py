@@ -49,6 +49,14 @@ def produto_matriz_vetor(matriz, vetor):
     return resultado
 
 
+def aplicar_exposicao(lista_ativos, proprio):
+    """Pondera cada risco próprio pelo fator do tipo; o tipo decide o valor."""
+    return [
+        ativo.fator_exposicao() * risco
+        for ativo, risco in zip(lista_ativos, proprio)
+    ]
+
+
 def montar_matriz_dependencias(lista_ativos):
     """A[i][j] é a fração do risco do ativo j transmitida ao ativo i."""
     indices = {ativo.id: indice for indice, ativo in enumerate(lista_ativos)}
@@ -142,10 +150,16 @@ class AnalisadorRisco:
         self.ativos = ativos
 
     def calcular(self):
-        """Devolve M, v, A e riscos próprios e efetivos na ordem dos IDs."""
+        """Devolve M, v, A e riscos próprios e efetivos na ordem dos IDs.
+
+        O risco próprio é b = F M v, em que F é a diagonal dos fatores de
+        exposição de cada tipo de equipamento.
+        """
         lista, self.vulnerabilidades, matriz = montar_matriz_incidencia(self.ativos)
         vetor = [vulnerabilidade.cvss for vulnerabilidade in self.vulnerabilidades]
-        proprio = produto_matriz_vetor(matriz, vetor)
+        self.fatores = [ativo.fator_exposicao() for ativo in lista]
+        self.soma_cvss = produto_matriz_vetor(matriz, vetor)
+        proprio = aplicar_exposicao(lista, self.soma_cvss)
         dependencias = montar_matriz_dependencias(lista)
         self.matriz_sistema = identidade_menos(dependencias)
         sistema = SistemaLinear(self.matriz_sistema)
@@ -188,7 +202,9 @@ def simular_vulnerabilidade(ativos, identificador, cvss):
         for indice, linha in enumerate(matriz)
     ]
     vetor_simulado = vetor + [cvss]
-    proprio = produto_matriz_vetor(matriz_simulada, vetor_simulado)
+    proprio = aplicar_exposicao(
+        lista, produto_matriz_vetor(matriz_simulada, vetor_simulado)
+    )
     sistema = identidade_menos(dependencias)
     efetivo = resolver_sistema(sistema, proprio)
     return lista, matriz_simulada, vetor_simulado, proprio, dependencias, efetivo

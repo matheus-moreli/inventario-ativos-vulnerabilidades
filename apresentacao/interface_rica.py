@@ -598,8 +598,8 @@ class InterfaceRica:
         if self.mostrar_lista("Equipamentos por risco efetivo", ("Equipamento", "Próprio", "Herdado", "Efetivo"), linhas) is False:
             return False
         self.console.print(Panel(
-            "b = Mv    |    x = b + Ax    |    (I-A)x = b\n"
-            "M: incidência de CVE por ativo. v: notas CVSS. A: dependências.\n"
+            "b = F·Mv    |    x = b + Ax    |    (I-A)x = b\n"
+            "M: incidência de CVE por ativo. v: notas CVSS. A: dependências. F: fator de exposição do tipo.\n"
             "[yellow]O risco calculado é um índice acadêmico, não uma nota CVSS.[/]",
             title="Modelo matemático da avaliação",
             border_style=COR,
@@ -621,7 +621,10 @@ class InterfaceRica:
                     return False
             vetores = "\n".join(
                 f"{rotulo} = ({', '.join(f'{valor:.6g}' for valor in valores)})"
-                for rotulo, valores in (("v", v), ("b", b), ("Ax", analisador.herdado), ("x", x))
+                for rotulo, valores in (
+                    ("v", v), ("F", analisador.fatores), ("b", b),
+                    ("Ax", analisador.herdado), ("x", x),
+                )
             )
             diagnostico = (
                 f"det(I − A) = {analisador.determinante:.6g}\n"
@@ -639,7 +642,8 @@ class InterfaceRica:
                 for j, (origem, peso) in enumerate(zip(lista, a[i])) if peso
             )
             conta = (
-                f"b = Mv = {proprios or '0'} = {b[i]:.6g}\n"
+                f"Mv = {proprios or '0'} = {analisador.soma_cvss[i]:.6g}\n"
+                f"b = F·Mv = {analisador.fatores[i]:.6g} × {analisador.soma_cvss[i]:.6g} = {b[i]:.6g}\n"
                 f"Ax = {herdados or '0'} = {analisador.herdado[i]:.6g}\n"
                 f"x = b + Ax = {b[i]:.6g} + {analisador.herdado[i]:.6g} = {x[i]:.6g}"
             )

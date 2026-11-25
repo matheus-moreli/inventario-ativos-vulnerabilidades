@@ -83,7 +83,9 @@ JSON. As dependências começam vazias nos registros antigos.
 ## Modelo acadêmico
 
 A matriz M (ativos por CVEs distintas), o vetor v (CVSS por CVE), a matriz A
-(dependências), b=Mv e (I-A)x=b são derivados dos dados persistidos.
+(dependências), b=F·Mv e (I-A)x=b são derivados dos dados persistidos.
+F é a diagonal dos fatores de exposição, definidos pelo tipo de cada equipamento
+e não gravados no JSON. Com F=I, o caso se reduz a b=Mv.
 O índice de risco efetivo pode superar 10 e não é uma nota CVSS.
 Vulnerabilidades corrigidas ainda participam do cálculo base por exigência do
 modelo cadastral; risco residual seria uma análise separada.

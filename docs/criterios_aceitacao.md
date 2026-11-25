@@ -17,7 +17,7 @@ Cada resultado é observável no inventário em memória e, após salvar/recarre
 | CA-11 | RF-06, RF-07 | ativo inexiste ou CVE já está no mesmo ativo | cadastrar vulnerabilidade | erro de domínio, sem novo registro |
 | CA-12 | RF-08 | inventário válido | salvar e carregar | JSON é lista de objetos e subclasses são reconstituídas |
 | CA-13 | RF-08 | arquivo JSON inválido | carregar | resultado `None`, arquivo original preservado |
-| CA-14 | RF-09 | matriz de dependências válida | calcular riscos | `Mv` e solução de `(I-A)r=Mv` retornam na ordem dos IDs |
+| CA-14 | RF-09 | matriz de dependências válida | calcular riscos | `F·Mv` e solução de `(I-A)r=F·Mv` retornam na ordem dos IDs |
 | CA-15 | RF-09 | `I-A` singular | calcular riscos | erro explícito impede resultado enganoso |
 | CA-16 | RF-10 | container iniciado com `-dit` e volume persistente no servidor docente | usar menu, consultar/cadastrar ativo e verificar o mesmo container após 24 h | CRUD e riscos funcionam, JSON persiste, container segue ativo sem reinício; evidência ainda pendente |
 

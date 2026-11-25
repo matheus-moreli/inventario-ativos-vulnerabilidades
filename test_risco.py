@@ -4,6 +4,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest import mock
 
 import pytest
 from apresentacao.servico import ServicoInventario
@@ -14,7 +15,16 @@ from dominio.inventario import (
     cadastrar_ativo,
     cadastrar_vulnerabilidade,
 )
-from dominio.modelos import Ativo, Equipamento, Notebook, Servidor
+from dominio.modelos import (
+    CLASSES_DE_ATIVO,
+    Ativo,
+    BancoDeDados,
+    Equipamento,
+    EquipamentoPersonalizado,
+    Notebook,
+    Roteador,
+    Servidor,
+)
 from dominio.risco import (
     AnalisadorRisco,
     SistemaLinear,
@@ -26,8 +36,17 @@ from dominio.risco import (
 from infraestrutura.persistencia import carregar_ativos, salvar_ativos
 
 
+TODAS_AS_CLASSES = (Equipamento, EquipamentoPersonalizado, *CLASSES_DE_ATIVO.values())
+
+
 class TesteRisco(unittest.TestCase):
+    """Cenários da aula, resolvidos à mão com fator de exposição 1."""
+
     def setUp(self):
+        for classe in TODAS_AS_CLASSES:
+            patcher = mock.patch.object(classe, "fator_exposicao", lambda self: 1.0)
+            patcher.start()
+            self.addCleanup(patcher.stop)
         self.ativos = {}
         cadastrar_ativo(self.ativos, 1, "NOTE-01", "Ana", "Sala 1", 1, "Baixa")
         cadastrar_ativo(self.ativos, 2, "SRV-01", "TI", "Datacenter", 2, "Alta")
@@ -180,6 +199,52 @@ class TesteRisco(unittest.TestCase):
         self.assertEqual(proprio, [8.0, 0, 0])
         self.assertEqual(efetivo, [8.0, 0.0, 2.0])
         self.assertEqual(self.ativos[1].vulnerabilidades, [])
+
+
+class TesteFatorExposicao(unittest.TestCase):
+    """O tipo do equipamento decide o fator que pondera o risco próprio."""
+
+    def setUp(self):
+        self.ativos = {}
+        cadastrar_ativo(self.ativos, 1, "NOTE-01", "Ana", "Sala 1", 1, "Baixa")
+        cadastrar_ativo(self.ativos, 2, "SRV-01", "TI", "Datacenter", 2, "Alta")
+        cadastrar_ativo(self.ativos, 3, "DB-01", "TI", "Datacenter", 5, "Alta")
+        for identificador, cve, nota in ((1, "CVE-2026-0001", 5), (2, "CVE-2026-0002", 4)):
+            cadastrar_vulnerabilidade(
+                self.ativos, identificador, cve, "CWE-79", nota, "Teste", "Fonte",
+                "01/01/2026", "Impacto", "Alta", "Tratar",
+            )
+
+    def test_cada_tipo_responde_com_o_seu_fator(self):
+        fatores = [self.ativos[i].fator_exposicao() for i in (1, 2, 3)]
+        self.assertEqual(fatores, [0.6, 1.0, 0.8])
+        self.assertEqual(Roteador(1, "R", "r", "l", 3, "Baixa").fator_exposicao(), 1.0)
+        self.assertEqual(BancoDeDados(2, "B", "r", "l", 5, "Baixa").fator_exposicao(), 0.8)
+
+    def test_tipo_personalizado_nao_altera_o_risco(self):
+        personalizado = EquipamentoPersonalizado(
+            9, "FW", "TI", "Rack", 100, "Alta", nome_tipo_personalizado="Firewall"
+        )
+        self.assertEqual(personalizado.fator_exposicao(), 1.0)
+
+    def test_risco_proprio_e_ponderado_e_efetivo_conferido_a_mao(self):
+        # b = F M v = (0,6 x 5, 1,0 x 4, 0) = (3, 4, 0).
+        # O servidor herda 50% do notebook: x2 = 4 + 0,5 x 3 = 5,5.
+        adicionar_dependencia(self.ativos, 2, 1, 0.5)
+        analise = AnalisadorRisco(self.ativos)
+        _, _, _, proprio, _, efetivo = analise.calcular()
+        self.assertEqual(analise.fatores, [0.6, 1.0, 0.8])
+        self.assertEqual(analise.soma_cvss, [5.0, 4.0, 0])
+        for obtido, esperado in zip(proprio, [3.0, 4.0, 0.0]):
+            self.assertAlmostEqual(obtido, esperado)
+        for obtido, esperado in zip(efetivo, [3.0, 5.5, 0.0]):
+            self.assertAlmostEqual(obtido, esperado)
+        self.assertLess(analise.residuo, 1e-12)
+
+    def test_simulacao_usa_o_fator_do_tipo(self):
+        _, _, _, proprio, _, _ = simular_vulnerabilidade(self.ativos, 3, 10.0)
+        self.assertAlmostEqual(proprio[2], 8.0)  # 0,8 x 10
+        self.assertEqual(self.ativos[3].vulnerabilidades, [])
 
 
 @pytest.mark.parametrize(

@@ -121,6 +121,10 @@ class Equipamento:
         """Nome exibido pela interface; as subclasses o sobrescrevem."""
         return "Ativo de TI"
 
+    def fator_exposicao(self):
+        """Peso do risco próprio; 1,0 mantém o risco e valores menores o reduzem."""
+        return 1.0
+
     def registrar_historico(self, mensagem):
         """Guarda uma evidência simples de criação, alteração ou cadastro."""
         self.historico.append(f"{data_hora_atual()} - {mensagem}")
@@ -176,30 +180,48 @@ class Notebook(Equipamento):
     def nome_do_tipo(self):
         return "Notebook"
 
+    def fator_exposicao(self):
+        return 0.6  # Rede interna, uso individual.
+
 
 class Servidor(Equipamento):
     def nome_do_tipo(self):
         return "Servidor"
+
+    def fator_exposicao(self):
+        return 1.0  # Presta serviço a muitos acessos.
 
 
 class Roteador(Equipamento):
     def nome_do_tipo(self):
         return "Roteador"
 
+    def fator_exposicao(self):
+        return 1.0  # Fica na borda da rede.
+
 
 class AplicacaoWeb(Equipamento):
     def nome_do_tipo(self):
         return "Aplicação Web"
+
+    def fator_exposicao(self):
+        return 1.0  # Publicada e alcançável por usuários.
 
 
 class BancoDeDados(Equipamento):
     def nome_do_tipo(self):
         return "Banco de Dados"
 
+    def fator_exposicao(self):
+        return 0.8  # Normalmente atrás de firewall.
+
 
 class SoftwareLicenciado(Equipamento):
     def nome_do_tipo(self):
         return "Software Licenciado"
+
+    def fator_exposicao(self):
+        return 0.7  # Roda em máquinas já protegidas.
 
 
 class EquipamentoPersonalizado(Equipamento):
