@@ -25,7 +25,9 @@ jobs:
         run: python app.py --testes
 
       - name: Verificar estilo
-        run: python -m flake8
+        run: |
+          python -m flake8
+          python -m black --check .
 
   docker-smoke:
     runs-on: ubuntu-latest
