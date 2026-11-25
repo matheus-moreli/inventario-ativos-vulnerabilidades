@@ -32,6 +32,10 @@ python app.py --testes
 | [Persistência](infraestrutura/persistencia.py) | Reconstrói objetos do JSON e salva uma lista de registros em arquivo temporário antes da troca atômica. O menu publica a alteração em memória depois da gravação. A base do Trabalho 1 pode ser lida diretamente. |
 | [Álgebra linear](dominio/risco.py) | Monta M, v e A, calcula b = F·Mv (F é o fator de exposição de cada tipo, definido por polimorfismo) e resolve (I − A)x = b. A fatoração é reutilizada e a solução é conferida pelo resíduo. |
 
+## Testes
+
+Os testes ficam em `tests/`. Rode `python app.py --testes` ou `python -m pytest`.
+
 ## Demonstração
 
 1. Busque um ativo por ID e depois por hostname. Mostre a ficha e as

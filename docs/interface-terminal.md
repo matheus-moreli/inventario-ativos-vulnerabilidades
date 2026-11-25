@@ -50,7 +50,7 @@ Em Docker, use `docker compose exec inventario python app.py`.
 
 ## Testes
 
-`test_interface_nova.py` verifica cadastro completo, tipo personalizado,
+`tests/test_interface_rica.py` verifica cadastro completo, tipo personalizado,
 rollback ao cancelar em meio ao cadastro/edição, falha de persistência,
 recalcular risco ao adicionar/remover vulnerabilidades e leitura não
 interativa de menus. O GitHub Actions deve passar testes Python e smoke Docker

@@ -1,8 +1,5 @@
 [run]
 source =
-    interface
-    inventario
-    modelos
-    persistencia
-    risco
-    servico
+    apresentacao
+    dominio
+    infraestrutura

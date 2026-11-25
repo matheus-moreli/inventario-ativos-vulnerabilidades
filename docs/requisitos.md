@@ -28,7 +28,7 @@ Base: Trabalho 1 e Trabalho 2 da disciplina. Escopo: inventário local de ativos
 
 | ID | Regra verificável | Evidência |
 |---|---|---|
-| RNF-01 Segurança | Entradas inválidas são rejeitadas com mensagem de domínio, sem aceitar CVSS fora de 0–10, nomes repetidos ou correção sem verificação. | `test_inventario.py`; matriz de validações |
+| RNF-01 Segurança | Entradas inválidas são rejeitadas com mensagem de domínio, sem aceitar CVSS fora de 0–10, nomes repetidos ou correção sem verificação. | `tests/test_inventario.py`; matriz de validações |
 | RNF-02 Integridade | Base JSON inválida impede o início e não é substituída; exclusão exige confirmação. | Testes de carga e exclusão |
 | RNF-03 Testabilidade | Testes automatizados executam sem alterar a base demonstrativa e CI verifica testes e estilo em cada PR. | `python -m unittest -v`; Actions |
 | RNF-04 Operação | O menu completo deve permanecer ativo no container por 24 h com JSON persistido; o serviço HTTP é modo auxiliar. | Execução Docker pendente em `evidencia-docker-24h.md` |

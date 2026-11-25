@@ -6,6 +6,8 @@ __pycache__
 .coverage
 .venv
 .pytest_cache
+tests
+pytest.ini
 dados/senha-acesso
 dados/auditoria-acessos.jsonl*
 .env

@@ -51,5 +51,5 @@ if __name__ == "__main__":
         except ModuleNotFoundError:
             print("Instale o Pytest com: python -m pip install -r requirements-dev.txt")
             raise SystemExit(1) from None
-        raise SystemExit(pytest.main(["-q", PASTA_DO_PROJETO, *sys.argv[2:]]))
+        raise SystemExit(pytest.main(["-q", os.path.join(PASTA_DO_PROJETO, "tests"), *sys.argv[2:]]))
     raise SystemExit(0 if iniciar("--servico" in sys.argv[1:]) else 1)
