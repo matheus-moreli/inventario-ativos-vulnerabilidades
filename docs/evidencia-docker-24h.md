@@ -13,6 +13,19 @@ superou 24 horas por conta própria. **O requisito do Trabalho 2 já tem
 evidência para a versão publicada.** As [saídas do servidor de 23/11](evidencias-docker-2026-11-23.md)
 foram registradas no [commit `ecf4571`](https://github.com/matheus-moreli/inventario-ativos-vulnerabilidades/commit/ecf4571e882e659ab8be29596e34dcdf1e3e3924).
 
-A pendência é validar o Compose da revisão local. Se ela for implantada,
-o [guia de implantação](implantacao-2217.md) mostra como registrar o ID,
-a imagem, o horário de início, o estado e os reinícios da nova instância.
+## Implantação definitiva — 25/11/2026
+
+- Commit da aplicação: bb40a384.
+- Container: trab02_2026_2_12621cbs217.
+- Imagem: f08d46e482ff.
+- Porta: 2217.
+- Backup JSON validado e restaurado.
+- Seis ativos recuperados.
+- Falha inicial de autenticação identificada e corrigida.
+- Início definitivo: 25/11/2026 às 21:27:21 (Brasília).
+- Estado inicial: healthy, zero reinicializações.
+- Monitoramento automático a cada 60 segundos.
+- Containers anteriores preservados para avaliação.
+- Previsão de conclusão das 24 horas: 26/11/2026 às 21:27:21.
+
+A comprovação das 24 horas da versão definitiva permanece pendente até a coleta final.

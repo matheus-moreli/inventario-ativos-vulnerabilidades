@@ -1,0 +1,2 @@
+2026-11-25T21:27:34-03:00
+{"estado": "ativo", "inicio_utc": "2026-11-26T00:27:21.184953+00:00", "tempo_ativo_segundos": 13, "ativos": 6}
