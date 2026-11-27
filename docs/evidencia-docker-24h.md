@@ -28,4 +28,19 @@ foram registradas no [commit `ecf4571`](https://github.com/matheus-moreli/invent
 - Containers anteriores preservados para avaliação.
 - Previsão de conclusão das 24 horas: 26/11/2026 às 21:27:21.
 
-A comprovação das 24 horas da versão definitiva permanece pendente até a coleta final.
+**Requisito de 24 horas comprovado em 26/11/2026.**
+
+## Resultados finais — 26/11/2026
+
+- Tempo de execução: 24h 02min 49s.
+- Verificações de disponibilidade: 1442.
+- Falhas ou lacunas detectadas: 0.
+- Reinicializações: 0.
+- Disponibilidade observada: 100%.
+- Estado do container: healthy.
+- Ativos preservados: 6.
+- Pytest: 101 testes e 6 subtestes aprovados.
+- Tempo de execução dos testes: 1,24 segundo.
+- Nenhuma falha nos testes automatizados.
+
+As evidências brutas estão disponíveis em evidencias/2026-11-25/.

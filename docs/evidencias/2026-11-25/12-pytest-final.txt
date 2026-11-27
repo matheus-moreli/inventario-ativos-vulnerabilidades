@@ -1,0 +1,155 @@
+WARNING: The directory '/home/inventario/.cache/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled. Check the permissions and owner of that directory. If executing pip with sudo, you should use sudo's -H flag.
+Collecting black==26.10.1 (from -r requirements-dev.txt (line 1))
+  Downloading black-26.10.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (108 kB)
+Collecting pytest==9.2.0 (from -r requirements-dev.txt (line 2))
+  Downloading pytest-9.2.0-py3-none-any.whl.metadata (7.9 kB)
+Collecting numpy==2.5.5 (from -r requirements-dev.txt (line 3))
+  Downloading numpy-2.5.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl.metadata (6.6 kB)
+Collecting click>=8.0.0 (from black==26.10.1->-r requirements-dev.txt (line 1))
+  Downloading click-8.5.1-py3-none-any.whl.metadata (2.6 kB)
+Collecting mypy-extensions>=0.4.3 (from black==26.10.1->-r requirements-dev.txt (line 1))
+  Downloading mypy_extensions-1.2.0-py3-none-any.whl.metadata (1.1 kB)
+Collecting packaging>=22.0 (from black==26.10.1->-r requirements-dev.txt (line 1))
+  Downloading packaging-26.4-py3-none-any.whl.metadata (3.5 kB)
+Collecting pathspec>=1.0.0 (from black==26.10.1->-r requirements-dev.txt (line 1))
+  Downloading pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+Collecting platformdirs>=2 (from black==26.10.1->-r requirements-dev.txt (line 1))
+  Downloading platformdirs-4.14.8-py3-none-any.whl.metadata (5.7 kB)
+Collecting pytokens~=0.4.0 (from black==26.10.1->-r requirements-dev.txt (line 1))
+  Downloading pytokens-0.4.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (3.8 kB)
+Collecting iniconfig>=2 (from pytest==9.2.0->-r requirements-dev.txt (line 2))
+  Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+Collecting pluggy<2,>=1.6 (from pytest==9.2.0->-r requirements-dev.txt (line 2))
+  Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+Requirement already satisfied: pygments>=2.15 in /usr/local/lib/python3.12/site-packages (from pytest==9.2.0->-r requirements-dev.txt (line 2)) (2.21.0)
+Downloading black-26.10.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (2.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 2.1/2.1 MB 27.0 MB/s eta 0:00:00
+Downloading pytest-9.2.0-py3-none-any.whl (411 kB)
+Downloading numpy-2.5.5-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (15.7 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 15.7/15.7 MB 47.6 MB/s eta 0:00:00
+Downloading click-8.5.1-py3-none-any.whl (126 kB)
+Downloading iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+Downloading mypy_extensions-1.2.0-py3-none-any.whl (5.1 kB)
+Downloading packaging-26.4-py3-none-any.whl (140 kB)
+Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+Downloading platformdirs-4.14.8-py3-none-any.whl (94 kB)
+Downloading pluggy-1.7.0-py3-none-any.whl (27 kB)
+Downloading pytokens-0.4.1-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (269 kB)
+Installing collected packages: pytokens, pluggy, platformdirs, pathspec, packaging, numpy, mypy-extensions, iniconfig, click, pytest, black
+Successfully installed black-26.10.1 click-8.5.1 iniconfig-2.3.1 mypy-extensions-1.2.0 numpy-2.5.5 packaging-26.4 pathspec-1.1.1 platformdirs-4.14.8 pluggy-1.7.0 pytest-9.2.0 pytokens-0.4.1
+
+[notice] A new release of pip is available: 25.0.1 -> 26.3
+[notice] To update, run: python -m pip install --upgrade pip
+============================= test session starts ==============================
+platform linux -- Python 3.12.13, pytest-9.2.0, pluggy-1.7.0 -- /tmp/testes/bin/python
+cachedir: .pytest_cache
+rootdir: /app
+configfile: pytest.ini
+testpaths: tests
+plugins: platformdirs-4.14.8
+collecting ... collected 101 items
+
+tests/test_auditoria.py::TesteAuditoriaHTTP::test_alerta_por_cinco_erros_da_mesma_origem PASSED [  0%]
+tests/test_auditoria.py::TesteAuditoriaHTTP::test_falha_de_gravacao_nao_quebra_aplicacao PASSED [  1%]
+tests/test_auditoria.py::TesteAuditoriaHTTP::test_ignora_healthcheck_local PASSED [  2%]
+tests/test_auditoria.py::TesteAuditoriaHTTP::test_outros_metodos_sao_auditados PASSED [  3%]
+tests/test_auditoria.py::TesteAuditoriaHTTP::test_registra_consulta_e_recusa_sem_parametros PASSED [  4%]
+tests/test_auditoria.py::TesteAuditoriaHTTP::test_rotacao_limita_armazenamento_e_permissoes PASSED [  5%]
+tests/test_barreiras.py::TesteBarreirasHTTP::test_arquivo_de_senha_obrigatorio PASSED [  6%]
+tests/test_barreiras.py::TesteBarreirasHTTP::test_credencial_correta_e_incorreta PASSED [  7%]
+tests/test_barreiras.py::TesteBarreirasHTTP::test_metodo_nao_permitido PASSED [  8%]
+tests/test_barreiras.py::TesteBarreirasHTTP::test_riscos_exige_senha PASSED [  9%]
+tests/test_barreiras.py::TesteBarreirasHTTP::test_rota_inexistente_registrada_sem_credenciais PASSED [ 10%]
+tests/test_barreiras.py::TesteBarreirasHTTP::test_saude_continua_publica_para_healthcheck PASSED [ 11%]
+tests/test_conferencia_numpy.py::test_risco_proprio_e_efetivo_batem_com_numpy[0] PASSED [ 12%]
+tests/test_conferencia_numpy.py::test_risco_proprio_e_efetivo_batem_com_numpy[1] PASSED [ 13%]
+tests/test_conferencia_numpy.py::test_risco_proprio_e_efetivo_batem_com_numpy[2] PASSED [ 14%]
+tests/test_conferencia_numpy.py::test_risco_proprio_e_efetivo_batem_com_numpy[3] PASSED [ 15%]
+tests/test_conferencia_numpy.py::test_risco_proprio_e_efetivo_batem_com_numpy[4] PASSED [ 16%]
+tests/test_conferencia_numpy.py::test_determinante_e_condicionamento_batem_com_numpy[0] PASSED [ 17%]
+tests/test_conferencia_numpy.py::test_determinante_e_condicionamento_batem_com_numpy[1] PASSED [ 18%]
+tests/test_conferencia_numpy.py::test_determinante_e_condicionamento_batem_com_numpy[2] PASSED [ 19%]
+tests/test_conferencia_numpy.py::test_determinante_e_condicionamento_batem_com_numpy[3] PASSED [ 20%]
+tests/test_conferencia_numpy.py::test_determinante_e_condicionamento_batem_com_numpy[4] PASSED [ 21%]
+tests/test_extensibilidade.py::TesteExtensibilidade::test_campos_extras_nao_mudam_calculo PASSED [ 22%]
+tests/test_extensibilidade.py::TesteExtensibilidade::test_categoria_invalida_e_rejeitada PASSED [ 23%]
+tests/test_extensibilidade.py::TesteExtensibilidade::test_matrizes_aumentam_automaticamente PASSED [ 24%]
+tests/test_extensibilidade.py::TesteExtensibilidade::test_porta_padrao_e_2217 PASSED [ 25%]
+tests/test_extensibilidade.py::TesteExtensibilidade::test_tipo_personalizado_e_metadados_persistem PASSED [ 26%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_alteracao_de_dependencia_recalcula_risco PASSED [ 27%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_busca_cve_preserva_descricao_e_abre_a_ficha_correta PASSED [ 28%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_busca_por_id_e_por_hostname_abre_a_ficha PASSED [ 29%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_cadastro_por_fluxo_unificado_persiste PASSED [ 30%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_cadastro_tipo_personalizado_sem_interface_antiga PASSED [ 31%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_cancelar_durante_cadastro_nao_salva_nada PASSED [ 32%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_cancelar_edicao_depois_de_mudar_rascunho_reverte PASSED [ 33%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_cancelar_na_confirmacao_nao_persiste PASSED [ 34%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_edicao_de_peso_preserva_dependencia_se_novo_valor_for_invalido PASSED [ 35%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_escape_cancela_campo_de_texto_em_tty PASSED [ 36%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_falha_na_gravacao_nao_publica_rascunho PASSED [ 37%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_ficha_por_id_exibe_apenas_vulnerabilidades_do_ativo PASSED [ 38%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_listagem_pagina_e_preserva_texto_literal_em_terminal_estreito PASSED [ 39%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_menu_fallback_com_zero_cancela PASSED [ 40%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_menu_principal_reutiliza_resumo_e_submenus_nao_recalculam PASSED [ 41%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_menu_recupera_falha_de_renderizacao_com_modo_numerico PASSED [ 42%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_remocao_cancelada_preserva_memoria_e_arquivo PASSED [ 43%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_risco_recalculado_apos_incluir_e_excluir_vulnerabilidade PASSED [ 44%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_setas_e_escape_nos_menus PASSED [ 45%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_texto_cancelar_por_comando PASSED [ 46%]
+tests/test_interface_rica.py::TesteInterfaceUnificada::test_texto_preserva_caracteres_acentuados PASSED [ 47%]
+tests/test_inventario.py::TesteInventario::test_atualizacao_de_vulnerabilidade_registra_historico PASSED [ 48%]
+tests/test_inventario.py::TesteInventario::test_atualizacao_invalida_nao_altera_a_vulnerabilidade PASSED [ 49%]
+tests/test_inventario.py::TesteInventario::test_atualizacao_invalida_nao_altera_o_ativo PASSED [ 50%]
+tests/test_inventario.py::TesteInventario::test_atualizacao_nao_permite_nome_de_outro_ativo PASSED [ 51%]
+tests/test_inventario.py::TesteInventario::test_atualizacao_preserva_identificador_e_registra_historico PASSED [ 52%]
+tests/test_inventario.py::TesteInventario::test_cadastro_corrigido_exige_verificacao PASSED [ 53%]
+tests/test_inventario.py::TesteInventario::test_cadastro_e_busca_por_id PASSED [ 54%]
+tests/test_inventario.py::TesteInventario::test_correcao_exige_verificacao PASSED [ 55%]
+tests/test_inventario.py::TesteInventario::test_cve_duplicado_no_mesmo_ativo_e_rejeitado PASSED [ 56%]
+tests/test_inventario.py::TesteInventario::test_cve_e_cvss_invalidos_sao_rejeitados PASSED [ 57%]
+tests/test_inventario.py::TesteInventario::test_cvss_com_virgula_e_aceito PASSED [ 58%]
+tests/test_inventario.py::TesteInventario::test_data_da_fonte_invalida_e_rejeitada PASSED [ 59%]
+tests/test_inventario.py::TesteInventario::test_exclusao_exige_confirmacao PASSED [ 60%]
+tests/test_inventario.py::TesteInventario::test_exclusao_remove_vulnerabilidades_e_dependencias PASSED [ 61%]
+tests/test_inventario.py::TesteInventario::test_falha_na_substituicao_preserva_json_anterior PASSED [ 62%]
+tests/test_inventario.py::TesteInventario::test_filtro_nao_altera_a_base PASSED [ 63%]
+tests/test_inventario.py::TesteInventario::test_id_duplicado_e_rejeitado PASSED [ 64%]
+tests/test_inventario.py::TesteInventario::test_json_com_id_inconsistente_e_rejeitado PASSED [ 65%]
+tests/test_inventario.py::TesteInventario::test_json_com_regra_invalida_e_rejeitado PASSED [ 66%]
+tests/test_inventario.py::TesteInventario::test_json_do_trabalho_1_e_lido_e_gravado_como_lista PASSED [ 67%]
+tests/test_inventario.py::TesteInventario::test_json_invalido_nao_e_substituido PASSED [ 68%]
+tests/test_inventario.py::TesteInventario::test_json_preserva_dados PASSED [ 69%]
+tests/test_inventario.py::TesteInventario::test_nome_duplicado_e_rejeitado PASSED [ 70%]
+tests/test_inventario.py::TesteInventario::test_remocao_de_vulnerabilidade_exige_confirmacao PASSED [ 71%]
+tests/test_inventario.py::TesteInventario::test_tipo_invalido_e_rejeitado PASSED [ 72%]
+tests/test_inventario.py::TesteInventario::test_vulnerabilidade_com_dados_verificaveis PASSED [ 73%]
+tests/test_inventario.py::test_persistencia_atomica_rejeita_valor_nao_finito PASSED [ 74%]
+tests/test_risco.py::TesteRisco::test_cada_tipo_gera_o_objeto_correspondente PASSED [ 75%]
+tests/test_risco.py::TesteRisco::test_ciclo_de_tres_ativos_resolvido_a_mao PASSED [ 76%]
+tests/test_risco.py::TesteRisco::test_condicionamento_alerta_antes_de_singularidade PASSED [ 77%]
+tests/test_risco.py::TesteRisco::test_cve_compartilhada_ocupa_uma_coluna_com_dois_uns PASSED [ 78%]
+tests/test_risco.py::TesteRisco::test_dependencias_persistem_e_mantem_o_risco PASSED [ 79%]
+tests/test_risco.py::TesteRisco::test_json_salvo_e_uma_lista_de_objetos PASSED [ 80%]
+tests/test_risco.py::TesteRisco::test_matriz_singular_e_rejeitada_antes_da_solucao PASSED [ 81%]
+tests/test_risco.py::TesteRisco::test_mesma_cve_nao_aceita_cvss_divergente PASSED [ 82%]
+tests/test_risco.py::TesteRisco::test_risco_com_dependencias_tem_resultado_conferivel PASSED [ 83%]
+tests/test_risco.py::TesteRisco::test_simulacao_nao_altera_a_base_e_propagacao_e_conferivel PASSED [ 84%]
+tests/test_risco.py::TesteRisco::test_soma_das_dependencias_nao_pode_chegar_a_um PASSED [ 85%]
+tests/test_risco.py::TesteRisco::test_troca_de_tipo_recria_o_objeto_correto PASSED [ 86%]
+tests/test_risco.py::TesteFatorExposicao::test_cada_tipo_responde_com_o_seu_fator PASSED [ 87%]
+tests/test_risco.py::TesteFatorExposicao::test_risco_proprio_e_ponderado_e_efetivo_conferido_a_mao PASSED [ 88%]
+tests/test_risco.py::TesteFatorExposicao::test_simulacao_usa_o_fator_do_tipo PASSED [ 89%]
+tests/test_risco.py::TesteFatorExposicao::test_tipo_personalizado_nao_altera_o_risco PASSED [ 90%]
+tests/test_risco.py::test_fatoracao_com_pivo_e_determinante[matriz0-vetor0-esperado0--2] PASSED [ 91%]
+tests/test_risco.py::test_fatoracao_com_pivo_e_determinante[matriz1-vetor1-esperado1-3] PASSED [ 92%]
+tests/test_risco.py::test_fatoracao_com_pivo_e_determinante[matriz2-vetor2-esperado2-1] PASSED [ 93%]
+tests/test_servico.py::TesteServico::test_api_v1_filtra_pagina_ordena_e_mantem_retorno_legado PASSED [ 94%]
+tests/test_servico.py::TesteServico::test_api_v1_nega_acesso_e_documenta_validacao
+tests/test_servico.py::TesteServico::test_api_v1_nega_acesso_e_documenta_validacao PASSED [ 95%]
+tests/test_servico.py::TesteServico::test_handler_http_usa_cabecalhos_de_problem_details PASSED [ 96%]
+tests/test_servico.py::TesteServico::test_inventario_orientado_a_objetos PASSED [ 97%]
+tests/test_servico.py::TesteServico::test_riscos_de_objeto_cadastrado PASSED [ 98%]
+tests/test_servico.py::TesteServico::test_saude_e_riscos_com_base_vazia PASSED [ 99%]
+tests/test_servico.py::TesteServico::test_servico_recarrega_json_e_falha_se_base_corromper PASSED [100%]
+
+==================== 101 passed, 6 subtests passed in 1.24s ====================
